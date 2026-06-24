@@ -1,0 +1,27 @@
+# Build output
+bin/
+obj/
+TestResults/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Rider
+.idea/
+
+# Compiled extension binaries (distribute via GitHub Releases, not source control)
+dist/clevracr/*.dll
+dist/clevracr/*.pdb
+dist/clevracr/*.deps.json
+
+# Logs
+*.log
+.clevr-acr/
+
+# OS
+.DS_Store
+Thumbs.db
