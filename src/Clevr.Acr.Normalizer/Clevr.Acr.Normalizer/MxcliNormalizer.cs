@@ -16,9 +16,8 @@ namespace Clevr.Acr.Normalizer;
 ///        → kind=Generic: eigen engine-categorie (prefix van de mxcli-ruleId) en de
 ///          mxcli-severity, source="mxcli", ruleId = de engine-regel-id, geen acrCode.
 ///
-/// Precedentie (sectie 4): staat een ruleId in het registry, dan wordt 'ie ALTIJD
-/// als ACR gemapt en NOOIT óók als generiek — elke ruwe violation levert precies
-/// één Violation, dus er ontstaat per definitie geen dubbel.
+/// Precedentie: staat een ruleId in het registry, dan wordt 'ie ALTIJD als ACR
+/// gemapt en NOOIT óók als generiek — elke ruwe violation levert precies één Violation.
 /// </summary>
 public sealed class MxcliNormalizer
 {
@@ -37,11 +36,6 @@ public sealed class MxcliNormalizer
 
         foreach (var raw in rawViolations)
         {
-            // Cross-engine claim-tabel (vervangt de mxlint-only denylist aan deze kant): een
-            // mxcli-generic regel waarvan het onderwerp door een winnende bron geclaimd is, wordt
-            // hier gedropt (bv. QUAL003/CONV009 → CLEVR-MAINT-007; DESIGN001 → ACR_ENT_ATTRS).
-            if (ClaimTable.SuppressedMxcli.Contains(raw.RuleId)) continue;
-
             var documentQualifiedName = BuildDocumentQualifiedName(raw);
             const string elementName = ""; // mxcli-schema kent geen subelement
             var documentType = DocumentTypeCanonicalizer.Canonicalize(raw.DocumentType); // → canonieke PascalCase (sectie 2)

@@ -646,9 +646,7 @@ public class SpikeDockablePaneViewModel : WebViewDockablePaneViewModel
         {
             try
             {
-                Post("ScanProgress", deepScan
-                    ? "Deep analysis: scanning all microflows & entities (this can take a few minutes)…"
-                    : "Analyzing with mxcli + the CLEVR rules…");
+                Post("ScanProgress", "Analyzing with mxcli…");
 
                 // GESTREAMD: de FAST-batch komt eerst (catalog/lint/security, ~seconden), daarna — alleen bij
                 // deepscan — de describe-findings PER CHUNK (~20-30s elk). Elke batch gaat als "AcrViolations"

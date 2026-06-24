@@ -6,11 +6,6 @@
     <Nullable>enable</Nullable>
     <AssemblyName>Clevr.AcrSpike</AssemblyName>
     <RootNamespace>Clevr.AcrSpike</RootNamespace>
-    <!-- Een class-library kopieert NuGet-deps NIET naar de output; daardoor belandde
-         YamlDotNet.dll niet in de extensiemap → assembly-load-fout in Studio Pro → de
-         expressie-pass viel stil (caught) → 0 violations. Dit forceert dat NuGet-runtime-deps
-         (YamlDotNet) wél mee naar bin/output gaan, zodat Copy-Item ze mee-deployt. -->
-    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
 
   <ItemGroup>
@@ -19,9 +14,6 @@
          ExcludeAssets=runtime: Studio Pro LEVERT deze API zelf — NIET mee-deployen (anders
          dubbele/conflicterende load). Compile blijft, runtime-copy uit. -->
     <PackageReference Include="Mendix.StudioPro.ExtensionsAPI" Version="11.10.0" ExcludeAssets="runtime" />
-    <!-- Robuuste YAML-parser voor de expressie-route: leest de microflow-expressies uit de
-         modelsource-YAML (block-scalars + single/double-quoting correct) i.p.v. 471× bson-dump. -->
-    <PackageReference Include="YamlDotNet" Version="16.2.0" />
   </ItemGroup>
 
   <!-- De bestaande, geteste normalizer + registry (ongewijzigd hergebruikt). De
