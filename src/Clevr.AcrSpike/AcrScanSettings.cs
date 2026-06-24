@@ -4,9 +4,9 @@ using System.Text.Json.Serialization;
 namespace Clevr.AcrSpike;
 
 /// <summary>
-/// Configureerbare scan-instellingen (NIET hardcoded). Geladen uit
-/// acr-scan-settings.json in de extensiemap; ontbrekende velden krijgen een default.
-/// Als projectPath leeg is, valt de scan terug op de map van de geopende app.
+/// Configurable scan settings (NOT hardcoded). Loaded from
+/// acr-scan-settings.json in the extension directory; missing fields receive a default.
+/// If projectPath is empty, the scan falls back to the directory of the opened app.
 /// </summary>
 public sealed class AcrScanSettings
 {
@@ -20,7 +20,7 @@ public sealed class AcrScanSettings
             : JsonSerializer.Deserialize<AcrScanSettings>(settingsJson) ?? new AcrScanSettings();
 
         if (string.IsNullOrWhiteSpace(settings.MxcliPath))
-            settings.MxcliPath = "mxcli"; // veronderstelt mxcli op PATH
+            settings.MxcliPath = "mxcli"; // assumes mxcli on PATH
 
         if (string.IsNullOrWhiteSpace(settings.ProjectPath) && !string.IsNullOrWhiteSpace(fallbackProjectDir))
             settings.ProjectPath = fallbackProjectDir!;

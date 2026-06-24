@@ -3,16 +3,16 @@ using System.Text.Json;
 namespace Clevr.Acr.Normalizer;
 
 /// <summary>
-/// Parseert de stdout van `mxcli lint --format json` naar <see cref="MxcliViolation"/>[].
-/// Puur: string in, DTO's uit.
+/// Parses the stdout of `mxcli lint --format json` into <see cref="MxcliViolation"/>[].
+/// Pure: string in, DTOs out.
 ///
-/// mxcli schrijft eerst STATUSREGELS naar stdout (bv. "Connected to: ...",
-/// "Loading cached catalog...", "✓ Catalog ready") en pas DAARNA de JSON. Het aantal
-/// statusregels verschilt per run (cache vs full build). Daarom knippen we alles vóór
-/// het JSON-begin weg: de eerste regel die (na trim) met `{` of `[` begint.
+/// mxcli first writes STATUS LINES to stdout (e.g. "Connected to: ...",
+/// "Loading cached catalog...", "✓ Catalog ready") and only AFTER that the JSON. The number of
+/// status lines differs per run (cache vs full build). Therefore we strip everything before
+/// the JSON start: the first line that (after trim) begins with `{` or `[`.
 ///
-/// Tolerant voor de envelope: een root-array, of een root-object met een
-/// violations-array onder een bekende property-naam.
+/// Tolerant of the envelope: a root array, or a root object with a
+/// violations array under a known property name.
 /// </summary>
 public static class MxcliOutputParser
 {
@@ -20,12 +20,12 @@ public static class MxcliOutputParser
         { "violations", "results", "issues", "diagnostics", "findings" };
 
     /// <summary>
-    /// True als de stdout een JSON-envelope bevat (een regel/positie die met <c>{</c> of <c>[</c> begint).
-    /// Nodig om mxcli's EXITCODE-semantiek te ontwijken: mxcli geeft exit 1 zodra er error-severity-
-    /// findings zijn (CI-conventie) ÉN bij een echte fout — de exitcode is dus GEEN betrouwbaar
-    /// succes/faal-signaal. Het verschil zit in de stdout: een geslaagde run (met of zonder findings)
-    /// levert JSON; een echte fout (bv. connect-fout) levert LEGE stdout + een 'Error …'-regel op stderr.
-    /// (De vaste "vibe-coded PoC"-waarschuwing staat ALTIJD op stderr en mag dus géén foutindicator zijn.)
+    /// True if the stdout contains a JSON envelope (a line/position that begins with <c>{</c> or <c>[</c>).
+    /// Needed to avoid mxcli's EXITCODE semantics: mxcli returns exit 1 as soon as there are error-severity
+    /// findings (CI convention) AND on a real error — the exit code is therefore NOT a reliable
+    /// success/failure signal. The difference is in stdout: a successful run (with or without findings)
+    /// produces JSON; a real error (e.g. connection error) produces EMPTY stdout + an 'Error …' line on stderr.
+    /// (The fixed "vibe-coded PoC" warning is ALWAYS on stderr and must therefore NOT be an error indicator.)
     /// </summary>
     public static bool ContainsJson(string? stdout)
         => !string.IsNullOrWhiteSpace(stdout) && ExtractJson(stdout) is not null;
@@ -61,8 +61,8 @@ public static class MxcliOutputParser
     }
 
     /// <summary>
-    /// Knipt de leidende statusregels weg en geeft de JSON terug (vanaf de eerste
-    /// regel die met `{` of `[` begint). Null als er geen JSON-begin gevonden wordt.
+    /// Strips the leading status lines and returns the JSON (starting from the first
+    /// line that begins with `{` or `[`). Null if no JSON start is found.
     /// </summary>
     private static string? ExtractJson(string stdout)
     {
@@ -74,7 +74,7 @@ public static class MxcliOutputParser
                 return string.Join("\n", lines[i..]);
         }
 
-        // Fallback: eerste { of [ ergens in de tekst (mocht JSON niet aan regelstart staan).
+        // Fallback: first { or [ somewhere in the text (in case JSON does not start at line beginning).
         var brace = stdout.IndexOf('{');
         var bracket = stdout.IndexOf('[');
         var start = MinNonNegative(brace, bracket);

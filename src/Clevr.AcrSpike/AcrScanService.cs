@@ -6,11 +6,11 @@ using Mendix.StudioPro.ExtensionsAPI.Services;
 namespace Clevr.AcrSpike;
 
 /// <summary>
-/// Sluit de mxcli-engine aan op de normalizer.
-/// Keten: settings + rules.json laden → mxcli draaien → JSON parsen (MxcliOutputParser)
-/// → normaliseren (MxcliNormalizer + RuleRegistry) → JSON voor de webview.
+/// Connects the mxcli engine to the normalizer.
+/// Chain: load settings + rules.json → run mxcli → parse JSON (MxcliOutputParser)
+/// → normalize (MxcliNormalizer + RuleRegistry) → JSON for the webview.
 ///
-/// Bevat ALLEEN IO en bedrading; geen normalisatielogica.
+/// Contains ONLY IO and wiring; no normalization logic.
 /// </summary>
 public sealed class AcrScanService
 {
@@ -31,7 +31,7 @@ public sealed class AcrScanService
     }
 
     /// <summary>
-    /// Draait de mxcli-scan en levert één samengevoegd JSON-eindresultaat.
+    /// Runs the mxcli scan and returns one merged JSON end result.
     /// </summary>
     public string RunScanAsJson(string? fallbackProjectDir, bool deepScan = false)
     {
@@ -43,13 +43,13 @@ public sealed class AcrScanService
         }
         catch (Exception ex)
         {
-            _log.Error("[CLEVR ACR] scan mislukt", ex);
+            _log.Error("[CLEVR ACR] scan failed", ex);
             return Error(ex.Message);
         }
     }
 
     /// <summary>
-    /// Gestreamde scan: emit findings als één JSON-batch via <paramref name="emit"/>.
+    /// Streamed scan: emit findings as one JSON batch via <paramref name="emit"/>.
     /// </summary>
     public void RunScanStreaming(string? fallbackProjectDir, bool deepScan, Action<string> emit)
     {
@@ -63,12 +63,12 @@ public sealed class AcrScanService
         }
         catch (Exception ex)
         {
-            _log.Error("[CLEVR ACR] gestreamde scan mislukt", ex);
+            _log.Error("[CLEVR ACR] streamed scan failed", ex);
             emit(Error(ex.Message));
         }
     }
 
-    /// <summary>Resultaat van de scan (lint + normalize + regel-catalogus + metadata).</summary>
+    /// <summary>Result of the scan (lint + normalize + rule catalog + metadata).</summary>
     private sealed class FastPhase
     {
         public required List<Violation> Violations;
@@ -103,14 +103,14 @@ public sealed class AcrScanService
         var proc = ProcessRunner.Run(settings.MxcliPath, arguments, projectDir);
 
         if (proc.Error is not null)
-            return (null, Diagnostic($"mxcli kon niet starten: {proc.Error}", commandLine, projectDir, proc));
+            return (null, Diagnostic($"mxcli could not start: {proc.Error}", commandLine, projectDir, proc));
 
         if (!MxcliOutputParser.ContainsJson(proc.StdOut))
-            return (null, Diagnostic($"mxcli leverde geen JSON-resultaat (exitcode {proc.ExitCode}) — waarschijnlijk een echte fout, geen findings", commandLine, projectDir, proc));
+            return (null, Diagnostic($"mxcli produced no JSON result (exitcode {proc.ExitCode}) — likely a real error, not findings", commandLine, projectDir, proc));
 
         IReadOnlyList<MxcliViolation> raw;
         try { raw = MxcliOutputParser.Parse(proc.StdOut); }
-        catch (Exception parseEx) { return (null, Diagnostic($"Kon mxcli-JSON niet parsen: {parseEx.Message}", commandLine, projectDir, proc)); }
+        catch (Exception parseEx) { return (null, Diagnostic($"Could not parse mxcli JSON: {parseEx.Message}", commandLine, projectDir, proc)); }
 
         var violations = new MxcliNormalizer().Normalize(raw, registry).ToList();
 
@@ -153,7 +153,7 @@ public sealed class AcrScanService
             appStoreModules = fast.AppStoreModules,
             violations,
         };
-        _log.Info($"[CLEVR ACR] {fast.RawCount} ruw → {violations.Count} genormaliseerd " +
+        _log.Info($"[CLEVR ACR] {fast.RawCount} raw → {violations.Count} normalized " +
                   $"({payload.acrCount} acr / {payload.genericCount} generic), exit={fast.ExitCode}");
         return JsonSerializer.Serialize(payload, JsonOut);
     }
@@ -185,12 +185,12 @@ public sealed class AcrScanService
     }
 
     /// <summary>
-    /// Lost projectPath op naar (projectmap, .mpr-bestandsnaam).
+    /// Resolves projectPath to (project directory, .mpr file name).
     /// </summary>
     private static (string projectDir, string mprFileName, string? error) ResolveProject(string projectPath)
     {
         if (string.IsNullOrWhiteSpace(projectPath))
-            return ("", "", "Geen projectpad. Zet 'projectPath' in acr-scan-settings.json of open een app in Studio Pro.");
+            return ("", "", "No project path. Set 'projectPath' in acr-scan-settings.json or open an app in Studio Pro.");
 
         if (File.Exists(projectPath) && projectPath.EndsWith(".mpr", StringComparison.OrdinalIgnoreCase))
         {
@@ -202,15 +202,15 @@ public sealed class AcrScanService
         {
             var mprs = Directory.GetFiles(projectPath, "*.mpr", SearchOption.TopDirectoryOnly);
             if (mprs.Length == 0)
-                return ("", "", $"Geen .mpr-bestand gevonden in projectmap: {projectPath}");
+                return ("", "", $"No .mpr file found in project directory: {projectPath}");
             if (mprs.Length > 1)
-                return ("", "", $"Meerdere .mpr-bestanden in {projectPath}: " +
+                return ("", "", $"Multiple .mpr files in {projectPath}: " +
                                 $"{string.Join(", ", mprs.Select(Path.GetFileName))}. " +
-                                "Zet het volledige .mpr-pad in 'projectPath'.");
+                                "Set the full .mpr path in 'projectPath'.");
             return (projectPath, Path.GetFileName(mprs[0]), null);
         }
 
-        return ("", "", $"projectPath bestaat niet: {projectPath}");
+        return ("", "", $"projectPath does not exist: {projectPath}");
     }
 
     private AcrScanSettings LoadSettings(string? fallbackProjectDir)
@@ -227,7 +227,7 @@ public sealed class AcrScanService
     }
 
     /// <summary>
-    /// Haalt ruleId → (naam, mxcli-categorie) op via `mxcli lint --list-rules`. Best-effort.
+    /// Retrieves ruleId → (name, mxcli category) via `mxcli lint --list-rules`. Best-effort.
     /// </summary>
     private IReadOnlyDictionary<string, MxcliRuleInfo> LoadRuleCatalog(string mxcliPath, string mprFileName, string projectDir)
     {
@@ -235,12 +235,12 @@ public sealed class AcrScanService
         {
             var proc = ProcessRunner.Run(mxcliPath, $"lint -p \"{mprFileName}\" --list-rules", projectDir);
             var catalog = MxcliRulesCatalogParser.Parse(proc.StdOut);
-            _log.Info($"[CLEVR ACR] {catalog.Count} regels (naam+categorie) uit --list-rules");
+            _log.Info($"[CLEVR ACR] {catalog.Count} rules (name+category) from --list-rules");
             return catalog;
         }
         catch (Exception ex)
         {
-            _log.Warn($"[CLEVR ACR] kon regel-catalogus niet laden: {ex.Message}");
+            _log.Warn($"[CLEVR ACR] could not load rule catalog: {ex.Message}");
             return new Dictionary<string, MxcliRuleInfo>();
         }
     }
@@ -252,8 +252,8 @@ public sealed class AcrScanService
             $"command : {commandLine}\n" +
             $"cwd     : {workingDirectory}\n" +
             $"exitCode: {proc.ExitCode}\n\n" +
-            $"--- stdout (eerste 1000) ---\n{Truncate(proc.StdOut, 1000)}\n\n" +
-            $"--- stderr (eerste 1000) ---\n{Truncate(proc.StdErr, 1000)}";
+            $"--- stdout (first 1000) ---\n{Truncate(proc.StdOut, 1000)}\n\n" +
+            $"--- stderr (first 1000) ---\n{Truncate(proc.StdErr, 1000)}";
         return Error(detail);
     }
 
@@ -264,7 +264,7 @@ public sealed class AcrScanService
 
     private static string Truncate(string? s, int max)
     {
-        if (string.IsNullOrEmpty(s)) return "(leeg)";
+        if (string.IsNullOrEmpty(s)) return "(empty)";
         return s.Length <= max ? s : s[..max] + "…";
     }
 }

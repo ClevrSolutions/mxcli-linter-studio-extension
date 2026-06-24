@@ -1,10 +1,10 @@
 namespace Clevr.Acr.Normalizer;
 
 /// <summary>
-/// Canonicaliseert de engine-documentType naar de canonieke PascalCase-vorm uit
-/// spec sectie 2, zodat beide engines (.star/.rego) naar één vorm convergeren en de
-/// UI consistent groepeert/filtert. Onbekende waarden worden met hoofdletter-begin
-/// doorgegeven (niet stil gebroken).
+/// Canonicalizes the engine documentType to the canonical PascalCase form from
+/// spec section 2, so that both engines (.star/.rego) converge to one form and the
+/// UI groups/filters consistently. Unknown values are passed through with an
+/// uppercase first letter (not silently broken).
 /// </summary>
 public static class DocumentTypeCanonicalizer
 {
@@ -33,7 +33,7 @@ public static class DocumentTypeCanonicalizer
         ["javascriptaction"] = "JavaScriptAction",
     };
 
-    /// <summary>Of de waarde een bekend canoniek type is (na trim, case-insensitief).</summary>
+    /// <summary>Whether the value is a known canonical type (after trim, case-insensitive).</summary>
     public static bool IsKnown(string? engineDocumentType)
         => !string.IsNullOrWhiteSpace(engineDocumentType)
            && Canonical.ContainsKey(engineDocumentType.Trim());
@@ -43,7 +43,7 @@ public static class DocumentTypeCanonicalizer
         var value = engineDocumentType?.Trim() ?? "";
         if (value.Length == 0) return "";
         if (Canonical.TryGetValue(value, out var canonical)) return canonical;
-        // Onbekend: hoofdletter-begin, rest ongewijzigd (signaleerbaar via IsKnown).
+        // Unknown: uppercase first letter, rest unchanged (detectable via IsKnown).
         return char.ToUpperInvariant(value[0]) + value[1..];
     }
 }

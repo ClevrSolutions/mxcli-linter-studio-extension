@@ -37,7 +37,7 @@ public class ManualChecksJsonTests
         var list = ManualChecksJson.Upsert(new List<ManualCheckAnswer>(), Sample("MC-1", "no", "not yet"));
         list = ManualChecksJson.Upsert(list, Sample("MC-2", "yes", "done"));
         Assert.Equal(2, list.Count);
-        // Opnieuw beantwoorden van dezelfde check vervangt (geen duplicaat).
+        // Re-answering the same check replaces it (no duplicate).
         list = ManualChecksJson.Upsert(list, Sample("MC-1", "yes", "now reviewed"));
         Assert.Equal(2, list.Count);
         var mc1 = Assert.Single(list, a => a.Id == "MC-1");

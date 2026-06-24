@@ -4,24 +4,24 @@ using System.Text.Json.Serialization;
 namespace Clevr.Acr.Normalizer;
 
 /// <summary>
-/// Antwoord op een "manual check" (controlevraag die de developer zelf beantwoordt). Generiek:
-/// C# kent de VRAGEN niet — alleen het antwoord per check-id. De definities (vraag/categorie/
-/// severity/context) en de 30-dagen-verloop-logica leven in de render-laag. Opslag in
-/// <c>$project/.clevr-acr/manual-checks.json</c> (mee in version control, NIET in .gitignore —
-/// net als exclusions), zodat het team het antwoord deelt.
+/// Answer to a "manual check" (a control question answered by the developer themselves). Generic:
+/// C# does not know the QUESTIONS — only the answer per check id. The definitions (question/category/
+/// severity/context) and the 30-day-expiry logic live in the render layer. Stored in
+/// <c>$project/.clevr-acr/manual-checks.json</c> (included in version control, NOT in .gitignore —
+/// just like exclusions), so that the team shares the answer.
 /// </summary>
 public sealed record ManualCheckAnswer
 {
     [JsonPropertyName("id")] public string Id { get; init; } = "";
     /// <summary>"yes" | "no".</summary>
     [JsonPropertyName("answer")] public string Answer { get; init; } = "";
-    /// <summary>Verplichte toelichting (ja: wat gedaan/afgewogen) of reden (nee: waarom nog niet).</summary>
+    /// <summary>Mandatory explanation (yes: what was done/considered) or reason (no: why not yet).</summary>
     [JsonPropertyName("note")] public string Note { get; init; } = "";
     [JsonPropertyName("answeredBy")] public string AnsweredBy { get; init; } = "";
     [JsonPropertyName("date")] public string Date { get; init; } = "";
 }
 
-/// <summary>Pure (de)serialisatie + lijst-ops voor manual-checks.json. Geen IO (zie ManualCheckStore).</summary>
+/// <summary>Pure (de)serialization + list operations for manual-checks.json. No IO (see ManualCheckStore).</summary>
 public static class ManualChecksJson
 {
     private sealed class Doc
@@ -42,14 +42,14 @@ public static class ManualChecksJson
         }
         catch (JsonException)
         {
-            return new List<ManualCheckAnswer>(); // corrupt → leeg (niet crashen)
+            return new List<ManualCheckAnswer>(); // corrupt → empty (do not crash)
         }
     }
 
     public static string Serialize(IEnumerable<ManualCheckAnswer> answers)
         => JsonSerializer.Serialize(new Doc { Answers = answers.ToList() }, WriteOpts);
 
-    /// <summary>Voegt toe of vervangt het antwoord met hetzelfde id (één antwoord per check).</summary>
+    /// <summary>Adds or replaces the answer with the same id (one answer per check).</summary>
     public static List<ManualCheckAnswer> Upsert(IEnumerable<ManualCheckAnswer> existing, ManualCheckAnswer add)
     {
         var list = existing.Where(a => a.Id != add.Id).ToList();

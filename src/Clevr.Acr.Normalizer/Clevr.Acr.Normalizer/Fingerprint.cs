@@ -4,9 +4,9 @@ using System.Text;
 namespace Clevr.Acr.Normalizer;
 
 /// <summary>
-/// Fingerprint-strategie uit spec sectie 3:
+/// Fingerprint strategy from spec section 3:
 ///     fingerprint = sha1( ruleId + "|" + documentQualifiedName + "|" + elementName )
-/// Bewust alleen de STABIELE identiteit; geen reason/drempels/tellingen.
+/// Deliberately only the STABLE identity; no reason/thresholds/counts.
 /// </summary>
 public static class Fingerprint
 {

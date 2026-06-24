@@ -6,9 +6,9 @@ using Mendix.StudioPro.ExtensionsAPI.UI.Services;
 namespace Clevr.AcrSpike;
 
 /// <summary>
-/// Registreert de door C# beheerde dockable pane. Geopend via
-/// <see cref="SpikeMenuExtension"/> met IDockingWindowService.OpenPane
-/// (de 11.10-API kent geen ViewMenuCaption).
+/// Registers the C#-managed dockable pane. Opened via
+/// <see cref="SpikeMenuExtension"/> with IDockingWindowService.OpenPane
+/// (the 11.10 API does not have ViewMenuCaption).
 /// </summary>
 [Export(typeof(DockablePaneExtension))]
 public class SpikeDockablePaneExtension : DockablePaneExtension
@@ -34,10 +34,10 @@ public class SpikeDockablePaneExtension : DockablePaneExtension
 
     public override DockablePaneViewModelBase Open()
     {
-        // WebServerBaseUrl + CurrentApp komen van de basisklasse (UIExtensionBase).
-        // CurrentApp?.Root?.DirectoryPath = de map van de geopende app (fallback-projectpad).
-        // () => CurrentApp geeft de VM live toegang tot het model (Fase 4: navigeren naar
-        // het gevonden document via IDockingWindowService.TryOpenEditor).
+        // WebServerBaseUrl + CurrentApp come from the base class (UIExtensionBase).
+        // CurrentApp?.Root?.DirectoryPath = the directory of the opened app (fallback project path).
+        // () => CurrentApp gives the VM live access to the model (Phase 4: navigate to
+        // the found document via IDockingWindowService.TryOpenEditor).
         return new SpikeDockablePaneViewModel(
             WebServerBaseUrl,
             _logService,

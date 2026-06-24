@@ -3,10 +3,10 @@ using Clevr.Acr.Normalizer;
 namespace Clevr.AcrSpike;
 
 /// <summary>
-/// Lezen/schrijven van <c>$project/.clevr-acr/manual-checks.json</c> — spiegelt
-/// <see cref="ExclusionStore"/>. Bewaart alleen ANTWOORDEN (id → ja/nee + toelichting +
-/// wie + datum); de vragen zelf staan in de render-laag. Staat IN de projectmap → gaat mee
-/// in version control (NIET in .gitignore), zodat het team het antwoord deelt.
+/// Reading/writing of <c>$project/.clevr-acr/manual-checks.json</c> — mirrors
+/// <see cref="ExclusionStore"/>. Stores only ANSWERS (id → yes/no + explanation +
+/// who + date); the questions themselves live in the render layer. Resides IN the project folder → is
+/// included in version control (NOT in .gitignore), so the team shares the answer.
 /// </summary>
 public sealed class ManualCheckStore
 {
@@ -24,19 +24,19 @@ public sealed class ManualCheckStore
         return File.Exists(path) ? ManualChecksJson.Parse(File.ReadAllText(path)) : new List<ManualCheckAnswer>();
     }
 
-    /// <summary>Legt een antwoord vast (upsert per id) en schrijft weg.</summary>
+    /// <summary>Records an answer (upsert by id) and writes it to disk.</summary>
     public void Answer(string? projectDir, ManualCheckAnswer answer)
     {
         if (string.IsNullOrWhiteSpace(projectDir))
-            throw new InvalidOperationException("Geen projectmap beschikbaar om het antwoord op te slaan.");
+            throw new InvalidOperationException("No project folder available to save the answer.");
         Save(projectDir!, ManualChecksJson.Upsert(Load(projectDir), answer));
     }
 
-    /// <summary>Wist het antwoord van een check (zodat 'ie weer onbeantwoord is).</summary>
+    /// <summary>Clears the answer of a check (so it becomes unanswered again).</summary>
     public void Clear(string? projectDir, string id)
     {
         if (string.IsNullOrWhiteSpace(projectDir))
-            throw new InvalidOperationException("Geen projectmap beschikbaar om het antwoord te wissen.");
+            throw new InvalidOperationException("No project folder available to clear the answer.");
         Save(projectDir!, ManualChecksJson.Remove(Load(projectDir), id));
     }
 

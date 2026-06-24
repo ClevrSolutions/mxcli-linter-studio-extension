@@ -8,10 +8,10 @@ public class MxcliNormalizerTests
 {
     private readonly MxcliNormalizer _normalizer = new();
 
-    // Registry met ECHTE geverifieerde ACR-regels (engineRuleKey = eigen .star rule-id,
-    // metadata uit de ACR-grondwaarheid; zie rules.sample.json). Een ruleId die hier
-    // niet in staat → generiek. ACR_ENT_ATTRS staat op Minor (grondwaarheid, niet Major).
-    // De Security-regel heeft severity "TODO-confirm" (0 violations op TRB, geen baseline).
+    // Registry with REAL verified ACR rules (engineRuleKey = own .star rule-id,
+    // metadata from the ACR ground truth; see rules.sample.json). A ruleId not present
+    // here → generic. ACR_ENT_ATTRS is set to Minor (ground truth, not Major).
+    // The Security rule has severity "TODO-confirm" (0 violations on TRB, no baseline).
     private static RuleRegistry KnownAcrRegistry() => new(new[]
     {
         new AcrRuleEntry { RuleId = "CLEVR-MAINT-001", AcrCode = "EntityAmountAttributes",
@@ -33,8 +33,8 @@ public class MxcliNormalizerTests
     {
         var raw = new MxcliViolation
         {
-            RuleId = "ACR_ENT_ATTRS",          // echte ACR .star rule-id
-            Severity = "error",                 // engine-severity — mag NIET de ACR-severity worden
+            RuleId = "ACR_ENT_ATTRS",          // real ACR .star rule-id
+            Severity = "error",                 // engine-severity — must NOT become the ACR-severity
             Message = "Entity has too many attributes.",
             Module = "Sales",
             Document = "Customer",
@@ -48,13 +48,13 @@ public class MxcliNormalizerTests
         var v = Assert.Single(result);
         Assert.Equal(ViolationKind.Acr, v.Kind);
         Assert.Equal("clevr-acr", v.Source);
-        Assert.Equal("CLEVR-MAINT-001", v.RuleId);          // CLEVR-id, niet de engine-key
+        Assert.Equal("CLEVR-MAINT-001", v.RuleId);          // CLEVR-id, not the engine-key
         Assert.Equal("EntityAmountAttributes", v.AcrCode);
-        Assert.Equal("Maintainability", v.Category);        // uit registry
-        Assert.Equal("Minor", v.Severity);                  // grondwaarheid: Minor, niet Major...
-        Assert.NotEqual("error", v.Severity);               // ...en NIET de mxcli-severity
+        Assert.Equal("Maintainability", v.Category);        // from registry
+        Assert.Equal("Minor", v.Severity);                  // ground truth: Minor, not Major...
+        Assert.NotEqual("error", v.Severity);               // ...and NOT the mxcli-severity
         Assert.Equal("Sales.Customer", v.DocumentQualifiedName);
-        Assert.Equal("Entity", v.DocumentType);             // gecanonicaliseerd uit "entity"
+        Assert.Equal("Entity", v.DocumentType);             // canonicalized from "entity"
         Assert.Equal("Entity has too many attributes.", v.Reason);
         Assert.Equal("Split related attributes into a separate entity.", v.Suggestion);
         Assert.Equal("11111111-1111-1111-1111-111111111111", v.DocumentId);
@@ -88,7 +88,7 @@ public class MxcliNormalizerTests
     {
         var raw = new MxcliViolation
         {
-            RuleId = "MPR001", // bundled mxcli-regel, niet in registry
+            RuleId = "MPR001", // bundled mxcli rule, not in registry
             Severity = "warning",
             Message = "Microflow does not follow the naming convention.",
             Module = "Sales",
@@ -102,21 +102,21 @@ public class MxcliNormalizerTests
         var v = Assert.Single(result);
         Assert.Equal(ViolationKind.Generic, v.Kind);
         Assert.Equal("mxcli", v.Source);
-        Assert.Equal("MPR001", v.RuleId);          // engine-regel-id behouden
-        Assert.Null(v.AcrCode);                    // generiek heeft geen acrCode
-        Assert.Equal("MPR", v.Category);           // categorie uit ruleId-prefix
-        Assert.Equal("warning", v.Severity);       // mxcli-severity behouden
+        Assert.Equal("MPR001", v.RuleId);          // engine rule-id preserved
+        Assert.Null(v.AcrCode);                    // generic has no acrCode
+        Assert.Equal("MPR", v.Category);           // category from ruleId prefix
+        Assert.Equal("warning", v.Severity);       // mxcli-severity preserved
         Assert.Equal("Sales.ACT_DoThing", v.DocumentQualifiedName);
-        Assert.Equal("Microflow", v.DocumentType); // gecanonicaliseerd uit "microflow"
+        Assert.Equal("Microflow", v.DocumentType); // canonicalized from "microflow"
         Assert.Equal("star", v.Engine);
     }
 
     [Fact]
     public void RealAcrId_MapsToAcr_AndBundledId_MapsToGeneric()
     {
-        // Het kerngeval: een ECHTE ACR .star rule-id wordt ACR; een bundled mxcli-id
-        // (MPR001) — dat we bewust NIET claimen — blijft generiek. Eén output per
-        // ruwe violation, dus geen dubbel.
+        // The core case: a REAL ACR .star rule-id becomes ACR; a bundled mxcli-id
+        // (MPR001) — which we deliberately do NOT claim — remains generic. One output per
+        // raw violation, so no duplicates.
         var raw = new[]
         {
             new MxcliViolation { RuleId = "ACR_ENT_ATTRS", Severity = "error",
@@ -141,14 +141,14 @@ public class MxcliNormalizerTests
         Assert.Equal("mxcli", generic.Source);
         Assert.Null(generic.AcrCode);
 
-        // MPR001 wordt nooit als ACR geclaimd.
+        // MPR001 is never claimed as ACR.
         Assert.DoesNotContain(result, v => v.RuleId == "MPR001" && v.Kind == ViolationKind.Acr);
     }
 
     [Fact]
     public void MultipleRealAcrRules_MapWithCorrectCategoryAndSeverity()
     {
-        // Een Maintainability-Major, een Project-hygiene-Minor, en een Security-regel.
+        // A Maintainability-Major, a Project-hygiene-Minor, and a Security rule.
         var raw = new[]
         {
             new MxcliViolation { RuleId = "ACR_ENT_ACCESS", Severity = "error",
@@ -170,7 +170,7 @@ public class MxcliNormalizerTests
         var maint = Assert.Single(result, v => v.RuleId == "CLEVR-MAINT-002");
         Assert.Equal("Maintainability", maint.Category);
         Assert.Equal("Major", maint.Severity);
-        Assert.Equal("EntityAmountAccessRules", maint.AcrCode); // echte ACR Java-klassenaam
+        Assert.Equal("EntityAmountAccessRules", maint.AcrCode); // real ACR Java class name
 
         var hyg = Assert.Single(result, v => v.RuleId == "CLEVR-HYG-001");
         Assert.Equal("Project hygiene", hyg.Category);
@@ -179,22 +179,22 @@ public class MxcliNormalizerTests
 
         var sec = Assert.Single(result, v => v.RuleId == "CLEVR-SEC-004");
         Assert.Equal("Security", sec.Category);
-        Assert.Equal("TODO-confirm", sec.Severity);  // severity nog te bevestigen, niet verzonnen
-        Assert.Equal("ProjectSecurity", sec.DocumentType); // gecanonicaliseerd
+        Assert.Equal("TODO-confirm", sec.Severity);  // severity still to be confirmed, not made up
+        Assert.Equal("ProjectSecurity", sec.DocumentType); // canonicalized
     }
 
     [Fact]
     public void QualifiedDocument_IsNotDoublePrefixedWithModule()
     {
-        // Sommige mxcli/ACR-regels (ACR_UNIQ_ENT, CONV001) leveren 'document' AL
-        // gekwalificeerd ("Module.Entity"). Dan mag de module NIET nóg eens worden
-        // geprefixt → anders "Accesslog.Accesslog.AccesslogBankenportaal".
+        // Some mxcli/ACR rules (ACR_UNIQ_ENT, CONV001) deliver 'document' ALREADY
+        // qualified ("Module.Entity"). In that case the module must NOT be prefixed again
+        // → otherwise "Accesslog.Accesslog.AccesslogBankenportaal".
         var raw = new[]
         {
             new MxcliViolation { RuleId = "ACR_UNIQ_ENT", Severity = "hint",
                 Message = "Non-unique.", Module = "Accesslog",
                 Document = "Accesslog.AccesslogBankenportaal", DocumentType = "Entity" },
-            // kaal document → wél prefixen (de andere mxcli-vorm).
+            // bare document → do prefix (the other mxcli form).
             new MxcliViolation { RuleId = "MPR001", Severity = "warning",
                 Message = "Naming.", Module = "GoogleAuthenticatorCustom",
                 Document = "Credential", DocumentType = "entity" },
@@ -203,10 +203,10 @@ public class MxcliNormalizerTests
         var result = _normalizer.Normalize(raw, KnownAcrRegistry());
 
         var qualified = Assert.Single(result, v => v.RuleId == "CLEVR-HYG-001");
-        Assert.Equal("Accesslog.AccesslogBankenportaal", qualified.DocumentQualifiedName); // niet dubbel
+        Assert.Equal("Accesslog.AccesslogBankenportaal", qualified.DocumentQualifiedName); // not doubled
 
         var bare = Assert.Single(result, v => v.RuleId == "MPR001");
-        Assert.Equal("GoogleAuthenticatorCustom.Credential", bare.DocumentQualifiedName); // wél geprefixt
+        Assert.Equal("GoogleAuthenticatorCustom.Credential", bare.DocumentQualifiedName); // prefixed
     }
 
     [Fact]
@@ -221,7 +221,7 @@ public class MxcliNormalizerTests
 
         var v = Assert.Single(_normalizer.Normalize(new[] { raw }, KnownAcrRegistry()));
 
-        // sha1(ruleId|documentQualifiedName|elementName) met de OUTPUT-ruleId (CLEVR-id).
+        // sha1(ruleId|documentQualifiedName|elementName) with the OUTPUT-ruleId (CLEVR-id).
         var expected = Fingerprint.Compute("CLEVR-MAINT-001", "Sales.Customer", "");
         Assert.Equal(expected, v.Fingerprint);
         Assert.StartsWith("sha1:", v.Fingerprint);
@@ -231,9 +231,9 @@ public class MxcliNormalizerTests
     [Theory]
     [InlineData("entity", "Entity")]
     [InlineData("microflow", "Microflow")]
-    [InlineData("ENTITY", "Entity")]            // case-insensitief
+    [InlineData("ENTITY", "Entity")]            // case-insensitive
     [InlineData("projectsecurity", "ProjectSecurity")]
-    [InlineData("widget", "Widget")]            // onbekend → hoofdletter-begin
+    [InlineData("widget", "Widget")]            // unknown → capitalize first letter
     [InlineData("", "")]
     public void DocumentType_IsCanonicalized(string engineValue, string expected)
     {
@@ -250,7 +250,7 @@ public class MxcliNormalizerTests
     [Fact]
     public void DeserializesRawMxcliJson_IntoDto()
     {
-        // Bewijst dat het ruwe mxcli-schema correct naar de DTO deserialiseert.
+        // Proves that the raw mxcli schema deserializes correctly into the DTO.
         const string json = """
         [
           { "ruleId": "MPR001", "severity": "warning", "message": "msg",

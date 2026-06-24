@@ -3,9 +3,8 @@ using System.Net;
 namespace Clevr.AcrSpike;
 
 /// <summary>
-/// Minimale helper om een bestand vanuit wwwroot via de ingebouwde webserver
-/// aan de webview te serveren. (Afgeleid van het officiële To-do-voorbeeld,
-/// gestript tot alleen wat de spike nodig heeft.)
+/// Minimal helper to serve a file from wwwroot to the webview via the built-in web server.
+/// (Derived from the official To-do example, stripped down to only what the spike needs.)
 /// </summary>
 public static class HttpListenerResponseUtils
 {

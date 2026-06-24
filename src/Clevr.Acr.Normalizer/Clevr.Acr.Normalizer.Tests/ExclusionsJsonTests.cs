@@ -18,7 +18,7 @@ public class ExclusionsJsonTests
         Assert.Empty(ExclusionsJson.Parse(""));
         Assert.Empty(ExclusionsJson.Parse("{}"));
         Assert.Empty(ExclusionsJson.Parse("{ \"exclusions\": [] }"));
-        Assert.Empty(ExclusionsJson.Parse("not json at all")); // corrupt → leeg, niet crashen
+        Assert.Empty(ExclusionsJson.Parse("not json at all")); // corrupt → empty, do not crash
     }
 
     [Fact]
@@ -41,7 +41,7 @@ public class ExclusionsJsonTests
         list = ExclusionsJson.Upsert(list, Sample("sha1:b", "second"));
         Assert.Equal(2, list.Count);
 
-        // Zelfde fingerprint → vervangt (geen duplicaat), nieuwe reden wint.
+        // Same fingerprint → replaces (no duplicate), new reason wins.
         list = ExclusionsJson.Upsert(list, Sample("sha1:a", "updated reason"));
         Assert.Equal(2, list.Count);
         Assert.Equal("updated reason", Assert.Single(list, e => e.Fingerprint == "sha1:a").Reason);

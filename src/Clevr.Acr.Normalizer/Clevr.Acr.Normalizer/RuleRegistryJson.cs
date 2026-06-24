@@ -4,9 +4,9 @@ using System.Text.Json.Serialization;
 namespace Clevr.Acr.Normalizer;
 
 /// <summary>
-/// Parseert rules.json (spec sectie 4A) naar een <see cref="RuleRegistry"/>.
-/// Puur: string in, registry uit — geen bestand-IO (de aanroeper leest het bestand).
-/// Onbekende top-level keys (_comment, _ruleId_schema, ...) worden genegeerd.
+/// Parses rules.json (spec section 4A) into a <see cref="RuleRegistry"/>.
+/// Pure: string in, registry out — no file IO (the caller reads the file).
+/// Unknown top-level keys (_comment, _ruleId_schema, ...) are ignored.
 /// </summary>
 public static class RuleRegistryJson
 {
@@ -36,10 +36,10 @@ public static class RuleRegistryJson
             Engine = e.Engine,
             EngineRuleKey = e.EngineRuleKey,
             Category = e.Category,
-            Severity = e.Severity,                 // vrije tekst (incl. "TODO-confirm")
+            Severity = e.Severity,                 // free text (incl. "TODO-confirm")
             Status = ParseStatus(e.Status),
         });
-        return new RuleRegistry(entries); // hergebruikt de getoetste gouden-regel-guards
+        return new RuleRegistry(entries); // reuses the validated golden-rule guards
     }
 
     private static RuleStatus ParseStatus(string status) => status.Trim().ToLowerInvariant() switch
@@ -49,6 +49,6 @@ public static class RuleRegistryJson
         "approximate" => RuleStatus.Approximate,
         "todo" => RuleStatus.Todo,
         "out-of-reach" => RuleStatus.OutOfReach,
-        _ => throw new ArgumentException($"Onbekende status '{status}' in rules.json."),
+        _ => throw new ArgumentException($"Unknown status '{status}' in rules.json."),
     };
 }

@@ -1,12 +1,12 @@
 namespace Clevr.AcrSpike;
 
 /// <summary>
-/// Robuuste, ALTIJD-vindbare bestand-logger voor diagnose. Schrijft naar
-/// &lt;project&gt;\.clevr-acr\clevr-acr-debug.log (of de temp-map als er geen projectmap is).
+/// Robust, ALWAYS-findable file logger for diagnostics. Writes to
+/// &lt;project&gt;\.clevr-acr\clevr-acr-debug.log (or the temp directory if there is no project directory).
 ///
-/// Bestaansreden: ILogService routeert naar Studio Pro's interne log, dat lastig te
-/// vinden is; deze logger schrijft naar een vast, bekend pad dat we kunnen openen om
-/// de async/marshalling-keten te volgen. Gooit NOOIT (diagnose mag de extensie niet breken).
+/// Reason for existence: ILogService routes to Studio Pro's internal log, which is hard to
+/// find; this logger writes to a fixed, known path that we can open to
+/// follow the async/marshalling chain. NEVER throws (diagnostics must not break the extension).
 /// </summary>
 public static class DebugLog
 {
@@ -28,7 +28,7 @@ public static class DebugLog
         }
         catch
         {
-            // Diagnose mag nooit de extensie-flow breken.
+            // Diagnostics must never break the extension flow.
         }
     }
 }

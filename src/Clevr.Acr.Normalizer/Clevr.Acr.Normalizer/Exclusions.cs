@@ -4,12 +4,12 @@ using System.Text.Json.Serialization;
 namespace Clevr.Acr.Normalizer;
 
 /// <summary>
-/// Eén exclusion (spec sectie 3): een bewust onderdrukte improvement MET verplichte reden.
-/// Opgeslagen in <c>$project/.clevr-acr/exclusions.json</c> (mee in version control → het
-/// team deelt dezelfde exclusions). De match gebeurt op <see cref="Fingerprint"/> =
-/// sha1(ruleId | documentQualifiedName | elementName) — al berekend op elke Violation.
-/// De document-velden worden meebewaard zodat een STALE exclusion (geen match meer) tóch
-/// leesbaar getoond kan worden.
+/// One exclusion (spec section 3): a deliberately suppressed improvement WITH a mandatory reason.
+/// Stored in <c>$project/.clevr-acr/exclusions.json</c> (checked into version control → the
+/// team shares the same exclusions). Matching is done on <see cref="Fingerprint"/> =
+/// sha1(ruleId | documentQualifiedName | elementName) — already calculated on every Violation.
+/// The document fields are retained so that a STALE exclusion (no longer matching) can still
+/// be shown in a readable form.
 /// </summary>
 public sealed record Exclusion
 {
@@ -23,9 +23,9 @@ public sealed record Exclusion
 }
 
 /// <summary>
-/// Pure (de)serialisatie + lijst-operaties voor exclusions.json. Geen IO — het
-/// extensieproject doet het lezen/schrijven (zie ExclusionStore). Tolerant: lege/ongeldige
-/// input → lege lijst.
+/// Pure (de)serialization + list operations for exclusions.json. No IO — the
+/// extension project handles reading/writing (see ExclusionStore). Tolerant: empty/invalid
+/// input → empty list.
 /// </summary>
 public static class ExclusionsJson
 {
@@ -51,14 +51,14 @@ public static class ExclusionsJson
         }
         catch (JsonException)
         {
-            return new List<Exclusion>(); // corrupt bestand → behandel als leeg (niet crashen)
+            return new List<Exclusion>(); // corrupt file → treat as empty (do not crash)
         }
     }
 
     public static string Serialize(IEnumerable<Exclusion> exclusions)
         => JsonSerializer.Serialize(new Doc { Exclusions = exclusions.ToList() }, WriteOpts);
 
-    /// <summary>Voegt toe of vervangt de exclusion met dezelfde fingerprint (idempotent).</summary>
+    /// <summary>Adds or replaces the exclusion with the same fingerprint (idempotent).</summary>
     public static List<Exclusion> Upsert(IEnumerable<Exclusion> existing, Exclusion add)
     {
         var list = existing.Where(e => e.Fingerprint != add.Fingerprint).ToList();

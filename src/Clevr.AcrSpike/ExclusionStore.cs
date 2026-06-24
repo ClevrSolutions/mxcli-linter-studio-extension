@@ -3,10 +3,10 @@ using Clevr.Acr.Normalizer;
 namespace Clevr.AcrSpike;
 
 /// <summary>
-/// Lezen/schrijven van <c>$project/.clevr-acr/exclusions.json</c> (spec sectie 3). De pure
-/// (de)serialisatie + lijst-ops zitten in <see cref="ExclusionsJson"/>; deze klasse doet
-/// alleen de bestand-IO rond de projectmap. Het bestand staat IN de projectmap → gaat mee in
-/// version control, zodat de volgende developer de exclusions + redenen bij een pull ziet.
+/// Reading/writing of <c>$project/.clevr-acr/exclusions.json</c> (spec section 3). The pure
+/// (de)serialization + list-ops live in <see cref="ExclusionsJson"/>; this class only handles
+/// the file IO around the project directory. The file resides IN the project directory → it is
+/// included in version control, so the next developer sees the exclusions + reasons on a pull.
 /// </summary>
 public sealed class ExclusionStore
 {
@@ -16,8 +16,8 @@ public sealed class ExclusionStore
     private static string PathFor(string projectDir)
         => Path.Combine(projectDir, Dir, File_);
 
-    /// <summary>Leest de exclusions als JSON-string ({"exclusions":[...]}) voor de webview.
-    /// Ontbreekt het bestand/de projectmap, dan een lege (maar geldige) lijst.</summary>
+    /// <summary>Reads the exclusions as a JSON string ({"exclusions":[...]}) for the webview.
+    /// If the file/project directory is missing, returns an empty (but valid) list.</summary>
     public string LoadJson(string? projectDir)
     {
         var list = Load(projectDir);
@@ -31,7 +31,7 @@ public sealed class ExclusionStore
         return File.Exists(path) ? ExclusionsJson.Parse(File.ReadAllText(path)) : new List<Exclusion>();
     }
 
-    /// <summary>Voegt een exclusion toe (of vervangt die met dezelfde fingerprint) en schrijft weg.</summary>
+    /// <summary>Adds an exclusion (or replaces the one with the same fingerprint) and writes it out.</summary>
     public void Add(string? projectDir, Exclusion exclusion)
     {
         if (string.IsNullOrWhiteSpace(projectDir))
@@ -40,8 +40,8 @@ public sealed class ExclusionStore
         Save(projectDir!, list);
     }
 
-    /// <summary>Voegt meerdere exclusions in één keer toe (upsert per fingerprint → dedup,
-    /// één bestand-write). Voor "Exclude rule": alle punten onder een regel tegelijk.</summary>
+    /// <summary>Adds multiple exclusions at once (upsert per fingerprint → dedup,
+    /// one file write). For "Exclude rule": all points under a rule at once.</summary>
     public void AddMany(string? projectDir, IEnumerable<Exclusion> exclusions)
     {
         if (string.IsNullOrWhiteSpace(projectDir))
@@ -59,8 +59,8 @@ public sealed class ExclusionStore
         Save(projectDir!, list);
     }
 
-    /// <summary>Verwijdert meerdere exclusions in één keer (één bestand-write). Voor
-    /// "Remove rule exclusion": alle entries van een regel tegelijk terugzetten.</summary>
+    /// <summary>Removes multiple exclusions at once (one file write). For
+    /// "Remove rule exclusion": restore all entries of a rule at once.</summary>
     public void RemoveMany(string? projectDir, IEnumerable<string> fingerprints)
     {
         if (string.IsNullOrWhiteSpace(projectDir))

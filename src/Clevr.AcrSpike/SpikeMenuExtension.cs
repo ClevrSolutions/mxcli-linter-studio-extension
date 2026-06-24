@@ -5,8 +5,8 @@ using Mendix.StudioPro.ExtensionsAPI.UI.Services;
 namespace Clevr.AcrSpike;
 
 /// <summary>
-/// Voegt een menu-item toe dat de dockable pane opent via
-/// IDockingWindowService.OpenPane. Verschijnt onder Extensions → (extensienaam).
+/// Adds a menu item that opens the dockable pane via
+/// IDockingWindowService.OpenPane. Appears under Extensions → (extension name).
 /// </summary>
 [Export(typeof(MenuExtension))]
 public class SpikeMenuExtension : MenuExtension

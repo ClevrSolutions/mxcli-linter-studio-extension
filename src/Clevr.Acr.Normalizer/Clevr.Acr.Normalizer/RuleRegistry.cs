@@ -1,6 +1,6 @@
 namespace Clevr.Acr.Normalizer;
 
-/// <summary>Regelstatus (spec sectie 4). Alleen Verified telt in het ACR-hoofdrapport.</summary>
+/// <summary>Rule status (spec section 4). Only Verified counts in the ACR main report.</summary>
 public enum RuleStatus
 {
     Verified,
@@ -11,8 +11,8 @@ public enum RuleStatus
 }
 
 /// <summary>
-/// Eén ACR-registry-entry (spec sectie 4A): bindt een engine-regel aan ACR-metadata.
-/// `EngineRuleKey` is de id waarmee de engine de regel rapporteert (matchsleutel).
+/// One ACR registry entry (spec section 4A): binds an engine rule to ACR metadata.
+/// `EngineRuleKey` is the id with which the engine reports the rule (match key).
 /// </summary>
 public sealed record AcrRuleEntry
 {
@@ -20,16 +20,16 @@ public sealed record AcrRuleEntry
     public required string AcrCode { get; init; }
     public required string Engine { get; init; }        // "star" | "rego"
     public required string EngineRuleKey { get; init; }
-    public required string Category { get; init; }      // ACR-categorie (sectie 1)
-    public required string Severity { get; init; }      // ACR-severity (sectie 1)
+    public required string Category { get; init; }      // ACR category (section 1)
+    public required string Severity { get; init; }      // ACR severity (section 1)
     public required RuleStatus Status { get; init; }
 }
 
 /// <summary>
-/// In-memory ACR-registry met opzoeken op engineRuleKey. Dwingt de gouden regel
-/// (sectie 4) licht af: geen dubbele ruleId, geen dubbele engineRuleKey.
-/// Het laden uit rules.json (bestand-IO) zit bewust BUITEN deze klasse en buiten
-/// de normalizer, zodat beide puur en los testbaar blijven.
+/// In-memory ACR registry with lookup by engineRuleKey. Lightly enforces the golden rule
+/// (section 4): no duplicate ruleId, no duplicate engineRuleKey.
+/// Loading from rules.json (file IO) is intentionally kept OUTSIDE this class and outside
+/// the normalizer, so that both remain pure and independently testable.
 /// </summary>
 public sealed class RuleRegistry
 {
@@ -42,17 +42,17 @@ public sealed class RuleRegistry
         var dupRuleId = list.GroupBy(e => e.RuleId, StringComparer.Ordinal)
             .FirstOrDefault(g => g.Count() > 1);
         if (dupRuleId is not null)
-            throw new ArgumentException($"Dubbele ruleId in registry: '{dupRuleId.Key}'.");
+            throw new ArgumentException($"Duplicate ruleId in registry: '{dupRuleId.Key}'.");
 
         var dupKey = list.GroupBy(e => e.EngineRuleKey, StringComparer.Ordinal)
             .FirstOrDefault(g => g.Count() > 1);
         if (dupKey is not null)
-            throw new ArgumentException($"Dubbele engineRuleKey in registry: '{dupKey.Key}'.");
+            throw new ArgumentException($"Duplicate engineRuleKey in registry: '{dupKey.Key}'.");
 
         _byEngineRuleKey = list.ToDictionary(e => e.EngineRuleKey, StringComparer.Ordinal);
     }
 
-    /// <summary>Vindt de ACR-entry die deze engine-regel claimt, of null als niet geclaimd.</summary>
+    /// <summary>Finds the ACR entry that claims this engine rule, or null if not claimed.</summary>
     public AcrRuleEntry? FindByEngineRuleKey(string engineRuleKey)
         => _byEngineRuleKey.TryGetValue(engineRuleKey, out var entry) ? entry : null;
 }

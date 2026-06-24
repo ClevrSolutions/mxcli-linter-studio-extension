@@ -1,30 +1,45 @@
 namespace Clevr.Acr.Normalizer;
 
 /// <summary>
-/// Pure normalizer (spec sectie 9, stap 3): zet ruwe mxcli-violations om naar het
-/// genormaliseerde Violation-formaat (sectie 2), gestuurd door het ACR-registry.
+/// Pure normalizer (spec section 9, step 3): converts raw mxcli-violations to the
+/// normalized Violation format (section 2), driven by the ACR registry.
 ///
-/// Geen proces-aanroep, geen UI, geen bestand-IO — alleen de mapping. De ruwe input
-/// en het registry worden van buiten aangereikt, zodat dit los testbaar blijft.
+/// No process invocation, no UI, no file IO — only the mapping. The raw input
+/// and the registry are provided from outside, so this remains independently testable.
 ///
-/// Mapping (sectie 4):
-///  (a) raw.ruleId matcht een ACR-registry-entry (op engineRuleKey)
-///        → kind=Acr: acrCode + ACR-categorie/severity UIT het registry,
-///          source="clevr-acr", ruleId = de CLEVR-id.
-///          De ACR-severity komt dus uit het registry, NIET uit de mxcli-severity.
-///  (b) geen match (regel uit een ingeschakeld generiek pack)
-///        → kind=Generic: eigen engine-categorie (prefix van de mxcli-ruleId) en de
-///          mxcli-severity, source="mxcli", ruleId = de engine-regel-id, geen acrCode.
+/// Mapping (section 4):
+///  (a) raw.ruleId matches an ACR-registry entry (on engineRuleKey)
+///        → kind=Acr: acrCode + ACR category/severity FROM the registry,
+///          source="clevr-acr", ruleId = the CLEVR id.
+///          The ACR severity therefore comes from the registry, NOT from the mxcli severity.
+///  (b) no match (rule from an enabled generic pack)
+///        → kind=Generic: own engine category (prefix of the mxcli ruleId) and the
+///          mxcli severity, source="mxcli", ruleId = the engine rule id, no acrCode.
 ///
-/// Precedentie: staat een ruleId in het registry, dan wordt 'ie ALTIJD als ACR
-/// gemapt en NOOIT óók als generiek — elke ruwe violation levert precies één Violation.
+/// Precedence: if a ruleId is in the registry, it is ALWAYS mapped as ACR
+/// and NEVER also as generic — each raw violation yields exactly one Violation.
 /// </summary>
 public sealed class MxcliNormalizer
 {
-    /// <summary>mxcli is de .star-engine; herkomst-label voor generieke mxcli-regels.</summary>
+    /// <summary>mxcli is the .star engine; origin label for generic mxcli rules.</summary>
     public const string GenericSource = "mxcli";
     public const string MxcliEngine = "star";
     public const string AcrSource = "clevr-acr";
+
+    /// <summary>
+    /// Static claim table: generic mxcli rule IDs that ACR "owns" and should therefore
+    /// always be suppressed. Claimed generics are filtered out whether or not the ACR
+    /// claimant fires — ACR is the authoritative source for these areas, so the generic
+    /// counterpart should never reach the UI.
+    /// </summary>
+    private static readonly HashSet<string> ClaimedGenerics = new(StringComparer.OrdinalIgnoreCase)
+    {
+        // Microflow complexity — owned by CLEVR-MAINT-007
+        "QUAL003",
+        "CONV009",
+        // Entity attribute count — owned by ACR_ENT_ATTRS (CLEVR-MAINT-001)
+        "DESIGN001",
+    };
 
     public IReadOnlyList<Violation> Normalize(
         IEnumerable<MxcliViolation> rawViolations, RuleRegistry registry)
@@ -37,16 +52,20 @@ public sealed class MxcliNormalizer
         foreach (var raw in rawViolations)
         {
             var documentQualifiedName = BuildDocumentQualifiedName(raw);
-            const string elementName = ""; // mxcli-schema kent geen subelement
-            var documentType = DocumentTypeCanonicalizer.Canonicalize(raw.DocumentType); // → canonieke PascalCase (sectie 2)
+            const string elementName = ""; // mxcli schema has no sub-element
+            var documentType = DocumentTypeCanonicalizer.Canonicalize(raw.DocumentType); // → canonical PascalCase (section 2)
             var documentId = NullIfBlank(raw.DocumentId);
             var suggestion = NullIfBlank(raw.Suggestion);
 
             var acrEntry = registry.FindByEngineRuleKey(raw.RuleId);
 
+            // Skip generic rules that ACR owns (claim table) — ACR is authoritative.
+            if (acrEntry is null && ClaimedGenerics.Contains(raw.RuleId))
+                continue;
+
             if (acrEntry is not null)
             {
-                // (a) ACR-match. Metadata UIT het registry; severity NIET uit mxcli.
+                // (a) ACR match. Metadata FROM the registry; severity NOT from mxcli.
                 var ruleId = acrEntry.RuleId;
                 result.Add(new Violation
                 {
@@ -68,7 +87,7 @@ public sealed class MxcliNormalizer
             }
             else
             {
-                // (b) Geen match → generiek. Eigen categorie/severity behouden.
+                // (b) No match → generic. Own category/severity retained.
                 var ruleId = raw.RuleId;
                 result.Add(new Violation
                 {
@@ -94,11 +113,11 @@ public sealed class MxcliNormalizer
     }
 
     /// <summary>
-    /// module + document → "Module.Document"; valt terug op wat beschikbaar is.
-    /// LET OP: sommige mxcli/ACR-regels (bv. ACR_UNIQ_ENT, CONV001) leveren 'document'
-    /// AL gekwalificeerd ("Module.Entity"), terwijl andere (MPR001, SEC001) 'document'
-    /// KAAL leveren ("Entity"). In het eerste geval mag de module NIET nóg eens geprefixt
-    /// worden, anders ontstaat "Module.Module.Entity" (en faalt o.a. de navigatie).
+    /// module + document → "Module.Document"; falls back to whatever is available.
+    /// NOTE: some mxcli/ACR rules (e.g. ACR_UNIQ_ENT, CONV001) deliver 'document'
+    /// ALREADY qualified ("Module.Entity"), while others (MPR001, SEC001) deliver 'document'
+    /// BARE ("Entity"). In the first case the module must NOT be prefixed again,
+    /// otherwise "Module.Module.Entity" results (and navigation, among other things, breaks).
     /// </summary>
     private static string BuildDocumentQualifiedName(MxcliViolation raw)
     {
@@ -107,18 +126,18 @@ public sealed class MxcliNormalizer
 
         if (module.Length > 0 && document.Length > 0)
         {
-            // 'document' al gekwalificeerd met deze module → niet dubbel prefixen.
+            // 'document' already qualified with this module → do not double-prefix.
             if (document.StartsWith(module + ".", StringComparison.Ordinal)) return document;
             return $"{module}.{document}";
         }
         if (document.Length > 0) return document;
         if (module.Length > 0) return module;
-        return raw.DocumentId ?? ""; // laatste redmiddel: documentId waar nuttig
+        return raw.DocumentId ?? ""; // last resort: documentId where useful
     }
 
     /// <summary>
-    /// De mxcli-ruleId codeert de categorie in z'n letter-prefix: "MPR001" → "MPR",
-    /// "CONV012" → "CONV". Geen letter-prefix → de hele ruleId.
+    /// The mxcli ruleId encodes the category in its letter prefix: "MPR001" → "MPR",
+    /// "CONV012" → "CONV". No letter prefix → the entire ruleId.
     /// </summary>
     private static string DeriveGenericCategory(string ruleId)
     {

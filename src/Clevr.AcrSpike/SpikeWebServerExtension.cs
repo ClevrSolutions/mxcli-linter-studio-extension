@@ -6,9 +6,9 @@ using Mendix.StudioPro.ExtensionsAPI.UI.WebServer;
 namespace Clevr.AcrSpike;
 
 /// <summary>
-/// Serveert de web-assets (index.html + main.js) aan de door C# gehoste webview.
-/// Een door C# beheerde webview heeft een door Studio Pro gehoste webserver nodig
-/// om eigen HTML te tonen; dit is die server.
+/// Serves the web assets (index.html + main.js) to the C#-hosted webview.
+/// A C#-managed webview requires a Studio Pro-hosted web server
+/// to display custom HTML; this is that server.
 /// </summary>
 [Export(typeof(WebServerExtension))]
 public class SpikeWebServerExtension : WebServerExtension
@@ -25,9 +25,9 @@ public class SpikeWebServerExtension : WebServerExtension
     {
         webServer.AddRoute("index", ServeIndex);
         webServer.AddRoute("main.js", ServeMainJs);
-        // Het CLEVR-logo. Zonder deze route mist <base>/clevr-logo.png → het paneel-<img>
-        // (src="./clevr-logo.png") én de rapport-fetch (loadLogo → data-URI) krijgen niets
-        // terug → broken-image. Het PNG wordt wél naar wwwroot mee-gedeployed.
+        // The CLEVR logo. Without this route <base>/clevr-logo.png is missing → the panel <img>
+        // (src="./clevr-logo.png") and the report fetch (loadLogo → data-URI) receive nothing
+        // back → broken image. The PNG is deployed to wwwroot alongside the other assets.
         webServer.AddRoute("clevr-logo.png", ServeLogo);
     }
 

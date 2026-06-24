@@ -2,18 +2,18 @@ using System.Text.RegularExpressions;
 
 namespace Clevr.Acr.Normalizer;
 
-/// <summary>Naam + mxcli-categorie van één regel uit de mxcli-catalogus.</summary>
+/// <summary>Name + mxcli category of a single rule from the mxcli catalog.</summary>
 public sealed record MxcliRuleInfo(string Name, string Category);
 
 /// <summary>
-/// Parseert de output van `mxcli lint --list-rules` naar een map ruleId → (naam, categorie).
-/// Puur: string in, map uit. De lint-JSON zelf bevat noch de naam noch de categorie
-/// (alleen ruleId); deze catalogus levert beide, bv. CONV011 → ("NoCommitInLoop", "performance").
+/// Parses the output of `mxcli lint --list-rules` into a map ruleId → (name, category).
+/// Pure: string in, map out. The lint JSON itself contains neither the name nor the category
+/// (only ruleId); this catalog supplies both, e.g. CONV011 → ("NoCommitInLoop", "performance").
 ///
-/// Vorm in de output (twee regels per regel):
+/// Format in the output (two lines per rule):
 ///   "  CONV011 (NoCommitInLoop) - Commit actions should not be inside loops ..."
 ///   "      Category: performance, Severity: warning"
-/// Statusregels ("Connected to: ...", "✓ Catalog ready") matchen niet.
+/// Status lines ("Connected to: ...", "✓ Catalog ready") do not match.
 /// </summary>
 public static class MxcliRulesCatalogParser
 {
@@ -37,7 +37,7 @@ public static class MxcliRulesCatalogParser
                 var ruleId = rule.Groups[1].Value.Trim();
                 var name = rule.Groups[2].Value.Trim();
                 if (!map.ContainsKey(ruleId)) map[ruleId] = new MxcliRuleInfo(name, "");
-                currentId = ruleId; // categorie volgt op de volgende regel
+                currentId = ruleId; // category follows on the next line
                 continue;
             }
 
