@@ -27,7 +27,7 @@
   <!-- De bestaande, geteste normalizer + registry (ongewijzigd hergebruikt). De
        gebouwde Clevr.Acr.Normalizer.dll wordt naast deze extensie-dll gekopieerd. -->
   <ItemGroup>
-    <ProjectReference Include="..\csharp-normalizer\Clevr.Acr.Normalizer\Clevr.Acr.Normalizer.csproj" />
+    <ProjectReference Include="..\Clevr.Acr.Normalizer\Clevr.Acr.Normalizer\Clevr.Acr.Normalizer.csproj" />
   </ItemGroup>
 
   <!-- manifest.json en de web-assets (wwwroot) moeten mee naar de build-output, zodat ze
@@ -45,7 +45,7 @@
     </None>
     <!-- Canonieke rule registry uit csharp-normalizer, gedeployed als rules.json
          (één bron van waarheid; geen kopie die kan verlopen). -->
-    <None Include="..\csharp-normalizer\rules.sample.json" Link="rules.json">
+    <None Include="..\Clevr.Acr.Normalizer\rules.sample.json" Link="rules.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
   </ItemGroup>
