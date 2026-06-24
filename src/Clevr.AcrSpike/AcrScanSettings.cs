@@ -12,9 +12,6 @@ public sealed class AcrScanSettings
 {
     [JsonPropertyName("mxcliPath")] public string MxcliPath { get; set; } = "mxcli";
     [JsonPropertyName("projectPath")] public string ProjectPath { get; set; } = "";
-    /// <summary>Pad naar de mxlint-binary. Leeg → de conventie uit de mxlint-extensie
-    /// (&lt;project&gt;\.mendix-cache\mxlint-&lt;versie&gt;-windows-amd64.exe).</summary>
-    [JsonPropertyName("mxlintPath")] public string MxlintPath { get; set; } = "";
 
     public static AcrScanSettings Load(string? settingsJson, string? fallbackProjectDir)
     {

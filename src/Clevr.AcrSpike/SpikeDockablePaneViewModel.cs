@@ -74,14 +74,6 @@ public class SpikeDockablePaneViewModel : WebViewDockablePaneViewModel
                 var json = service.RunScanAsJson(_getProjectDir());
                 webView.PostMessage("AcrViolations", json);
             }
-            else if (args.Message == "RunMxlintScan")
-            {
-                // Fase 3 deel A: mxlint.com (Rego). Export+lint duurt ~60s → ASYNC zodat
-                // Studio Pro responsive blijft. We capturen de UI-SynchronizationContext NU
-                // (we zijn hier gegarandeerd op de UI-thread), zodat het eindresultaat
-                // betrouwbaar terug naar de UI-thread gemarshald kan worden voor PostMessage.
-                RunMxlintScan(webView, SynchronizationContext.Current);
-            }
             else if (args.Message == "RunFullScan")
             {
                 // SNELLE scan (default "Scan"-knop): export + catalog-route + mxcli-eigen + YAML-route-
@@ -119,8 +111,8 @@ public class SpikeDockablePaneViewModel : WebViewDockablePaneViewModel
             else if (args.Message == "OpenDocument")
             {
                 // Fase 4 (a): navigeer naar het document van een improvement IN Studio Pro.
-                // Synchroon: MessageReceived loopt op de UI-thread (zoals de mxlint-extensie),
-                // en TryOpenEditor + het model lezen zijn UI-thread-operaties.
+                // Synchroon: MessageReceived loopt op de UI-thread; TryOpenEditor + het model
+                // lezen zijn UI-thread-operaties.
                 OpenDocument(webView, args.Data);
             }
             else if (args.Message == "OpenUrl")
@@ -413,9 +405,8 @@ public class SpikeDockablePaneViewModel : WebViewDockablePaneViewModel
     /// <summary>
     /// Opent het document waar een improvement op slaat in Studio Pro. Strategie:
     ///   1. via de stabiele GUID (documentId, gevuld door mxcli/ACR) → TryGetAbstractUnitById;
-    ///   2. anders (bv. mxlint, geen GUID) via naam-walk: module → DomainModel/folders/documenten,
-    ///      naar analogie van de mxlint-extensie.
-    /// Navigeert op DOCUMENTNIVEAU (elementToFocus = null), net als de mxlint-extensie.
+    ///   2. anders (geen GUID) via naam-walk: module → DomainModel/folders/documenten.
+    /// Navigeert op DOCUMENTNIVEAU (elementToFocus = null).
     /// </summary>
     private void OpenDocument(IWebView webView, JsonObject? data)
     {
@@ -631,15 +622,10 @@ public class SpikeDockablePaneViewModel : WebViewDockablePaneViewModel
     }
 
     /// <summary>
-    /// SAMENGEVOEGDE scan achter de ene "Scan"-knop. Orkestreert de twee bestaande, losse routes
-    /// in de JUISTE volgorde op één achtergrond-thread (UI blijft responsive):
-    ///   1. mxlint export+lint  → ververst modelsource/ + levert de Rego-violations;
-    ///   2. mxcli lint + de CLEVR-eigen regels (security-export + expressie-pass) → lezen nu de
-    ///      ZOJUIST ververste modelsource (fix voor de stale-modelsource-valkuil).
-    /// Beide stappen draaien op DEZELFDE projectmap (één keer resolved), zodat de export en de
-    /// regels gegarandeerd naar dezelfde modelsource wijzen. Voortgang + resultaten worden naar de
-    /// UI-thread gemarshald via de gecaptureerde <paramref name="uiContext"/>. Elke uitkomst wordt
-    /// gepost (nooit stil op "bezig"): MxlintViolations, AcrViolations, ScanProgress, ScanFinished.
+    /// Scan achter de "Scan"-knop. Draait mxcli lint + de CLEVR-eigen regels (security-export +
+    /// expressie-pass) op een achtergrond-thread (UI blijft responsive). Voortgang + resultaten
+    /// worden naar de UI-thread gemarshald via de gecaptureerde <paramref name="uiContext"/>.
+    /// Elke uitkomst wordt gepost (nooit stil op "bezig"): AcrViolations, ScanProgress, ScanFinished.
     /// </summary>
     private void RunFullScan(IWebView webView, SynchronizationContext? uiContext, bool deepScan)
     {
@@ -660,10 +646,6 @@ public class SpikeDockablePaneViewModel : WebViewDockablePaneViewModel
         {
             try
             {
-                // mxlint VOLLEDIG VERWIJDERD: geen export-stap meer. Alle regels lezen nu via mxcli
-                // (catalog/describe/.mpr); GEEN modelsource-afhankelijkheid (geverifieerd: 0 actieve
-                // modelsource-lezers). De mxlint-binary/-export hoeft niet meer geïnstalleerd te zijn.
-                // MxlintScanService blijft als deprecated backup-code staan maar wordt niet aangeroepen.
                 Post("ScanProgress", deepScan
                     ? "Deep analysis: scanning all microflows & entities (this can take a few minutes)…"
                     : "Analyzing with mxcli + the CLEVR rules…");
@@ -713,86 +695,4 @@ public class SpikeDockablePaneViewModel : WebViewDockablePaneViewModel
         }
     }
 
-    /// <summary>
-    /// Draait de mxlint export+lint (~60s) ZONDER de UI-thread te blokkeren, en stuurt
-    /// het resultaat GEGARANDEERD terug naar het paneel.
-    ///
-    /// Eerdere bug: het zware werk liep async maar PostMessage werd vanuit de continuation
-    /// aangeroepen op (mogelijk) de verkeerde thread; WebView2.PostMessage vereist de
-    /// UI-thread, dus die gooide — en omdat de post BUITEN de try/catch stond werd die
-    /// uitzondering geslikt → het paneel bleef op "Bezig...".
-    ///
-    /// Fix:
-    /// - Het zware/blokkerende werk gaat via Task.Run naar een thread-pool-thread
-    ///   (UI-thread blijft vrij → Studio Pro responsive).
-    /// - Het resultaat wordt EXPLICIET terug-gemarshald naar de UI-thread via de
-    ///   eerder gecaptureerde <paramref name="uiContext"/> (SynchronizationContext.Post),
-    ///   zoals de referentie-extensie ook op de UI-context post.
-    /// - ELKE uitkomst (succes, mxlint-fout, exception, post-fout) wordt afgevangen en
-    ///   gelogd; er wordt altijd geprobeerd te posten → nooit stil op "Bezig...".
-    /// </summary>
-    private void RunMxlintScan(IWebView webView, SynchronizationContext? uiContext)
-    {
-        // projectDir NU op de UI-thread bepalen (vindbaar logpad + door te geven aan de Task).
-        var projectDir = _getProjectDir();
-
-        // DE kernbevinding voor de marshalling-diagnose — gegarandeerd naar een vindbaar bestand.
-        DebugLog.Write(projectDir, $"=== mxlint scan gestart === UI-SynchronizationContext aanwezig op MessageReceived-thread: {uiContext != null} (type: {uiContext?.GetType().FullName ?? "<null>"}, managedThreadId: {Environment.CurrentManagedThreadId})");
-        _logService.Info($"[CLEVR ACR] mxlint: scan gestart (UI-context aanwezig: {uiContext != null})");
-
-        _ = Task.Run(() =>
-        {
-            DebugLog.Write(projectDir, $"Task.Run gestart op managedThreadId: {Environment.CurrentManagedThreadId}");
-            string json;
-            try
-            {
-                json = new MxlintScanService(_fileService, _logService).RunScanAsJson(projectDir);
-            }
-            catch (Exception ex)
-            {
-                _logService.Error("[CLEVR ACR] mxlint async-scan mislukt", ex);
-                DebugLog.Write(projectDir, $"FOUT tijdens scan: {ex}");
-                json = MxlintScanService.ErrorJson($"Onverwachte fout tijdens mxlint-scan: {ex.Message}");
-            }
-            DebugLog.Write(projectDir, $"scan klaar; payload-lengte: {json.Length}. Nu terug-marshallen + posten.");
-            PostMxlintResult(webView, uiContext, projectDir, json);
-        });
-    }
-
-    /// <summary>
-    /// Post het eindresultaat naar het paneel, gemarshald naar de UI-thread als er een
-    /// SynchronizationContext is. Met logging vóór/ná zodat zichtbaar is of deze stap
-    /// bereikt wordt en slaagt; faalt het, dan wordt dat gelogd (niet stil geslikt).
-    /// </summary>
-    private void PostMxlintResult(IWebView webView, SynchronizationContext? uiContext, string? projectDir, string json)
-    {
-        void DoPost()
-        {
-            try
-            {
-                DebugLog.Write(projectDir, $"VOOR PostMessage(MxlintViolations) op managedThreadId: {Environment.CurrentManagedThreadId}");
-                _logService.Info("[CLEVR ACR] mxlint: VOOR PostMessage(MxlintViolations)");
-                webView.PostMessage("MxlintViolations", json);
-                _logService.Info("[CLEVR ACR] mxlint: NA PostMessage(MxlintViolations) — verstuurd");
-                DebugLog.Write(projectDir, "NA PostMessage(MxlintViolations) — verstuurd (geen exception)");
-            }
-            catch (Exception ex)
-            {
-                _logService.Error("[CLEVR ACR] mxlint: PostMessage(MxlintViolations) faalde", ex);
-                DebugLog.Write(projectDir, $"PostMessage(MxlintViolations) FAALDE: {ex}");
-            }
-        }
-
-        if (uiContext != null)
-        {
-            DebugLog.Write(projectDir, "terug-marshallen via UI-SynchronizationContext.Post(...)");
-            uiContext.Post(_ => DoPost(), null);
-        }
-        else
-        {
-            DebugLog.Write(projectDir, "GEEN UI-SynchronizationContext — direct posten vanaf de pool-thread (mogelijk verkeerde thread)");
-            _logService.Warn("[CLEVR ACR] mxlint: GEEN UI-SynchronizationContext — direct posten (mogelijk verkeerde thread)");
-            DoPost();
-        }
-    }
 }

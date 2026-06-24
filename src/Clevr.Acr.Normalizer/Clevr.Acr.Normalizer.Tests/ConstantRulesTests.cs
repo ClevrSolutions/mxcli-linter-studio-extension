@@ -49,8 +49,4 @@ public class ConstantRulesTests
     public void ContainsSensitiveData_FalseForInnocentNames(string name)
         => Assert.False(ConstantRules.ContainsSensitiveData(name));
 
-    // ---- claim-table ----
-    [Fact]
-    public void ClaimTable_SuppressesMxlintTwin()
-        => Assert.Contains("006_0001", ClaimTable.SuppressedMxlint);
 }

@@ -58,11 +58,4 @@ public class IncompleteEmptyStringTests
     public void Builder_Empty_YieldsNothing()
         => Assert.Empty(ExpressionRules.IncompleteEmptyStringCheck(System.Array.Empty<(string, string)>()));
 
-    // ---- claim-table: mxlint 005_0001 suppressed, no mxcli counterpart ----
-    [Fact]
-    public void ClaimTable_Suppresses005_0001_OnMxlintOnly()
-    {
-        Assert.Contains("005_0001", ClaimTable.SuppressedMxlint);
-        Assert.DoesNotContain("005_0001", ClaimTable.SuppressedMxcli); // no mxcli rule id at all here
-    }
 }

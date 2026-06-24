@@ -96,11 +96,4 @@ public class SecurityModulesBatchTests
     public void NumberOfModules_NotFlaggedAtThreshold()
         => Assert.Empty(ProjectSecurityParser.DetectNumberOfModules(Modules(20, 50))); // 20 ≤ 20, app-store ignored
 
-    // ---- claim-table ----
-    [Theory]
-    [InlineData("001_0005")]
-    [InlineData("001_0007")]
-    [InlineData("001_0008")]
-    [InlineData("003_0001")]
-    public void ClaimTable_SuppressesMxlintTwins(string n) => Assert.Contains(n, ClaimTable.SuppressedMxlint);
 }

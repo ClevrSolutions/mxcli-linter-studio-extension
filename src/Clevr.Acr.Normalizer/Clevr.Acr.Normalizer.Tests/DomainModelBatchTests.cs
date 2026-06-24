@@ -109,24 +109,11 @@ public class DomainModelBatchTests
     }
 
     // ---- claim-table ----
-    [Theory]
-    [InlineData("002_0001")]
-    [InlineData("002_0003")]
-    [InlineData("002_0005")]
-    [InlineData("002_0006")]
-    [InlineData("002_0007")]
-    [InlineData("002_0008")]
-    public void ClaimTable_SuppressesMxlintTwins(string n) => Assert.Contains(n, ClaimTable.SuppressedMxlint);
-
     [Fact]
     public void ClaimTable_MxcliChoices()
     {
-        // Na de cutover is MAINT-011 gedeferd naar mxcli MPR003: MPR003 wordt NIET meer onderdrukt
-        // (mxcli's eigen regel moet juist tonen). CONV017 was al niet onderdrukt (PERF-002 gedeferd).
-        Assert.DoesNotContain("MPR003", ClaimTable.SuppressedMxcli);   // gedeferd → mxcli MPR003 toont het
-        Assert.DoesNotContain("CONV017", ClaimTable.SuppressedMxcli);  // gedeferd → mxcli CONV017 toont het
-        Assert.DoesNotContain("002_0004", ClaimTable.SuppressedMxlint); // buggy, NOT internalised
-        // de mxlint-twins van de gedeferde onderwerpen blijven wél onderdrukt (backup defert ook naar mxcli)
-        Assert.Contains("002_0001", ClaimTable.SuppressedMxlint);
+        // MAINT-011 gedeferd naar mxcli MPR003 en PERF-002 naar CONV017: beide worden NIET onderdrukt.
+        Assert.DoesNotContain("MPR003", ClaimTable.SuppressedMxcli);
+        Assert.DoesNotContain("CONV017", ClaimTable.SuppressedMxcli);
     }
 }

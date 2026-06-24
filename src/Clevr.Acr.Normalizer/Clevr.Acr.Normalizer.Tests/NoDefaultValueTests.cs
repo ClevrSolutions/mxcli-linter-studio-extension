@@ -73,9 +73,6 @@ public class NoDefaultValueTests
     }
 
     [Fact]
-    public void ClaimTable_Suppresses002_0009_AndCONV002()
-    {
-        Assert.Contains("002_0009", ClaimTable.SuppressedMxlint); // mxlint twin
-        Assert.Contains("CONV002", ClaimTable.SuppressedMxcli);   // mxcli subset (only '0' defaults)
-    }
+    public void ClaimTable_SuppressesCONV002()
+        => Assert.Contains("CONV002", ClaimTable.SuppressedMxcli); // mxcli subset (only '0' defaults)
 }

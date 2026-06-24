@@ -40,7 +40,7 @@ public static class ProcessRunner
                 CreateNoWindow = true,
             };
 
-            // mxcli/mxlint hebben hun cache relatief t.o.v. de working directory nodig.
+            // mxcli heeft zijn cache relatief t.o.v. de working directory nodig.
             // Zonder dit erft het proces de cwd van Studio Pro (verkeerde map).
             if (!string.IsNullOrEmpty(workingDirectory))
                 psi.WorkingDirectory = workingDirectory;

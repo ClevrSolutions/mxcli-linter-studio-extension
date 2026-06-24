@@ -9,9 +9,7 @@
 // worden voor de WEERGAVE in een ACR-categorie geplaatst via GENERIC_CATEGORY_MAP
 // (spec sectie 5); het interne Violation-type blijft ongewijzigd (category = engine-prefix).
 // UI-tekst gebruikt consequent "Improvements"; de herkomst blijft per regel + in de
-// telkaart zichtbaar (ACR / MxCLI Mxlint / Manual). De mxlint.com-Rego-bron is uit de UI
-// verwijderd (alle regels geïnternaliseerd); de source==="mxlint"-takken hieronder zijn dode,
-// onschadelijke guards (de engine levert geen mxlint-violations meer).
+// telkaart zichtbaar (ACR / MxCLI / Manual).
 
 // ---------------------------------------------------------------- render-laag
 
@@ -60,26 +58,11 @@ const GENERIC_PREFIX_FALLBACK = {
   SEC: "Security", ARCH: "Architecture", DESIGN: "Architecture", PERF: "Performance",
 };
 
-// mxlint (Rego) levert z'n eigen categorie letterlijk (spec §5). Map naar ACR;
-// Accessibility → Maintainability (bewuste keuze). Sleutel = lowercase categorie.
-const MXLINT_CATEGORY_TO_ACR = {
-  security: "Security",
-  maintainability: "Maintainability",
-  performance: "Performance",
-  accessibility: "Maintainability",
-  microflows: "Maintainability",
-  complexity: "Maintainability",
-  error: "Reliability",
-};
-
 // Toon-categorie: ACR-regels houden hun registry-categorie; mxcli-generiek mapt op de
-// mxcli-categorie (lastRuleCategories); mxlint mapt op z'n eigen message-categorie.
+// mxcli-categorie (lastRuleCategories).
 function displayCategory(v) {
   if (v.kind === "manual") return v.category; // manual check: z'n eigen ACR-categorie
   if (v.kind === "acr") return v.category;
-  if (originOf(v) === "mxlint") {
-    return MXLINT_CATEGORY_TO_ACR[(v.category || "").toLowerCase()] || GENERIC_CATEGORY_FALLBACK;
-  }
   const mxcliCat = (lastRuleCategories[v.ruleId] || "").toLowerCase();
   if (mxcliCat && MXCLI_CATEGORY_TO_ACR[mxcliCat]) return MXCLI_CATEGORY_TO_ACR[mxcliCat];
   return GENERIC_PREFIX_FALLBACK[v.category] || GENERIC_CATEGORY_FALLBACK;
@@ -89,23 +72,20 @@ function displayCategory(v) {
 function originLabel(v) {
   if (v.kind === "manual") return "Manual checks";
   if (v.kind === "acr") return "ACR (calibrated)";
-  if (v.source === "mxlint") return "Mxlint.com";
-  return "MxCLI Mxlint"; // source === "mxcli"
+  return "MxCLI"; // source === "mxcli"
 }
 
 // Korte badge-tekst per regel.
 function originBadge(v) {
   if (v.kind === "manual") return "Manual";
   if (v.kind === "acr") return "ACR";
-  if (v.source === "mxlint") return "Mxlint.com";
   return "MxCLI";
 }
 
-// Herkomst-sleutel voor de filter (acr / mxcli / mxlint / manual).
+// Herkomst-sleutel voor de filter (acr / mxcli / manual).
 function originOf(v) {
   if (v.kind === "manual") return "manual";
   if (v.kind === "acr") return "acr";
-  if (v.source === "mxlint") return "mxlint";
   return "mxcli";
 }
 
@@ -240,8 +220,7 @@ function activeViolations() {
 }
 
 // Hoeveel huidige (niet-System) improvements delen de fingerprint van v? >1 betekent dat een
-// exclusion op v ook die andere punten raakt (gebundelde mxlint-violations delen één
-// fingerprint — bevinding 7). We tonen dit vóór bevestiging zodat het geen verrassing is.
+// exclusion op v ook die andere punten raakt. We tonen dit vóór bevestiging zodat het geen verrassing is.
 function sharedFingerprintCount(v) {
   return baseViolations().filter((x) => x.fingerprint === v.fingerprint).length;
 }
@@ -333,12 +312,10 @@ function openInStudioPro(v) {
 // Leesbaar engine-label voor in de prompt (Maia presteert het best met expliciete context).
 function sourceEngineLabel(v) {
   if (v.kind === "acr") return "CLEVR ACR";
-  if (v.source === "mxlint") return "mxlint.com (Rego best-practice engine)";
   return "mxcli (Mendix lint)";
 }
 
-// Grote regels (bv. de mxlint default-value-regel met honderden punten) zouden de prompt
-// laten exploderen → cap op de eerste N punten, met een "... and N more"-notitie.
+// Grote regels zouden de prompt laten exploderen → cap op de eerste N punten.
 const MAIA_RULE_CAP = 50;
 
 function ruleLabelFor(rule) {
@@ -543,7 +520,7 @@ function openExcludeDialog(v) {
     title: "Exclude improvement",
     metaText: `${label} — ${where}`,
     noteText: shared > 1
-      ? `Note: this exclusion shares one fingerprint with ${shared} findings on this document and will hide all ${shared}. (mxlint bundles per-attribute findings under one fingerprint.)`
+      ? `Note: this exclusion shares one fingerprint with ${shared} findings on this document and will hide all ${shared}.`
       : "",
     confirmLabel: "Exclude",
     onConfirm: (reason, confirmBtn) => {
@@ -558,15 +535,14 @@ function openExcludeDialog(v) {
 }
 
 // Hele regel uitsluiten met één reden. We schrijven één exclusion per UNIEKE fingerprint
-// (gebundelde mxlint-punten delen er één → niet dubbel). De telling in de dialoog = het aantal
-// unieke fingerprints dat wordt weggeschreven; bij bundeling lichten we het verschil toe.
+// (niet dubbel). De telling in de dialoog = het aantal unieke fingerprints dat wordt weggeschreven.
 function openExcludeRuleDialog(rule, items) {
   const byFp = new Map();
   for (const v of items) if (!byFp.has(v.fingerprint)) byFp.set(v.fingerprint, v);
   const uniqueCount = byFp.size;
   const label = ruleName(rule) ? `${rule.ruleId} (${ruleName(rule)})` : rule.ruleId;
   const bundleNote = items.length > uniqueCount
-    ? ` Some findings share a fingerprint (mxlint bundles per-attribute findings); ${items.length} findings map to ${uniqueCount} exclusion entries.`
+    ? ` Some findings share a fingerprint; ${items.length} findings map to ${uniqueCount} exclusion entries.`
     : "";
   openReasonDialog({
     title: "Exclude rule",
@@ -722,7 +698,7 @@ function renderSummary(all, interactive = true) {
   }
   catCard.appendChild(totalRow(all.length));
 
-  // Per severity (gemengde schalen: ACR + mxcli + mxlint, letterlijk) — klikbaar als filter.
+  // Per severity — klikbaar als filter.
   // De rijen komen uit de VOLLEDIGE set (severityUniverse) zodat ze blijven voor multi-select;
   // de counts komen uit de gefilterde set en bewegen dus mee.
   const sevCard = el("div", { className: "acr-card" });
@@ -739,7 +715,7 @@ function renderSummary(all, interactive = true) {
   }
   sevCard.appendChild(totalRow(all.length));
 
-  // Per herkomst (de uitsplitsing): ACR / MxCLI Mxlint / Manual.
+  // Per herkomst (de uitsplitsing): ACR / MxCLI / Manual.
   const originCard = el("div", { className: "acr-card" });
   originCard.appendChild(el("h3", { text: "Improvements per source" }));
   const origins = new Map();
@@ -747,7 +723,7 @@ function renderSummary(all, interactive = true) {
     const o = originLabel(v);
     origins.set(o, (origins.get(o) || 0) + 1);
   }
-  for (const o of ["ACR (calibrated)", "MxCLI Mxlint", "Manual checks"]) {
+  for (const o of ["ACR (calibrated)", "MxCLI", "Manual checks"]) {
     if (origins.has(o)) originCard.appendChild(countRow(o, origins.get(o)));
   }
   originCard.appendChild(totalRow(all.length));
@@ -1050,7 +1026,7 @@ function buildReportHtml() {
   // improvements weggefilterd (zelfde regel als de UI) zodat het rapport het zichtbare
   // overzicht weerspiegelt; de uitgesloten staan apart onderaan.
   const reportViolations = activeViolations();
-  const oc = { acr: 0, mxcli: 0, mxlint: 0, manual: 0 };
+  const oc = { acr: 0, mxcli: 0, manual: 0 };
   for (const v of reportViolations) oc[originOf(v)]++;
   const ev = excludedView();
   const exNote = ev.matchedCount ? ` · ${ev.matchedCount} excluded` : "";
@@ -1062,7 +1038,7 @@ function buildReportHtml() {
   wrap.appendChild(el("div", {
     className: "acr-subtitle",
     text: `${projectName()} · ${reportViolations.length} improvements ` +
-          `(${oc.acr} ACR / ${oc.mxcli} MxCLI Mxlint / ${oc.manual} Manual)${exNote} · ` +
+          `(${oc.acr} ACR / ${oc.mxcli} MxCLI / ${oc.manual} Manual)${exNote} · ` +
           `generated ${new Date().toLocaleString("en-GB")}`,
   }));
   brand.appendChild(wrap);
@@ -1134,7 +1110,7 @@ async function loadLogo() {
 // Engine-filter (herkomst). Manual staat erbij ook al komt er nog geen data binnen.
 const ORIGINS = [
   { key: "acr", label: "ACR" },
-  { key: "mxcli", label: "MxCLI Mxlint" },
+  { key: "mxcli", label: "MxCLI" },
   { key: "manual", label: "Manual checks" },
 ];
 const originEnabled = new Set(ORIGINS.map((o) => o.key));
@@ -1267,13 +1243,13 @@ function replaceOrigin(newViolations, originsToReplace) {
 
 function setMergedStatus(extra) {
   const base = activeViolations(); // System én uitgesloten tellen niet mee in het zichtbare totaal
-  const oc = { acr: 0, mxcli: 0, mxlint: 0, manual: 0 };
+  const oc = { acr: 0, mxcli: 0, manual: 0 };
   for (const v of base) oc[originOf(v)]++;
   const ev = excludedView();
   const exNote = ev.matchedCount ? ` · ${ev.matchedCount} excluded` : "";
   setStatus(
     `${base.length} improvements ` +
-    `(${oc.acr} ACR / ${oc.mxcli} MxCLI Mxlint / ${oc.manual} Manual)${exNote}` +
+    `(${oc.acr} ACR / ${oc.mxcli} MxCLI / ${oc.manual} Manual)${exNote}` +
     (extra ? ` — ${extra}` : ""),
     false,
   );
@@ -1358,29 +1334,6 @@ function handleMxcliResult(data) {
   }
 }
 
-// mxlint (async): vervangt alleen mxlint; ACR + mxcli blijven staan.
-function handleMxlintResult(data) {
-  let payload;
-  try { payload = typeof data === "string" ? JSON.parse(data) : data; }
-  catch (e) { setStatus("Could not parse mxlint payload: " + e.message, true); return; }
-
-  if (!payload || payload.ok === false) {
-    setStatus(payload && payload.error ? payload.error : "mxlint scan failed (unknown error).", true);
-    return; // bestaande (mxcli-)resultaten blijven staan
-  }
-  replaceOrigin(payload.violations, ["mxlint"]);
-  // mxlint-regelnamen (rulenumber → rulename) mergen, zodat de render-laag ze net als bij
-  // mxcli naast het nummer toont (via ruleName()/lastRuleNames). Geen render-wijziging nodig.
-  lastRuleNames = { ...lastRuleNames, ...(payload.ruleNames || {}) };
-  // De Rego-engine is uitgeschakeld als findings-bron (alle regels geïnternaliseerd); deze stap
-  // ververst alleen nog modelsource via de export. Toon dat i.p.v. een lint-telling.
-  if (payload.regoEngineDisabled)
-    setMergedStatus(`model export refreshed (Rego engine disabled — rules internalised)`);
-  else
-    setMergedStatus(`mxlint: ${(payload.violations || []).length} (lint exit ${payload.lintExit})`);
-  refreshAfterScan();
-}
-
 // Vangnet: rond de streaming-staat ALTIJD af bij ScanFinished, ook als de laatste batch (final=true)
 // niet binnenkwam — bv. een deepscan zonder user-microflows/-entiteiten (geen describe-batch), of een
 // afgebroken stream. Voorkomt dat de banner/"partial"-markering blijft hangen. Idempotent.
@@ -1397,7 +1350,6 @@ function finalizeStreaming() {
 function handleMessage(event) {
   const { message, data } = event.data;
   if (message === "AcrViolations") handleMxcliResult(data);
-  else if (message === "MxlintViolations") handleMxlintResult(data);
   else if (message === "ScanProgress") setStatus(data, false);   // voortgangstekst tijdens de scan
   else if (message === "ScanError") { notify("Scan failed: " + data, true, scanAnchor()); }
   else if (message === "ScanFinished") { finalizeStreaming(); setScanning(false); } // her-enable knop + verberg spinner + streaming afronden
@@ -1448,10 +1400,7 @@ post("RequestExclusions");    // laad de exclusions zodra de pane opent
 post("RequestManualChecks");  // én de manual-check-antwoorden (open checks verschijnen meteen)
 loadLogo();                   // CLEVR-logo als data-URI voor het geëxporteerde rapport
 
-// Eén "Scan"-knop (samengevoegd uit "Scan for improvements" + "Run mxlint scan"). C# dwingt de
-// juiste volgorde af: EERST mxlint export+lint (ververst modelsource/), DÁN mxcli + de CLEVR-eigen
-// regels (security-export + expressie-pass) die op die verse modelsource leunen. Dit lost meteen de
-// stale-modelsource-valkuil op. De losse routes (RunAcrScan/RunMxlintScan) blijven intern bestaan.
+// "Scan"-knop: start mxcli + CLEVR-eigen regels (security-export + expressie-pass).
 const scanBtn = document.getElementById("scanBtn");
 const deepScanBtn = document.getElementById("deepScanBtn");
 const scanSpinner = document.getElementById("scanSpinner");

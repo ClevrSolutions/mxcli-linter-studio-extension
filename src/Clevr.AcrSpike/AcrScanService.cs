@@ -331,7 +331,7 @@ public sealed class AcrScanService
     /// </summary>
     private IReadOnlyList<Violation> DetectExpressionRules(string projectDir)
     {
-        // DIAGNOSTIEK naar mxlint-debug.log (vindbaar), niet ILogService.
+        // DIAGNOSTIEK naar clevr-acr-debug.log (vindbaar), niet ILogService.
         var ms = Path.Combine(projectDir, "modelsource");
         DebugLog.Write(projectDir, $"=== expressie-pass START === projectDir='{projectDir}' modelsource='{ms}' exists={Directory.Exists(ms)}");
         try

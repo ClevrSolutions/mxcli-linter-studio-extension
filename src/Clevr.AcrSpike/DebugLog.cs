@@ -2,7 +2,7 @@ namespace Clevr.AcrSpike;
 
 /// <summary>
 /// Robuuste, ALTIJD-vindbare bestand-logger voor diagnose. Schrijft naar
-/// &lt;project&gt;\.clevr-acr\mxlint-debug.log (of de temp-map als er geen projectmap is).
+/// &lt;project&gt;\.clevr-acr\clevr-acr-debug.log (of de temp-map als er geen projectmap is).
 ///
 /// Bestaansreden: ILogService routeert naar Studio Pro's interne log, dat lastig te
 /// vinden is; deze logger schrijft naar een vast, bekend pad dat we kunnen openen om
@@ -15,7 +15,7 @@ public static class DebugLog
         var dir = !string.IsNullOrWhiteSpace(projectDir) && Directory.Exists(projectDir)
             ? Path.Combine(projectDir!, ".clevr-acr")
             : Path.Combine(Path.GetTempPath(), "clevr-acr");
-        return Path.Combine(dir, "mxlint-debug.log");
+        return Path.Combine(dir, "clevr-acr-debug.log");
     }
 
     public static void Write(string? projectDir, string message)

@@ -6,7 +6,7 @@ public enum ViolationKind
     /// <summary>CLEVR ACR-regel: heeft acrCode + ACR-categorie/severity uit het registry.</summary>
     Acr,
 
-    /// <summary>Generieke best-practice-regel (mxcli/mxlint): eigen categorie/severity.</summary>
+    /// <summary>Generieke best-practice-regel (mxcli): eigen categorie/severity.</summary>
     Generic,
 }
 
@@ -21,7 +21,7 @@ public sealed record Violation
 
     public required ViolationKind Kind { get; init; }
 
-    /// <summary>Herkomst-label: "clevr-acr" | "mxcli" | "mxlint". Wordt in de UI getoond.</summary>
+    /// <summary>Herkomst-label: "clevr-acr" | "mxcli". Wordt in de UI getoond.</summary>
     public required string Source { get; init; }
 
     /// <summary>Originele ACR-rulenaam. Alleen gevuld bij Kind == Acr.</summary>

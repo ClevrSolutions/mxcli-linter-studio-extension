@@ -86,10 +86,6 @@ public class PageRulesTests
         Assert.Equal("Snippet", v.DocumentType);
     }
 
-    [Fact]
-    public void ClaimTable_SuppressesMxlintTwin()
-        => Assert.Contains("004_0001", ClaimTable.SuppressedMxlint);
-
     // ===== 004_0002 ImagesWithAltText (CLEVR-REL-003) — mirrors the .rego's own test fixtures =====
 
     // An image CustomWidget: property 1 = the fullImage marker; property 2 (optional) carries the
@@ -161,7 +157,4 @@ public class PageRulesTests
         Assert.Single(PageRules.ImagesWithoutAltText(new[] { Page(PageWith(img, img2)) }));
     }
 
-    [Fact]
-    public void AltText_ClaimTable_SuppressesMxlintTwin()
-        => Assert.Contains("004_0002", ClaimTable.SuppressedMxlint);
 }
