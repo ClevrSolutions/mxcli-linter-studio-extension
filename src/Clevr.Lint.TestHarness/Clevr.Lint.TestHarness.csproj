@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>Clevr.Lint.TestHarness</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Clevr.Lint.Extension\Clevr.Lint.Extension.csproj" />
+    <!-- The extension excludes the SDK runtime (Studio Pro provides it at runtime).
+         Here we include it so the harness can run standalone without Studio Pro. -->
+    <PackageReference Include="Mendix.StudioPro.ExtensionsAPI" Version="11.10.0" />
+  </ItemGroup>
+
+</Project>

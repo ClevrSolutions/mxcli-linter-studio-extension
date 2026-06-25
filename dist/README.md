@@ -1,7 +1,7 @@
-# CLEVR ACR — Studio Pro extension · installation guide
+﻿# CLEVR Lint — Studio Pro extension · installation guide
 
-CLEVR ACR runs **mxcli** plus CLEVR's own calibrated rules over a Mendix project, and shows the
-findings as **Improvements** grouped into the six ACR categories: *Project hygiene, Maintainability,
+CLEVR Lint runs **mxcli** plus CLEVR's own calibrated rules over a Mendix project, and shows the
+findings as **Improvements** grouped into the six Lint categories: *Project hygiene, Maintainability,
 Performance, Architecture, Reliability, Security*. Everything reads through **mxcli** (its catalog,
 `describe`, and own lint rules) — **no mxlint, no model-source export step** to install or run. A
 **Scan** button (quick) and a **Deepscan** button (adds the deep microflow/expression analysis) do
@@ -14,7 +14,7 @@ This guide walks through the full chain in order. Do the steps top to bottom the
 
 ## ⚠️ Honest warning — third-party alpha/beta tools
 
-CLEVR ACR drives one **unsigned, pre-release, third-party** command-line tool:
+CLEVR Lint drives one **unsigned, pre-release, third-party** command-line tool:
 
 - **mxcli** (Mendix Labs) — alpha. It prints its own warning: *"This is a vibe-coded PoC, alpha
   quality, use with caution."* It can **modify or damage project files**.
@@ -59,18 +59,18 @@ is on. Either:
 
 The scan needs **mxcli**. You usually don't have to do anything here in advance:
 
-**Recommended — let the installer download it.** When you run `Install-ClevrAcr.ps1` (step 4), if
+**Recommended — let the installer download it.** When you run `Install-ClevrLint.ps1` (step 4), if
 mxcli isn't already on your `PATH` it offers to download the **latest** release for you. With your
 confirmation it downloads `mxcli-windows-amd64.exe`, **verifies its SHA-256 checksum** against the
-GitHub release metadata, stores it in `%LOCALAPPDATA%\clevr-acr\mxcli\mxcli.exe`, and writes that
-path into `acr-scan-settings.json`. No PATH setup needed. (A previously downloaded copy is reused.)
+GitHub release metadata, stores it in `%LOCALAPPDATA%\clevr-lint\mxcli\mxcli.exe`, and writes that
+path into `lint-scan-settings.json`. No PATH setup needed. (A previously downloaded copy is reused.)
 
 **Manual alternative.** If you prefer to install it yourself, or have no internet during install:
 
 1. Download the **release binary** `mxcli-windows-amd64.exe` from
    <https://github.com/mendixlabs/mxcli/releases>.
 2. Put it in a folder (e.g. `C:\Tools\mxcli\`), and either add that folder to your **PATH** or set its
-   full path in `acr-scan-settings.json` (`mxcliPath`).
+   full path in `lint-scan-settings.json` (`mxcliPath`).
 3. Verify in a **new** terminal window: `mxcli --version`.
 
 > ⚠️ **Use the release binary, not "git clone + make build".** The mxcli repository README also
@@ -80,40 +80,40 @@ path into `acr-scan-settings.json`. No PATH setup needed. (A previously download
 
 ---
 
-## 4. Install the CLEVR ACR extension
+## 4. Install the CLEVR Lint extension
 
 1. **Unzip** this package somewhere (e.g. your Downloads folder).
 2. **Close Mendix Studio Pro** (so it isn't holding the extension files).
-3. Open **PowerShell** in the unzipped package folder (where `Install-ClevrAcr.ps1` lives) and run:
+3. Open **PowerShell** in the unzipped package folder (where `Install-ClevrLint.ps1` lives) and run:
 
    ```powershell
-   .\Install-ClevrAcr.ps1
+   .\Install-ClevrLint.ps1
    ```
 
    The script asks for your **Mendix project path** (the project folder, or its `.mpr`). It then:
-   - copies the extension to `…\<your project>\extensions\clevracr`,
+   - copies the extension to `…\<your project>\extensions\clevrlint`,
    - finds **mxcli** on your `PATH` — or, if it's missing, offers to download and checksum-verify the
      latest release for you (see step 3),
-   - writes a clean `acr-scan-settings.json` for **your** project.
+   - writes a clean `lint-scan-settings.json` for **your** project.
 
    You can also pass the path directly:
 
    ```powershell
-   .\Install-ClevrAcr.ps1 -ProjectPath "<path to your Mendix project>"
+   .\Install-ClevrLint.ps1 -ProjectPath "<path to your Mendix project>"
    ```
 
    If PowerShell still blocks the script (e.g. policy not applied), allow it for this run only:
 
    ```powershell
-   powershell -ExecutionPolicy Bypass -File .\Install-ClevrAcr.ps1
+   powershell -ExecutionPolicy Bypass -File .\Install-ClevrLint.ps1
    ```
 
    On an upgrade the script preserves your existing, working settings values.
 
-4. **Start Studio Pro** and open the project. Open the panel via **Extensions → CLEVR ACR**.
+4. **Start Studio Pro** and open the project. Open the panel via **Extensions → CLEVR Lint**.
 
 > **Manual install (alternative):** create an `extensions` folder in your project and copy the
-> **entire** `clevracr` folder into it (`…\<project>\extensions\clevracr\Clevr.AcrSpike.dll` and
+> **entire** `clevrlint` folder into it (`…\<project>\extensions\clevrlint\Clevr.AcrSpike.dll` and
 > everything next to it). Copy the whole folder, never individual DLLs — the extension loads
 > `YamlDotNet.dll` at runtime, and without it the expression rules silently produce nothing. Without
 > a settings file the extension uses `mxcli` from your `PATH` and scans the currently open app.
@@ -125,7 +125,7 @@ path into `acr-scan-settings.json`. No PATH setup needed. (A previously download
 > **No mxlint, no model-source export.** Everything reads through mxcli (catalog + `describe` + its own
 > lint rules). There is **no separate tool to install** beyond mxcli (step 3) — just open the panel and scan.
 
-1. **Extensions → CLEVR ACR** to open the panel.
+1. **Extensions → CLEVR Lint** to open the panel.
 2. Click **Scan** (the quick scan: catalog rules, mxcli's own lint, and manual checks — runs in
    seconds). For the deep microflow/expression analysis (complexity, nested ifs, empty-string checks),
    click **Deepscan** — it scans every microflow/entity and can take a few minutes (a warning is shown).
@@ -136,9 +136,9 @@ path into `acr-scan-settings.json`. No PATH setup needed. (A previously download
 
 ---
 
-## 6. Configuration — `acr-scan-settings.json`
+## 6. Configuration — `lint-scan-settings.json`
 
-The installer writes this file for you at `…\extensions\clevracr\acr-scan-settings.json`. It does
+The installer writes this file for you at `…\extensions\clevrlint\lint-scan-settings.json`. It does
 **not** ship in the package, so it can never carry someone else's machine paths. You can edit it
 afterwards; both fields are optional:
 
@@ -166,7 +166,7 @@ afterwards; both fields are optional:
   **Deepscan**. Run a Deepscan for the full set.
 - **The panel / Extensions menu item doesn't appear** → extension development isn't enabled, Studio
   Pro wasn't restarted, or you're on Mendix 10 (unsupported — needs 11+). See step 2(b).
-- **Diagnostics** → the scan writes a findable debug log under **`<project>\.clevr-acr\`**
+- **Diagnostics** → the scan writes a findable debug log under **`<project>\.clevr-lint\`**
   (project dir, rule counts, full exceptions).
 
 ---
@@ -174,16 +174,16 @@ afterwards; both fields are optional:
 ## What's in this package
 
 ```
-CLEVR-ACR-extension/
-├─ clevracr/                 ← the extension files (copied into your project by the installer)
+CLEVR-Lint-extension/
+├─ clevrlint/                 ← the extension files (copied into your project by the installer)
 │  ├─ Clevr.AcrSpike.dll
-│  ├─ Clevr.Acr.Normalizer.dll
+│  ├─ Clevr.Lint.Normalizer.dll
 │  ├─ YamlDotNet.dll          ← required at runtime; copy the whole folder, not individual DLLs
 │  ├─ manifest.json
 │  ├─ rules.json
 │  └─ wwwroot/                ← panel UI + CLEVR logo
-├─ Install-ClevrAcr.ps1      ← installer (recommended); writes acr-scan-settings.json
+├─ Install-ClevrLint.ps1      ← installer (recommended); writes lint-scan-settings.json
 └─ README.md                 ← this guide
 ```
 
-> `acr-scan-settings.json` is **not** in the package — the installer creates it for your project.
+> `lint-scan-settings.json` is **not** in the package — the installer creates it for your project.

@@ -1,0 +1,7 @@
+﻿{
+  "_comment": "Lint-registry (spec sectie 4A). engineRuleKey = het eigen .star rule-id waarmee mxcli onze regel rapporteert (authoritatief). Metadata uit de Lint-grondwaarheid (count-export). Een ruleId die hier NIET in staat (bv. bundled mxcli MPR/CONV/SEC/DESIGN) wordt generiek (kind=generic) — die claimen we bewust NIET.",
+  "_ruleId_schema": "ruleId = CLEVR-<CAT>-<NNN>, waarbij CAT de Lint-categorie codeert: MAINT=Maintainability, HYG=Project hygiene, SEC=Security (PERF=Performance, ARCH=Architecture, REL=Reliability voor toekomstige regels). Nummering per categorie oplopend vanaf 001.",
+  "_lintCode_convention": "lintCode = de originele Lint-regelnaam (de Java-klassenaam uit de Lint-broncode), zodat elke CLEVR-regel traceerbaar is naar zijn oorspronkelijke Lint-implementatie. NIET de engineRuleKey (.star rule-id) dupliceren.",
+  "_pending": "ACR_ENT_ATTRS is gecorrigeerd naar severity Minor (grondwaarheid wint t.o.v. de vroege spec-aanname Major). De vier Security-regels hebben severity 'TODO-confirm': nul violations op het referentieproject, dus geen baseline-rij — severity niet verzinnen. status is 'verified' (de regels werken).",
+  "rules": []
+}

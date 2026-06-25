@@ -14,9 +14,9 @@ TestResults/
 .idea/
 
 # Compiled extension binaries (distribute via GitHub Releases, not source control)
-dist/clevracr/*.dll
-dist/clevracr/*.pdb
-dist/clevracr/*.deps.json
+dist/clevrlint/*.dll
+dist/clevrlint/*.pdb
+dist/clevrlint/*.deps.json
 
 # Logs
 *.log

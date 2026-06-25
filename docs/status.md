@@ -1,4 +1,4 @@
-# CLEVR ACR Shell — status & roadmap
+﻿# CLEVR Lint Shell — status & roadmap
 
 Working document. What is done, what remains, in what order, and what must be PROVEN
 per phase before building on it. Discipline throughout the project:
@@ -9,7 +9,7 @@ MXLINT.COM REMOVED FROM THE UI (display only; export UNAFFECTED). Removed from t
 (1) count-card source "Mxlint.com" — removed from the "per source" array (main.js) + the two hardcoded
 breakdown strings (`… / ${oc.mxlint} Mxlint.com` → gone) in panel status and report subtitle;
 (2) source-filter-checkbox — `{key:"mxlint",label:"Mxlint.com"}` removed from ORIGINS; (3) report raw block —
-the orphan `.acr-mxlint-raw` CSS (227-234) in index.html (the table builder was already gone; CSS was still
+the orphan `.lint-mxlint-raw` CSS (227-234) in index.html (the table builder was already gone; CSS was still
 embedded in every report via buildReportHtml); (4) panel texts — subtitle "via mxlint + mxcli…"
 → "via mxcli + the CLEVR rules", scan tooltip "mxlint export + lint…" → "exports the model source…".
 "MxCLI Mxlint" (source=mxcli) REMAINS visible. The source==="mxlint" branches in originLabel/originBadge
@@ -18,8 +18,8 @@ claim-table entries (tripwires monitor them). index.html now has 0 mxlint refs.
 README check: the mxlint extension BOOTSTRAP step (section 5) is NOT obsolete — the EXPORT needs the binary;
 already rewritten as "for the model export" (not "extra Rego rules"). Deliberately retained.
 VERIFICATION: YAML routes intact (MAINT-010=283, MAINT-015=33, SEC-011=0); build 0/0, tests 200/200
-(tripwires green). REPACKAGED: dist\CLEVR-ACR-extension(.zip) refreshed (17:21), TRB check OK, no settings
-in payload, index.html in payload 0 mxlint, count card shows "ACR / MxCLI Mxlint / Manual". Scan test: Michel.
+(tripwires green). REPACKAGED: dist\CLEVR-Lint-extension(.zip) refreshed (17:21), TRB check OK, no settings
+in payload, index.html in payload 0 mxlint, count card shows "Lint / MxCLI Mxlint / Manual". Scan test: Michel.
 
 REGO ENGINE DISABLED as findings source (export REMAINS). MxlintScanService: only `export`
 (refreshes modelsource/), the `lint` call + MxlintNormalizer + lint-results.json reading are gone →
@@ -31,7 +31,7 @@ README/guide rewritten: mxlint = "model export", no longer "extra Rego rules". m
 (export needs the binary). VERIFICATION: YAML routes intact on current modelsource — MAINT-010=283,
 MAINT-015=33 (expected); modelsource present (12 domain models, 113 pages); no lint call/Normalize anymore
 in MxlintScanService (export only). Claim-table entries remain (no harm, tripwire monitors them).
-Build 0/0, tests 200/200. PACKAGE REPACKAGED: Build-Package.ps1 → dist\CLEVR-ACR-extension(.zip) refreshed
+Build 0/0, tests 200/200. PACKAGE REPACKAGED: Build-Package.ps1 → dist\CLEVR-Lint-extension(.zip) refreshed
 (new DLLs + main.js + README), TRB safety check OK, no settings in payload. Local dev settings
 (TRB paths) UNAFFECTED. Real Studio Pro scan test: Michel.
 
@@ -58,7 +58,7 @@ MAINT-005 to deep) → fast ~14s, close to the target. Only then repack. The mxl
 and complete; only the fast/deep placement of the security rules needs to be decided before we claim the duration.
 
 STREAMING BUILT (progressive findings, both modes) — PHASES 1/2/3 done, build+tests green, repackaged.
-PHASE 1 (orchestration): AcrScanService.RunScanStreaming(deepScan, Action<string> emit) — shared RunFastPhase
+PHASE 1 (orchestration): LintScanService.RunScanStreaming(deepScan, Action<string> emit) — shared RunFastPhase
 (lint+security+catalog+rule catalogue) → emit FAST batch (full metadata + fast findings, final=!deep);
 for deep then MxcliDescribeService.StreamViolations(chunkSize, emit) → one batch per chunk with progress.
 DescribeStreamChunkSize=30 (empirically: ~11-15s warm / ~25-37s cold per chunk — model loads per chunk again,
@@ -121,7 +121,7 @@ trickle in per chunk (optionally smaller chunks = more frequent updates, costs e
 PHASE E — DECIDED + IMPLEMENTED: "split the security route". MxcliSecurityService.GetViolations(bool deepScan):
 FAST = SEC-008 (describe projectsecurity, 0 userrole calls) + SEC-005 (anon create — only the GUEST role
 needed → ≤1 describe userrole, and only if guest access is on); DEEP = those two PLUS SEC-010 + MAINT-005
-(all 9 user roles). AcrScanService passes deepScan through. Build 0/0, tests 232/232.
+(all 9 user roles). LintScanService passes deepScan through. Build 0/0, tests 232/232.
 MEASURED (TRB-Mx11-CLITEST, not estimated): fast scan ~46s → ~24s (8 userrole calls removed). BUT ~14s was
 UNACHIEVABLE — the cause was misjudged. Per-call breakdown (measured): `mxcli lint` (own engine,
 both modes) = ~9.7s — DOMINANT and unavoidable; `describe projectsecurity` = 3.9s; `describe userrole`
@@ -157,16 +157,16 @@ Decision for Michel: (a) also deprecate SEC-006 → then the export can go after
 (b) keep SEC-006 → export stays. Build 0/0, tests 230/230 (+3). tmp cleaned up. No PHASE C/D.
 
 TWO SCAN MODES (fast default + Deepscan). No rule logic changed; only WHICH rules run.
-PART 1 (orchestration): AcrScanService.RunScanAsJson(projectDir, bool deepScan=false). The describe route
+PART 1 (orchestration): LintScanService.RunScanAsJson(projectDir, bool deepScan=false). The describe route
 (MxcliDescribeService — the 5 slow rules MAINT-008/009/REL-001/002/MAINT-013) is now THE ONLY gated step:
 `if (deepScan)`. All others run in BOTH modes (catalog-7, mxcli own lint, YAML route rules
 MAINT-005/SEC-005/006/008/010/MAINT-006/MAINT-015/REL-003, manual checks, export, marketplace modules).
 Message "RunFullScan" → fast (deepScan:false); new "RunDeepScan" → deep. payload.deepScan added.
-PART 2 (UI): second button #deepScanBtn (class acr-secondary, clearly subordinate) next to Scan. Both
+PART 2 (UI): second button #deepScanBtn (class lint-secondary, clearly subordinate) next to Scan. Both
 via shared startScan(deep); setScanning disables BOTH + spinner. Deepscan shows a visible duration
 warning ("…can take ~3 minutes…") + the C# ScanProgress text "Deep analysis: scanning all
 microflows & entities…". Non-intrusive FOOTNOTE under the count cards for a fast scan (renderSummary,
-class acr-scan-note → also in the report): "Quick scan — the deep microflow & expression analysis
+class lint-scan-note → also in the report): "Quick scan — the deep microflow & expression analysis
 (complexity, nested ifs, empty-string checks, default ReadWrite access) is NOT included. Run a Deepscan…"
 — communicates the DIFFERENCE (not "broken"). lastDeepScan from payload (default true = no hint before scan).
 PART 3 (verification): the describe route is the only gate → fast = complete MINUS the 5 describe rules
@@ -204,7 +204,7 @@ deferred. Routes now: CATALOG-SQL = MAINT-007/010/014, SEC-007/009/011, PERF-001
 MAINT-008/009/013, REL-001/002 (5, via new MxcliDescribeService, user-module scope, describe per
 microflow/entity). DEFER to mxcli's own rule = MAINT-011↔MPR003, PERF-002↔CONV017, MAINT-012↔
 ACR_ENT_VALRULES/CONV015, commit↔CONV011 (our CLEVR emission out). STILL YAML = CLEVR-MAINT-006 (redundant
-boolean, out of scope) + the non-mxlint ACR rules (MAINT-005, SEC-005/006, PAGE MAINT-015/REL-003).
+boolean, out of scope) + the non-mxlint Lint rules (MAINT-005, SEC-005/006, PAGE MAINT-015/REL-003).
 mxlint export engine = backup (findings off, export still runs for the YAML route remnants).
 STEP 2 — live wiring: MxcliDescribeService (spike) runs the 5 pure describe rules; YAML emissions in
 DetectExpressionRules (REL-001/002/MAINT-008/009) + DetectDomainModelBatchRules (MAINT-013) turned off
@@ -236,7 +236,7 @@ PART 1 — 3 describe rules on the proven assembler, reusing existing predicates
   only counted top-level ExclusiveSplitCount) → more microflows with splits>2 → +26. Accepted as
   new mxcli/describe ground truth (calibration item), not forced to 103.
   Synthetic positive unit tests per rule (both directions). Build 0/0, tests 227/227 (+8).
-PART 3 — marketplace filter (UI, no suppression): AcrScanService includes `appStoreModules` in the
+PART 3 — marketplace filter (UI, no suppression): LintScanService includes `appStoreModules` in the
 payload (CATALOG.MODULES.Source not empty — same mechanism as PHASE 1, via MxcliCatalogService.
 AppStoreModuleNames). main.js: isAppStoreModule(v) (module prefix ∈ set) + toggle appStoreVisible
 (default SHOW) in baseViolations → works through in panel AND report. Checkbox "Marketplace modules (N)"
@@ -250,7 +250,7 @@ error findings (warnings/info can be present — verified: all modules-minus giv
 AND a real error (connect error) also gives exit 1, but with EMPTY stdout + 'Error connecting: …' on
 stderr. The "vibe-coded PoC" warning is ALWAYS on stderr → not an error indicator. No exit code
 convention documented in --help; purely empirically established (3 cases).
-FIX (on established semantics, not on assumption): AcrScanService no longer guesses the exit code. New
+FIX (on established semantics, not on assumption): LintScanService no longer guesses the exit code. New
 MxcliOutputParser.ContainsJson(stdout) distinguishes: stdout with JSON envelope → mxcli ran normally →
 parse regardless of exit code; empty/non-JSON stdout → LOUD failure via Diagnostic (exit code + stderr), never
 silently 0 findings. The old `if (ExitCode != 0) return Diagnostic` is replaced by this
@@ -292,7 +292,7 @@ PHASE 1: new pure CatalogRules (normalizer) + MxcliCatalogService (spike, SQLite
 - PERF-001 Generalization=Administration.Account → 0
 - SEC-007 ToEntity LIKE 'System.%' scoped user-module → 1 (TRB.Groep_UserRole)
 - SEC-009 SHOW SETTINGS Hash=BCrypt → 0
-YAML emissions for these 7 disabled in AcrScanService (methods remain as backup, mxlint export
+YAML emissions for these 7 disabled in LintScanService (methods remain as backup, mxlint export
 remains load-bearing for the non-migrated rules). 4 mxcli-covered topics → DEFER to mxcli's
 own v0.11.0 rules (confirmed present live): MAINT-011↔MPR003, PERF-002↔CONV017, MAINT-012↔
 ACR_ENT_VALRULES/CONV015, commit↔CONV011 — not built ourselves. (The claim table/tripwire reconciliation
@@ -351,8 +351,8 @@ STEP 1 (fresh export): 113 pages/snippets, 62 CustomWidgets$CustomWidget nodes, 
 (no fullImage on TRB). WITH alt text: 0; MISSING: 0 → GT=0. mxlint twin 004_0002 runs CORRECTLY
 (testcases=113, failures=0) → valid cross-check that AGREES (twin 0 = GT 0).
 STEP 2: NO new reader — reuses the PageYamlReader tree + pure PageRules (walk like MAINT-015).
-AcrScanService: page batch (MAINT-015 + REL-003) on one reader pass. Rule ID CLEVR-REL-003;
-CATEGORY CHOICE (button for Michel): Accessibility→Reliability (no ACR bucket); MEDIUM→Major.
+LintScanService: page batch (MAINT-015 + REL-003) on one reader pass. Rule ID CLEVR-REL-003;
+CATEGORY CHOICE (button for Michel): Accessibility→Reliability (no Lint bucket); MEDIUM→Major.
 STEP 3 (double, with explicit FP direction): real rule == independent YamlDotNet GT (0 image widgets,
 0 missing) == working twin (0) → EXACT, 0 FP/FN. Synthetic tests both directions: image WITHOUT
 translation→fires (variation_2); translation WITHOUT Text key→fires (variation_1); translation WITH
@@ -363,7 +363,7 @@ Build 0/0, tests 198/198 (was 191; +7). tmp-alt cleaned up. Real Studio Pro scan
 >>> mxlint.com set now FULLY internalised (17/17). mxlint as rule source can be phased out.
 
 REGO INTERNALISATION — page/snippet route (proof rule 004_0001; new file type):
-Last route. STEP 0 already done: 004_0001 + 004_0002 both MXLINT-ONLY (no mxcli/ACR counterpart;
+Last route. STEP 0 already done: 004_0001 + 004_0002 both MXLINT-ONLY (no mxcli/Lint counterpart;
 MPR005 UnconfiguredImage = missing image SOURCE, different topic; "style" in the list = only a
 Category). Only 004_0001 now built (proof rule that opens the page reader); 004_0002 (alt text, deep
 CustomWidget/WidgetObject/Texts$Translation tree) follows only once the reader is proven.
@@ -393,7 +393,7 @@ REGO INTERNALISATION — constant route (proof rule 006_0001; new file type):
 Last route (page/constant). 16 of 17 MXLINT-ONLY done; this route requires NEW YAML readers for
 file types we have not yet read → first one proof rule, then the rest.
 STEP 0 (coverage check, mxcli lint --list-rules + claim table): 006_0001 ExposedConstants, 004_0001
-InlineStylePropertyUsed, 004_0002 ImagesWithAltText → NO mxcli-bundled or claimed ACR rule covers
+InlineStylePropertyUsed, 004_0002 ImagesWithAltText → NO mxcli-bundled or claimed Lint rule covers
 these topics (MPR005 UnconfiguredImage = missing image SOURCE, different topic from alt text;
 "style" in the list = only the Category of MPR001 NamingConvention). All three MXLINT-ONLY. Only
 006_0001 built now (proof rule); 004_0001/0002 follow once the reader is proven (004_0002 alt text
@@ -419,9 +419,9 @@ the blanket-MEDIUM branch (every exposed constant) is dropped here (deliberate c
 Build 0/0, tests 184/184 (was 171; +13). tmp-cv cleaned up. Real Studio Pro scan test: Michel.
 
 REGO INTERNALISATION — security/settings/modules batch (4 of 4 MXLINT-ONLY built):
-STEP 0 (coverage check before build, criterion "mxcli OR existing ACR rule already covers the TOPIC →
+STEP 0 (coverage check before build, criterion "mxcli OR existing Lint rule already covers the TOPIC →
 BUILD NOTHING"): 001_0004 StrongPasswordPolicy = COVERED (mxcli ACR_SEC_PWPOLICY + SEC002) → NOT built;
-001_0005, 001_0007, 001_0008, 003_0001 = MXLINT-ONLY (no mxcli/ACR rule covers admin username,
+001_0005, 001_0007, 001_0008, 003_0001 = MXLINT-ONLY (no mxcli/Lint rule covers admin username,
 hash algorithm, per-userrole-security, or module count) → all four built.
 STEP 1+3 (field exists + ground truth, YamlDotNet/structural as oracle; real rule == GT, 0 FP/FN):
 - 001_0005 → CLEVR-SEC-008 MxAdminNotUsed (Security/Critical=HIGH): GT=1 rule=1 (AdminUserName: MxAdmin).
@@ -438,7 +438,7 @@ STEP 1+3 (field exists + ground truth, YamlDotNet/structural as oracle; real rul
 Synthetic positive unit tests per rule (TRB is 1/0/0/0, so detection proven separately).
 CLAIM TABLE: 4 entries added — winners CLEVR-SEC-008/009/010 + CLEVR-MAINT-014; mxlint twins
 001_0005/001_0007/001_0008/003_0001 suppressed. No mxcli suppression (all four MXLINT-ONLY).
-Source reuse: ProjectSecurityParser (4 new Detect methods); AcrScanService now also reads
+Source reuse: ProjectSecurityParser (4 new Detect methods); LintScanService now also reads
 Settings$ProjectSettings.yaml + Metadata.yaml. MxlintNormalizerTests fixture that used 001_0005 as generic
 passes-through → repointed to 001_0004 (StrongPasswordPolicy, not yet internalised → not
 suppressed). Build 0/0, tests 171/171 (was 156; +15). tmp-dg cleaned up. Real Studio Pro scan test: Michel.
@@ -468,7 +468,7 @@ ACR_ENT_VALRULES/CONV015/CONV006/CONV007 → 0 on TRB, nothing to suppress. Buil
 
 REGO INTERNALISATION — domain model YAML route OPENED: CLEVR-MAINT-010 = mxlint 002_0009 NoDefaultValue.
 .rego: per (entity, attribute) → attribute.Value.DefaultValue != null && != "". Category Maintainability,
-severity LOW → ACR Minor. Reuses ProjectSecurityParser.ParseEntitiesWithAttributes (the SEC-005/006 infra),
+severity LOW → Lint Minor. Reuses ProjectSecurityParser.ParseEntitiesWithAttributes (the SEC-005/006 infra),
 extended with Value→DefaultValue + UNQUOTE ('' /"" → empty; "false" → false) — crucial because the export
 field is quoted (288× "" = empty/no-violation, 145× "false", 106× "0", 32× strings). GROUND TRUTH on fresh
 TRB export = 283; investigated (suspicious "8 vs 283"): xUnit failures count FILES (8), not findings —
@@ -509,7 +509,7 @@ confirmed per topic. Build 0/0, tests 124/124 (+13). Remaining topics (naming/gu
 + the 17 to internalise) follow only after approval per topic. (Measurement tool tmp-gt4\ inert, leave as-is.)
 
 DUPLICATION MEASUREMENT (TRB, fresh mxcli-lint --format json, 2131 findings / 37 of 60 rules fire):
-The visible duplication is NOT primarily mxlint↔ACR (already suppressed), but mxcli-GENERIC ↔ claimed-ACR/CLEVR:
+The visible duplication is NOT primarily mxlint↔Lint (already suppressed), but mxcli-GENERIC ↔ claimed-Lint/CLEVR:
 111 redundant generic findings NOW visible: attribute count ACR_ENT_ATTRS∩DESIGN001=6; microflow size
 CLEVR-MAINT-007∩QUAL003=24 + ∩CONV009=44 (all 44 doubled, 24 tripled); enum ACR_ENUM_PREFIX∩CONV004=26;
 snippet ACR_SNIP_PREFIX∩CONV005=10; guest ACR_SEC_GUEST∩SEC004=1. Commit-in-loop latent (CONV011=0, ours=0).
@@ -542,8 +542,8 @@ Build 0/0, tests 111/111 (+16). Verification via the REAL extractor+rules (no re
 
 REGO INTERNALISATION — 1st proof rule (flow AST route opened): CLEVR-MAINT-007 = mxlint 005_0003
 NumberOfElementsInMicroflow. .rego: count(ObjectCollection.Objects) - 2 > 25 (top-level, NON-recursive;
--2 = fixed Start+End offset). Built as pure MicroflowStructureRules.NumberOfElements (kind=acr,
-source=clevr-acr, category Maintainability literally, severity Major = mxlint MEDIUM, to be adjusted).
+-2 = fixed Start+End offset). Built as pure MicroflowStructureRules.NumberOfElements (kind=lint,
+source=clevr-lint, category Maintainability literally, severity Major = mxlint MEDIUM, to be adjusted).
 Spike: MicroflowYamlExpressions.ParseMicroflow now parses 1× per microflow and delivers BOTH expressions
 AND top-level object count (root.ObjectCollection.Objects) → DetectExpressionRules feeds the count rule.
 GROUND TRUTH on fresh TRB export (mxlint export 14s, 471 microflows, parseFail=0): 44 findings, max 98
@@ -556,8 +556,8 @@ follow only after proof in Studio Pro (by Michel). (Disposable verification tool
 build-server handle — inert, can be removed separately.)
 
 INSTALLER mxcli AUTO-DOWNLOAD (colleague stranded on "git clone + make build" — make missing on Win):
-- Install-ClevrAcr.ps1 mxcli step now: (1) on PATH? use that; (2) previously downloaded by us in
-  %LOCALAPPDATA%\clevr-acr\mxcli\mxcli.exe? reuse; (3) otherwise: ask for confirmation (no silent
+- Install-ClevrLint.ps1 mxcli step now: (1) on PATH? use that; (2) previously downloaded by us in
+  %LOCALAPPDATA%\clevr-lint\mxcli\mxcli.exe? reuse; (3) otherwise: ask for confirmation (no silent
   download) → Install-Mxcli fetches latest release asset mxcli-windows-amd64.exe via
   api.github.com/repos/mendixlabs/mxcli/releases/latest (User-Agent + TLS1.2), VERIFIES sha256
   (from asset.digest) + byte size, writes absolute path in mxcliPath. Mismatch/error/decline/no net
@@ -571,23 +571,23 @@ INSTALLER mxcli AUTO-DOWNLOAD (colleague stranded on "git clone + make build" �
   mxcliPath in clean settings; fresh zip contains the updated installer+guide, no TRB, no settings.
 
 PACKAGING HARDENING (customer name + settings out of the shared package):
-- ROOT CAUSE removed: the csproj copied my local acr-scan-settings.json (machine/customer paths)
+- ROOT CAUSE removed: the csproj copied my local lint-scan-settings.json (machine/customer paths)
   to bin\Debug\net10.0 via CopyToOutputDirectory=Always → when refreshing the payload
-  that overwrote the sanitised version. The `<None Update="acr-scan-settings.json">` line is
-  REMOVED. The extension needs no settings file (AcrScanSettings.Load → defaults: mxcli via
-  PATH + open app). My local csharp-spike\acr-scan-settings.json remains for local
+  that overwrote the sanitised version. The `<None Update="lint-scan-settings.json">` line is
+  REMOVED. The extension needs no settings file (LintScanSettings.Load → defaults: mxcli via
+  PATH + open app). My local csharp-spike\lint-scan-settings.json remains for local
   use (no longer copied along).
-- INSTALLER (Install-ClevrAcr.ps1) now owns the settings: asks + validates the project path
+- INSTALLER (Install-ClevrLint.ps1) now owns the settings: asks + validates the project path
   (directory must contain an .mpr; neutral placeholder, no customer example), detects mxcli EXCLUSIVELY
   via Get-Command (PATH) — found → mxcliPath = .Source, not found → clear message +
   Mendix Labs install URL (PLACEHOLDER — still needs filling in) + mxcliPath="" (PATH fallback), and
-  writes a clean acr-scan-settings.json at the read location. Upgrade preserves existing valid
+  writes a clean lint-scan-settings.json at the read location. Upgrade preserves existing valid
   values.
 - REPEATABLY SAFE assembly: Build-Package.ps1 (repo root, maintainer only) builds → mirrors
-  bin → payload → DEFENSIVELY STRIPS any acr-scan-settings.json → zips → fails-loud on 'TRB'.
+  bin → payload → DEFENSIVELY STRIPS any lint-scan-settings.json → zips → fails-loud on 'TRB'.
 - CUSTOMER NAME scrubbed: rules.sample.json _pending ("on TRB" → "on the reference project");
-  dist\clevracrshell (old mock with TRB sample data) removed; CLEVR-ACR-extension(.zip) contains
-  'TRB' nowhere and no settings file (verified). OPEN: dist\CLEVR-ACR-source.zip is a
+  dist\clevrlintshell (old mock with TRB sample data) removed; CLEVR-Lint-extension(.zip) contains
+  'TRB' nowhere and no settings file (verified). OPEN: dist\CLEVR-Lint-source.zip is a
   complete source snapshot where 'TRB' is intrinsic in tests/ground-truth-docs/sample-data —
   fully scrubbing falls outside the "do not touch scan logic/tests" boundary; decision for Michel.
 - Verified: bin no settings (correct), local settings untouched, package+zip TRB-free,
@@ -603,16 +603,16 @@ FINISHING ROUND (product made shareable — 6 points):
    modelsource. The loose routes (RunAcrScan/RunMxlintScan) remain internally.
 2. LOADING INDICATOR: spinner next to the button + progress text ("Exporting model…/Analyzing…")
    via `ScanProgress` messages; button disabled during scan; `ScanFinished` re-enables.
-   CSS pitfall fixed: `.acr-spinner[hidden]{display:none}` (explicit display:inline-block
+   CSS pitfall fixed: `.lint-spinner[hidden]{display:none}` (explicit display:inline-block
    otherwise overrides the [hidden] attribute). Verified via static preview harness.
-3. RENAMED "CLEVR ACR Spike" → "CLEVR ACR" in every visible place (menu item, pane title,
+3. RENAMED "CLEVR Lint Spike" → "CLEVR Lint" in every visible place (menu item, pane title,
    log prefix). Internal IDs/DLL/namespace untouched (keep risk-free).
 4. CLEVR LOGO: official CLEVR-logo.png in wwwroot/clevr-logo.png. Panel header shows it via
    <img src>; the exported report embeds it as data URI (fetch→FileReader on pane
    open → clevrLogoDataUri) so the report remains standalone.
-5. INSTALLATION PACKAGE: dist/CLEVR-ACR-extension/ — clevracr/ (FULL build output incl.
-   YamlDotNet.dll), Install-ClevrAcr.ps1 (asks project path, copies to
-   <project>/extensions/clevracr, preserves existing settings on upgrade, verifies
+5. INSTALLATION PACKAGE: dist/CLEVR-Lint-extension/ — clevrlint/ (FULL build output incl.
+   YamlDotNet.dll), Install-ClevrLint.ps1 (asks project path, copies to
+   <project>/extensions/clevrlint, preserves existing settings on upgrade, verifies
    critical files), README.md (enabling Studio Pro extension development, directory location,
    mxcli/mxlint requirements). Script tested against a temp project: copies + verifies OK.
 6. MENDIX 11+: requirement notice in the panel footer and in the report; prominent section in
@@ -633,25 +633,25 @@ correction: the typed flow AST we "missed" IS in mxcli, via
 ## WHAT NOW WORKS (proven in Studio Pro 11.10 on TRB)
 
 ### Lint rules (verified)
-- 11 verified ACR .star rules, calibrated against the ground truth.
+- 11 verified Lint .star rules, calibrated against the ground truth.
   Metadata from the ground truth; 4 security severities on "TODO-confirm".
-- Recorded in acr-mxlint-voortgang.md + rule registry (rules.sample.json).
+- Recorded in lint-mxlint-voortgang.md + rule registry (rules.sample.json).
 
 ### The extension (hybrid C# + web, in Studio Pro)
 - Hybrid architecture PROVEN: C# backend (.NET 10) runs a process via
   Process.Start, output via message bus to a C#-hosted webview pane.
 - Working mxcli scan: button -> `mxcli lint --format json` -> parser -> C#-
-  normalizer + registry -> Violation[] -> ACR layout in the pane.
-- On TRB (mxcli): 2625 improvements (77 ACR / 2548 generic), distributed across the 6
-  ACR categories (Performance + Reliability now populated thanks to the mapping fix).
-- THREE engines now working: ACR .star rules + bundled mxcli rules + mxlint.com
+  normalizer + registry -> Violation[] -> Lint layout in the pane.
+- On TRB (mxcli): 2625 improvements (77 Lint / 2548 generic), distributed across the 6
+  Lint categories (Performance + Reliability now populated thanks to the mapping fix).
+- THREE engines now working: Lint .star rules + bundled mxcli rules + mxlint.com
   (Rego). mxlint runs as 2nd engine via a separate button (part A), results in
   a separate list — NOT yet merged with the mxcli data (= part B).
-- UI: everything in 6 ACR categories; per-rule grouping (collapsible); origin
+- UI: everything in 6 Lint categories; per-rule grouping (collapsible); origin
   badges + rule name; 3 count cards; origin filter; text filter; preview text;
   severity literally from the source. Term "Improvements".
 - CLEVR-branded HTML report (Phase 2): same Violation[] + render functions as the
-  pane, to <project>\.clevr-acr\CLEVR-ACR-report-<timestamp>.html + auto-open.
+  pane, to <project>\.clevr-lint\CLEVR-Lint-report-<timestamp>.html + auto-open.
 - Normalizer = pure, tested .NET 10 lib (25 tests green).
 
 ---
@@ -680,7 +680,7 @@ Implementation note: lint JSON has no category per violation -> join on
 practices report (overallScore, per-category scores, topActions/remediations,
 all findings). HTML is standalone with embedded CSS. This can largely REPLACE
 or FEED the planned export. Caveat: mxcli's own 7-category taxonomy and
-styling, not the 6 ACR categories / CLEVR look. trb-report.html = good enough
+styling, not the 6 Lint categories / CLEVR look. trb-report.html = good enough
 for a product owner; the CSV export of mxlint is NOT.
 
 ### 4. mxlint.com PROVEN working in Studio Pro (own extension installed)
@@ -690,12 +690,12 @@ runs, locally, and is installed as a Studio Pro extension. Proof: 2363 checks,
 - ComplexMicroflowsWithoutAnnotations (103), NumberOfElementsInMicroflow (44),
   InlineStylePropertyUsed (14), HeadingsInAscendingOrder (11, accessibility),
   NoDefaultValue (8), MxAdminNotUsed (1), OneH1TagPerPage (1).
-HONEST NUANCE: AvoidCommitInLoop gave 0 on TRB; the REALLY deep ACR-Performance
+HONEST NUANCE: AvoidCommitInLoop gave 0 on TRB; the REALLY deep Lint-Performance
 rules (Non-indexed attr in XPath, CRUD too early in flow, XPath ordering — the
-~804 ACR-Performance violations) are also NOT in mxlint.com. Those remain the
-domain of ACR/SDK + the Studio Pro Best Practice Recommender.
-CONCLUSION: mxcli + mxlint.com together = a large, valuable part of ACR — NOT
-"everything". Communicate honestly: not "ACR fully replaced".
+~804 Lint-Performance violations) are also NOT in mxlint.com. Those remain the
+domain of Lint/SDK + the Studio Pro Best Practice Recommender.
+CONCLUSION: mxcli + mxlint.com together = a large, valuable part of Lint — NOT
+"everything". Communicate honestly: not "Lint fully replaced".
 
 ### 5. The mxlint sources are OPEN (no need to reinvent the wheel)
 - mxlint-cli (Go) — source code obtained (mxlint-cli-main.zip).
@@ -741,7 +741,7 @@ corrected.
   GUARANTEED to post in every outcome (otherwise the pane stays silent on "Busy...").
 - DIAGNOSTICS: ILogService writes to Studio Pro's internal log (Help -> Open
   Log File Directory), NOT to %LOCALAPPDATA%\Mendix. Therefore the
-  extension now also writes to <project>\.clevr-acr\mxlint-debug.log (findable). LESSON: when
+  extension now also writes to <project>\.clevr-lint\mxlint-debug.log (findable). LESSON: when
   stuck in a closed box first MAKE VISIBLE what is happening, then fix
   — that broke the deadlock after several guess-rounds.
 - mxlint EXIT 1 = findings (not an error): read the jsonFile regardless of exit code.
@@ -763,13 +763,13 @@ Generic rules now map on the real mxcli category from `--list-rules` instead of
 the prefix. Verified in Studio Pro: Performance (CONV016/017) and Reliability
 no longer empty; CONV011→Performance and CONV001→Project hygiene (same prefix,
 now different category = bug gone). Mapping table in spec §5; "mxcli
-correctness → ACR Reliability" explicitly recorded. Display mapping in the render
+correctness → Lint Reliability" explicitly recorded. Display mapping in the render
 layer; internal Violation.category unchanged.
 
 ### Phase 2 — Report export  ✅ COMPLETED (verified: report looks good)
 Option B chosen: own CLEVR-branded HTML from the same Violation[] + render functions
 as the pane (consistent with what the developer sees), instead of mxcli's own HTML.
-Storage: <project>\.clevr-acr\CLEVR-ACR-report-<timestamp>.html + auto-open + path
+Storage: <project>\.clevr-lint\CLEVR-Lint-report-<timestamp>.html + auto-open + path
 in the status line (no native save dialog in the Studio Pro API). mxcli report
 remains a later option as a data source for scores/remediations.
 
@@ -781,13 +781,13 @@ violations. See finding 7 for lessons learned. NOT yet merged with the
 mxcli data (= part B).
 
 ### Phase 3 part B — merge mxlint into the main panel  ✅ COMPLETED
-mxlint violations are now merged with the mxcli data in the 6 ACR categories
+mxlint violations are now merged with the mxcli data in the 6 Lint categories
 (separate list gone). Two separate buttons, one overview; replaceOrigin() only replaces
 the violations of the scanned origin (you can run mxcli and mxlint and
 see them together). Origin filter Mxlint.com now populated; 3 count cards count the merged
 set. 26/26 tests. The 3 choices made:
-1. PRECEDENCE = mxcli > ACR > mxlint (option A; Mendix is backing mxcli → front,
-   even above the calibrated ACR rules). The 6 ACR↔mxlint overlaps
+1. PRECEDENCE = mxcli > Lint > mxlint (option A; Mendix is backing mxcli → front,
+   even above the calibrated Lint rules). The 6 Lint↔mxlint overlaps
    (AnonymousDisabled↔ACR_SEC_GUEST, DemoUsersDisabled↔ACR_SEC_DEMOUSERS,
    SecurityChecks↔ACR_SEC_CHECKED, StrongPasswordPolicy↔ACR_SEC_PWPOLICY,
    NumberOfAttributes↔ACR_ENT_ATTRS, AvoidUsingValidationRules↔ACR_ENT_VALRULES)
@@ -796,14 +796,14 @@ set. 26/26 tests. The 3 choices made:
 3. TWO buttons, one screen — functional: mxcli works on Mx11, mxlint also on
    Mx10, so usable across both versions. mxlint async, mxcli synchronous.
 
->> NEWLY DISCOVERED, NOT YET RESOLVED — ACR↔mxcli overlap (own follow-up task):
-   there is ALSO overlap between your ACR .star rules and mxcli's bundled rules — e.g.
+>> NEWLY DISCOVERED, NOT YET RESOLVED — Lint↔mxcli overlap (own follow-up task):
+   there is ALSO overlap between your Lint .star rules and mxcli's bundled rules — e.g.
    ACR_SEC_STRICT ↔ SEC005 StrictModeDisabled: both report "strict mode off" on
    the same document, slightly differently worded → duplicate in the report. According to
    precedence A mxcli wins (SEC005 also has the CVE-2023-23835 reference);
    ACR_SEC_STRICT should be suppressed. FOLLOW-UP TASK (fresh session): systematically go through all
-   11 ACR rules against the mxcli-bundled rule list and decide per rule:
-   suppress (mxcli wins) OR entirely DROP the ACR rule because mxcli already covers it.
+   11 Lint rules against the mxcli-bundled rule list and decide per rule:
+   suppress (mxcli wins) OR entirely DROP the Lint rule because mxcli already covers it.
    Suspected candidates: the 4 ACR_SEC_* (vs mxcli SEC001-009). Cleanup pass,
    not a quick fix — requires the inventory first.
 
@@ -812,7 +812,7 @@ Turned out to be more broadly feasible than just docs. Verified against the REAL
 (reflection). BUILT, compiles (0/0), tests 26/26:
 (a) OPEN DOCUMENT IN STUDIO PRO — click on the document line of an improvement
     opens the document. C# resolves the unit: first via stable GUID
-    IModel.TryGetAbstractUnitById(documentId) (mxcli/ACR have documentId);
+    IModel.TryGetAbstractUnitById(documentId) (mxcli/Lint have documentId);
     fallback name walk Root.GetModules()->module->DomainModel/folders/GetDocuments()
     (mxlint has NO GUID). Navigation at DOCUMENT LEVEL via
     IDockingWindowService.TryOpenEditor(unit, null) — just like the mxlint extension.
@@ -864,7 +864,7 @@ puts this in payload.ruleNames (same form as mxcli); main.js merges both engines
 lastRuleNames → render layer shows it via ruleName() (no render change).
 
 UI LANGUAGE: the full extension UI is now consistently ENGLISH (buttons, count card headers,
-status/error messages, tooltips, placeholder, report header). The ACR category names
+status/error messages, tooltips, placeholder, report header). The Lint category names
 (Project hygiene/Maintainability/Performance/Architecture/Reliability/Security) are
 unchanged — they belong to the data contract. Debug log texts deliberately remain in Dutch (internal).
 
@@ -879,35 +879,35 @@ fallback on textarea+execCommand (WebView2 sometimes blocks clipboard). Confirma
 "Maia prompt copied — paste it into Maia". Not in the exported report (interactive=false).
 Data/UI separation intact. DIRECT injection into Maia remains unproven → not built.
 
-### FIRST OWN RULE on the project security export — ACR #12  [BUILT]
+### FIRST OWN RULE on the project security export — Lint #12  [BUILT]
 "Project role should have at most one module role per module" (CLEVR-MAINT-005). No
 mxcli/mxlint — own pure parser ProjectSecurityParser (csharp-normalizer, mirror of
 BsonMicroflowParser; 6 tests). Source: modelsource/Security$ProjectSecurity.yaml (UserRoles[]
 → {Name, ModuleRoles:["Module.Role"]}); group per user role on the module part; >1 =
 violation. Identity: ruleId CLEVR-MAINT-005, acrCode ProjectRoleMaxOneModuleRolePerModule,
 engineRuleKey CLEVR_SEC_ONE_MODULEROLE_PER_MODULE (self-produced, NOT claimed by mxcli →
-deliberately not in rules.sample.json). Category Maintainability (ACR: Performance — deliberate choice,
-one constant to adjust), severity Critical. Origin: kind=acr/source=clevr-acr →
-ACR badge. Integration: attached to the mxcli "Scan for improvements" (AcrScanService reads the YAML
+deliberately not in rules.sample.json). Category Maintainability (Lint: Performance — deliberate choice,
+one constant to adjust), severity Critical. Origin: kind=lint/source=clevr-lint →
+Lint badge. Integration: attached to the mxcli "Scan for improvements" (LintScanService reads the YAML
 from the project directory → Violations in the AcrViolations payload). Verified against TRB ground truth:
 exactly 5 violations / 2 roles (Administrator on Accesslog/Administration/SupportModule/UserCommons
 + Behandelaar on TRB), 7 roles clean — no false positives/negatives. NB: MDL CATALOG does not expose this
 mapping → the YAML export is the source.
 
-### TWO SECURITY RULES on the export — ACR #7 + #10  [BUILT]
-Both kind=acr/source=clevr-acr (ACR badge), Security/Blocker (like ACR), integrated in the
-mxcli "Scan for improvements" (AcrScanService), pure tested parser extensions on
+### TWO SECURITY RULES on the export — Lint #7 + #10  [BUILT]
+Both kind=lint/source=clevr-lint (Lint badge), Security/Blocker (like Lint), integrated in the
+mxcli "Scan for improvements" (LintScanService), pure tested parser extensions on
 ProjectSecurityParser. Anonymous role set = ModuleRoles of GuestUserRole IF EnableGuestAccess
 is true (otherwise 0). On TRB now guest ON with GuestUserRole=WebserviceUser (set: System.User,
 Administration.User, Integratie.Admin, Accesslog.Admin). NOTE: the modelsource export can be stale
 — run `mxlint export` first for fresh YAML (TRB modelsource was 4 days old).
-- ACR #7 (CLEVR-SEC-005, AnonymousCreatePersistentEntity): persistent entity with AccessRule
+- Lint #7 (CLEVR-SEC-005, AnonymousCreatePersistentEntity): persistent entity with AccessRule
   AllowCreate:true + an anonymous AllowedModuleRole. Persistable from CATALOG.entities.EntityType
   (most reliable source — YAML puts Persistable nested under MaybeGeneralization + INHERITS via
   generalization). Access rules from the domain model YAML. TRB ground truth (verified, FP/FN-free):
   1 violation = Accesslog.AccesslogBankenportaal (via Accesslog.Admin). Integratie.Melder/Melding
   have anon-create but are NON_PERSISTENT → correctly not flagged.
-- ACR #10 (CLEVR-SEC-006, AnonymousEditableUnlimitedString): unlimited string attribute (Length 0)
+- Lint #10 (CLEVR-SEC-006, AnonymousEditableUnlimitedString): unlimited string attribute (Length 0)
   that is ReadWrite for the anonymous role (MemberAccess under an anonymous AllowedModuleRole).
   Length from the YAML (StringAttributeType.Length); CATALOG.attributes.Length is UNRELIABLE
   (0 for all 748 strings). No persistable filter. TRB ground truth (verified, FP/FN-free):
@@ -924,7 +924,7 @@ sub-AST). Source: ExpressionSplitCondition.Expression (split conditions) + Chang
 flag only if ON THE SAME path ($x/Attr) both an empty check (=/!= empty) AND an empty-string
 check (=/!= ''/"") are present in the same expression; standalone != empty (396 idiomatic) and standalone != ''
 are NOT flagged. Category Reliability (leans toward correctness; one const, adjustable to
-Maintainability), severity Major (proposal), kind=acr/clevr-acr, engineRuleKey
+Maintainability), severity Major (proposal), kind=lint/clevr-lint, engineRuleKey
 CLEVR_REL_REDUNDANT_EMPTY_STRING. TRB ground truth (verified, FP/FN-free): 19 distinct
 (microflow,path) over 8 microflows; FP check on a microflow without empty-string literal = 0. NB:
 more than the exploration's rough 15 — that missed the "= empty or = ''" form (IVK_SaveDossier) +
@@ -938,7 +938,7 @@ YAMLs = 0.89s (2891 expressions); bson = ~2s/dump × 471 ≈ 16 min. Reliability
 are block scalars (multi-line) + quoting → therefore a REAL YAML parser (YamlDotNet, in the spike;
 normalizer remains dependency-free). Proven: YAML reproduces the bson expressions exactly (cross-check
 against bson on the new microflows, incl. block scalar $ZoekObject/Voornaam). Shared infra:
-AcrScanService.DetectExpressionRules → MicroflowYamlExpressions.Extract (YamlDotNet) → (mf,expr) pairs
+LintScanService.DetectExpressionRules → MicroflowYamlExpressions.Extract (YamlDotNet) → (mf,expr) pairs
 → ExpressionRules. Pure rule layer in the normalizer: ExpressionAnalysis (string predicates) +
 ExpressionRules (Violation build from pairs); bson and YAML route share the same rule layer.
 - CLEVR-REL-001 (redundant empty string): now LIVE in "Scan for improvements". VERIFIED
@@ -946,7 +946,7 @@ ExpressionRules (Violation build from pairs); bson and YAML route share the same
   an incomplete grep candidate selection that missed block-scalar microflows; the full YAML scan
   is more accurate (bson cross-check confirms the extras).
 - CLEVR-MAINT-006 (redundant boolean comparison $x = true/false): category Maintainability,
-  severity Major (both adjustable), kind=acr/clevr-acr. Conservative: operand must be a $path;
+  severity Major (both adjustable), kind=lint/clevr-lint. Conservative: operand must be a $path;
   only the true/false literal (word boundary, no enum/identifier). VERIFIED
   ground truth = 94 distinct (microflow,operand) — NOT ~40 (same block-scalar reason). 13 tests.
 SCAN DURATION: the expression pass = 0.89s (negligible next to the mxcli-lint). Scales: a 3rd
@@ -967,7 +967,7 @@ make a possible second cause (export refreshes path B, scan reads path A) visibl
 
 ### Phase 6 — Exclusions with mandatory reason  [BUILT]
 An improvement can ONLY be excluded with a reason (no silent exclusion). Stored in
-$project/.clevr-acr/exclusions.json (included in version control → team shares). Match on the
+$project/.clevr-lint/exclusions.json (included in version control → team shares). Match on the
 fingerprint sha1(ruleId|documentQualifiedName|elementName), already on every Violation.
 - C# (pure, tested): Exclusion record + ExclusionsJson (parse/serialize/upsert/remove,
   4 tests). IO in ExclusionStore (csharp-spike); ViewModel handlers RequestExclusions/
@@ -1005,7 +1005,7 @@ Generic + extensible mechanism (first question: Performance/Major about the Best
 Recommender). A manual check is not a model violation but a fixed question that appears as a normal
 improvement until validly answered, and must be rechecked after 30 days.
 - DEFINITIONS + expiry logic in the render layer (main.js: MANUAL_CHECKS, MANUAL_CHECK_EXPIRY_DAYS).
-  C# is GENERIC: only stores the answer per id (ManualCheckStore → $project/.clevr-acr/
+  C# is GENERIC: only stores the answer per id (ManualCheckStore → $project/.clevr-lint/
   manual-checks.json, included in version control, NOT gitignored). Pure model+json in the normalizer
   (ManualChecksJson, tested). Handlers: RequestManualChecks/AnswerManualCheck/ClearManualCheck.
 - STATE: unanswered / "no" (+reason) / "yes" (+note). Mandatory note via the REUSED
@@ -1029,12 +1029,12 @@ Split the idea in two:
 
 ### Phase 6 — Exclusions UI  [valuable once in use]
 Suppress improvements with reason. Spec section 3 is ready (fingerprint,
-$project/.clevr-acr/exclusions.json, show stale exclusions visibly). NOTE the
+$project/.clevr-lint/exclusions.json, show stale exclusions visibly). NOTE the
 mxlint fingerprint limitation from finding 7 (rule+document level, not per
 attribute, unless you add reason-parsing).
 DESIGN REFINEMENT (Michel): a user MUST give a reason to exclude an
 improvement (no silent exclusion — always accountability). The
-exclusion + reason is recorded in $project/.clevr-acr/exclusions.json (sits
+exclusion + reason is recorded in $project/.clevr-lint/exclusions.json (sits
 IN the project directory → goes with version control). On commit + next pull the
 next developer sees the exclusion + reason. The excluded improvements + reason
 must be VISIBLE in the CLEVR report (transparent to product owner /
@@ -1056,32 +1056,32 @@ engine OR if Mendix ever cleans up the BSON output to clean JSON
 - SPIKE -> PRODUCT: the "spike" codebase is effectively the product basis. Decide
   deliberately: finalise (rename/clean up) or rebuild cleanly.
 - Old echo/RunCommand handler = dead code -> clean up.
-- 4 security severities (ACR_SEC_*) on "TODO-confirm" -> from ACR Java source.
+- 4 security severities (ACR_SEC_*) on "TODO-confirm" -> from Lint Java source.
 - DISTRIBUTION: colleagues must NOT need npm/build. Look into Mendix extension
   packaging (Marketplace / zip / installer). Tip: see how the
   mxlint-extension (open source) does its distribution.
 - STRATEGIC (discuss with CLEVR colleagues): Mendix is developing mxcli as
   AI access to Mendix. Position the extension as the CLEVR AGGREGATOR +
   CLEVR context (categories, calibration, report-for-client, Ask-Maia) on top of
-  the engines — NOT as "ACR rebuilt". Actual state after the inventory:
+  the engines — NOT as "Lint rebuilt". Actual state after the inventory:
   * mxcli + mxlint cover the BROAD Blue tier (structure, naming, security,
     accessibility, complexity-as-count) well.
-  * The DEEP flow/XPath rules (ACR's ~804 Performance set) are ready-made in
+  * The DEEP flow/XPath rules (Lint's ~804 Performance set) are ready-made in
     NEITHER. BUT: the typed structure to build them yourself is
     accessible via mxcli bson dump (Phase 7) — so the extension is NOT
     pinned to the Blue tier; you have options and grow with mxcli.
-  * SDK route (running ACR's Java/SDK in the extension) = discouraged: order of magnitude
-    heavier, reproduces ACR, rows against Mendix's direction.
+  * SDK route (running Lint's Java/SDK in the extension) = discouraged: order of magnitude
+    heavier, reproduces Lint, rows against Mendix's direction.
 
 ---
 
 ## DOCUMENTS (the "memories" of this project)
-- clevr-acr-shell-spec.md ......... data contract + architecture (authoritative)
-- clevr-acr-shell-status.md ....... this document (compass)
-- acr-mxlint-voortgang.md ......... the 11 verified rules + API facts
-- acr-mxlint-indeling.md .......... feasibility map (Green/Blue/Orange/Red)
+- clevr-lint-shell-spec.md ......... data contract + architecture (authoritative)
+- clevr-lint-shell-status.md ....... this document (compass)
+- lint-mxlint-voortgang.md ......... the 11 verified rules + API facts
+- lint-mxlint-indeling.md .......... feasibility map (Green/Blue/Orange/Red)
 - mxlint-rego-inventaris.md ....... the 28 Rego rules for Phase 3
-- acr-rule-counts-groundtruth.json  the ACR ground truth (authoritative source)
+- lint-rule-counts-groundtruth.json  the Lint ground truth (authoritative source)
 
 ## REFERENCE SOURCES (open source, unpacked in _reference/ — NOT your own code)
 Relevant from PHASE 3 (mxlint.com integration) and PHASE 4 (clickable docs) onward.

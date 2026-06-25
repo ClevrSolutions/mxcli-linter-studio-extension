@@ -1,7 +1,7 @@
-# CLEVR ACR Shell — functional specification & data contract
+﻿# CLEVR Lint Shell — functional specification & data contract
 
-Goal: a CLEVR Studio Pro extension that aggregates and presents lint violations like the old ACR —
-same categories, exclusions with reason, and an ACR-style report.
+Goal: a CLEVR Studio Pro extension that aggregates and presents lint violations like the old Lint —
+same categories, exclusions with reason, and an Lint-style report.
 
 This document is the COMPASS for whoever builds the extension (Claude Code / Codex).
 The builder codes against this contract; they do not invent formats or categories themselves.
@@ -16,15 +16,15 @@ This document was written during the **two-engine phase** (mxcli .star + mxlint 
 The **data contract is still valid and authoritative**; only the engine/phase descriptions are historical.
 
 **WHAT STILL APPLIES (use this as the contract):**
-- **§1** ACR categories (six) & severities (Minor<Major<Critical<Blocker).
-- **§2** The normalised `Violation` format — `kind: "acr" | "generic"`, all fields, `documentType` canonicalisation.
+- **§1** Lint categories (six) & severities (Minor<Major<Critical<Blocker).
+- **§2** The normalised `Violation` format — `kind: "lint" | "generic"`, all fields, `documentType` canonicalisation.
 - **§3** Exclusions + the fingerprint strategy (`sha1(ruleId|documentQualifiedName|elementName)`).
 - **§4** Rule registry concept + the golden rule ("one ruleId = one source") + the **"only counts once verified"** discipline + cross-engine deduplication (claim table).
-- **§5** Report (per-rule grouping, origin badge, display mapping of mxcli category → ACR category).
+- **§5** Report (per-rule grouping, origin badge, display mapping of mxcli category → Lint category).
 
-**WHAT IS OUTDATED (historical — see `CLEVR-ACR-overdracht.md` + `clevr-acr-shell-status.md` for the actual state):**
+**WHAT IS OUTDATED (historical — see `CLEVR-Lint-overdracht.md` + `clevr-lint-shell-status.md` for the actual state):**
 - **mxlint/.rego has been COMPLETELY removed.** One engine: **mxcli** (Apache-2.0, v0.12.0). No second engine, no Rego, no `modelsource/` YAML export, no mxlint binary/download/bootstrap.
-- **`source` values:** in practice only `"clevr-acr"` (ACR rules) and `"mxcli"` (generic). `"mxlint"` no longer occurs (the UI branches for it remain as dead, harmless guards).
+- **`source` values:** in practice only `"clevr-lint"` (Lint rules) and `"mxcli"` (generic). `"mxlint"` no longer occurs (the UI branches for it remain as dead, harmless guards).
 - **`packs.json`** with an mxlint pack is outdated; only mxcli's bundled rules are the generic source.
 - **The overlap/suppression table (§4, 6 mxlint twins)** has been replaced by the **claim table + two tripwire tests** (mxcli-vs-CLEVR deduplication, internal).
 - **The data sources (§3-historical, §7, §9)** are now all mxcli: `lint --format json`, `CATALOG.*` (SQLite), `describe <type>`, `describe projectsecurity`/`userrole`, `project-tree`. NO modelsource/YAML.
@@ -43,7 +43,7 @@ the web UI (Studio Pro's built-in web server, WebServerExtension) and communicat
 with it via the WebView message bus (IWebView.PostMessage ⇄ window.chrome.webview),
 NOT via studioPro.ui.messagePassing. The extension is therefore hybrid:
 
-    CLEVR ACR Shell (Studio Pro extension — C# host + web UI in the webview)
+    CLEVR Lint Shell (Studio Pro extension — C# host + web UI in the webview)
        │
        ├─ C# backend (.NET 10 .dll, in-process)       ← process execution + UI hosting
        │    ├─ DockablePaneExtension  → registers the pane (Id + Open())
@@ -59,7 +59,7 @@ NOT via studioPro.ui.messagePassing. The extension is therefore hybrid:
             ├─ normalizer      → maps engine output to ONE Violation format (section 2)
             ├─ rule registry   → enforces: every ruleId to one engine (section 4)
             ├─ exclusions      → suppress with reason + fingerprint (section 3)
-            └─ report          → ACR-style HTML/CSV/JSON (section 5)
+            └─ report          → Lint-style HTML/CSV/JSON (section 5)
 
 TWO SEPARATE MESSAGING BRIDGES (do not confuse — this determines the architecture):
 - WebView message bus (window.chrome.webview ⇄ IWebView): C# ↔ web content IN a
@@ -91,9 +91,9 @@ Phase 1 (shell + hardcoded JSON) did not depend on this and is already done.
 
 ---
 
-## 1. ACR categories & severities (fixed — do not invent your own)
+## 1. Lint categories & severities (fixed — do not invent your own)
 
-Categories (exactly these six, as ACR displays them):
+Categories (exactly these six, as Lint displays them):
 - Project hygiene
 - Maintainability
 - Performance
@@ -102,11 +102,11 @@ Categories (exactly these six, as ACR displays them):
 - Security
 
 Severities (ascending): Minor < Major < Critical < Blocker.
-(Mapping from engine severity: a .star/.rego rule declares its ACR severity
+(Mapping from engine severity: a .star/.rego rule declares its Lint severity
 in metadata; the shell does NOT translate it itself, but reads it from the rule metadata.)
 
-NOTE — scope: these six categories and four severities apply to ACR rules
-(`kind: "acr"`, section 2). Generic best-practice rules (`kind: "generic"`,
+NOTE — scope: these six categories and four severities apply to Lint rules
+(`kind: "lint"`, section 2). Generic best-practice rules (`kind: "generic"`,
 bundled mxcli / mxlint.com) retain their OWN engine category and severity and
 are NOT restricted to this list.
 
@@ -118,8 +118,8 @@ Both engines are mapped to exactly this JSON object. This is the only form that
 the UI, exclusions, and the report know.
 
 There are TWO kinds of violations, distinguished by `kind` (the shell shows ALL
-available rules, but keeps the ACR identity sharply separated):
-- `kind: "acr"`     — a CLEVR ACR rule. Has `acrCode`; `category`/`severity`
+available rules, but keeps the Lint identity sharply separated):
+- `kind: "lint"`     — a CLEVR Lint rule. Has `acrCode`; `category`/`severity`
                       are exactly one from section 1 and come FROM the rule registry
                       (section 4), not from the engine.
 - `kind: "generic"` — a generic best-practice rule from an engine pack (bundled
@@ -128,25 +128,25 @@ available rules, but keeps the ACR identity sharply separated):
                       to section 1). `source` shows the origin in the UI.
 
 Required (both kinds): ruleId, kind, source, category, severity, documentType,
-documentQualifiedName, reason, fingerprint. ACR-only required: acrCode.
+documentQualifiedName, reason, fingerprint. Lint-only required: acrCode.
 Optional: elementName, suggestion, documentationUrl, documentId.
 
 `documentId` is the stable Mendix document GUID (from the engine, e.g. mxcli). Useful
 for navigation (open the document) and as a more robust fingerprint basis later. Optional
 because not every engine provides it.
 
-`source` values: `"clevr-acr"` | `"mxcli"` (bundled best practices) | `"mxlint"`
+`source` values: `"clevr-lint"` | `"mxcli"` (bundled best practices) | `"mxlint"`
 (mxlint.com). The `engine` property (`"star"`|`"rego"`) is kept ONLY for debug; the
 UI never displays it. For generic rules the UI shows `source` instead, so that
-the user does not mistake an MPR rule for an ACR rule.
+the user does not mistake an MPR rule for an Lint rule.
 
-ACR rule (`kind: "acr"`):
+Lint rule (`kind: "lint"`):
 ```json
 {
   "ruleId": "CLEVR-PERF-014",          // CLEVR's own stable id (section 4)
-  "kind": "acr",
-  "source": "clevr-acr",
-  "acrCode": "MicroflowDbActionsAtEnd",// original ACR rule name (traceability)
+  "kind": "lint",
+  "source": "clevr-lint",
+  "acrCode": "MicroflowDbActionsAtEnd",// original Lint rule name (traceability)
   "engine": "star",                    // debug ONLY
   "category": "Performance",           // exactly one from section 1 (from registry)
   "severity": "Major",                 // exactly one from section 1 (from registry)
@@ -201,7 +201,7 @@ deviation, so that a new/unknown type does not silently break grouping.
 
 ## 3. Exclusions — suppress with reason (critical design decision)
 
-Storage: `$project/.clevr-acr/exclusions.json` (in the project directory, to be committed
+Storage: `$project/.clevr-lint/exclusions.json` (in the project directory, to be committed
 so the team shares the same exclusions).
 
 ```json
@@ -243,20 +243,20 @@ Consequences the builder must explicitly handle:
 
 ---
 
-## 4. Rule registry — enforce ACR identity, allow generic rules
+## 4. Rule registry — enforce Lint identity, allow generic rules
 
 The registry has two roles:
-- **(A) ACR rules** — explicitly registered, with the golden rule enforced. Become
-  `kind: "acr"`.
+- **(A) Lint rules** — explicitly registered, with the golden rule enforced. Become
+  `kind: "lint"`.
 - **(B) Generic packs** — enabled best-practice packs (bundled mxcli, mxlint.com)
   whose rules are passed through UNCHANGED (with their own category/severity) as
   `kind: "generic"`.
 
-### (A) ACR rules — `$project/.clevr-acr/rules.json`
+### (A) Lint rules — `$project/.clevr-lint/rules.json`
 One CLEVR ruleId has exactly ONE source of truth (one engine). This is ENFORCED.
-Each entry binds an engine rule to ACR metadata. `engineRuleKey` is the identifier
+Each entry binds an engine rule to Lint metadata. `engineRuleKey` is the identifier
 with which the engine reports that rule — this is how the normaliser recognises which
-engine violation is an ACR rule.
+engine violation is an Lint rule.
 ```json
 {
   "rules": [
@@ -275,25 +275,25 @@ engine violation is an ACR rule.
 The shell MUST validate on load (the golden rule, unchanged):
 - no two entries with the same ruleId,
 - no ruleId that has both an active .star and .rego,
-- no two ACR entries claiming the same `engineRuleKey`,
-- only rules with `"status": "verified"` count in the main ACR report;
+- no two Lint entries claiming the same `engineRuleKey`,
+- only rules with `"status": "verified"` count in the main Lint report;
   `todo`/`approximate` are shown separately (not mixed in as hard violations).
 
 `status` values: verified | needs-threshold | approximate | todo | out-of-reach.
 (This is the "a rule only counts once verified" discipline, anchored in the data model.)
 
-`ruleId` schema: `CLEVR-<CAT>-<NNN>`, where CAT encodes the ACR category
+`ruleId` schema: `CLEVR-<CAT>-<NNN>`, where CAT encodes the Lint category
 (MAINT = Maintainability, HYG = Project hygiene, SEC = Security, PERF = Performance,
 ARCH = Architecture, REL = Reliability), numbered ascending from 001 per category.
 `acrCode` is the original rule name (traceability); for our own .star rules this is
 the .star rule id (= engineRuleKey), except where a descriptive name exists
 (e.g. ACR_ENT_ATTRS → "EntityAmountAttributes").
-Severity source: the ACR ground truth (count export) overrides earlier assumptions — e.g.
+Severity source: the Lint ground truth (count export) overrides earlier assumptions — e.g.
 ACR_ENT_ATTRS is Minor (Maintainability), not Major. A rule without a baseline row
 (0 violations on TRB, such as the four Security rules) gets severity `"TODO-confirm"`:
 do not invent one, but mark as `verified` (the rule works).
 
-### (B) Generic packs — `$project/.clevr-acr/packs.json`
+### (B) Generic packs — `$project/.clevr-lint/packs.json`
 List of enabled packs; their rules arrive UNCHANGED as `kind: "generic"`
 and are NOT registered individually in advance (there are too many). On/off per pack:
 ```json
@@ -307,36 +307,36 @@ and are NOT registered individually in advance (there are too many). On/off per 
 
 ### Normaliser mapping (both kinds) — runs in C# (section 9)
 For EVERY incoming engine violation:
-1. Look up the engine rule key in the ACR registry (A):
-   - **MATCH + status = verified** → `kind: "acr"`: take `acrCode` + ACR `category`/
-     `severity` FROM the registry (not from the engine), `source: "clevr-acr"`,
+1. Look up the engine rule key in the Lint registry (A):
+   - **MATCH + status = verified** → `kind: "lint"`: take `acrCode` + Lint `category`/
+     `severity` FROM the registry (not from the engine), `source: "clevr-lint"`,
      `ruleId` = the CLEVR id.
-   - **MATCH + status ≠ verified** → ACR rule "in development": show separately
-     (section 5), do NOT count as a hard ACR violation.
+   - **MATCH + status ≠ verified** → Lint rule "in development": show separately
+     (section 5), do NOT count as a hard Lint violation.
    - **NO match** (rule from an enabled pack) → `kind: "generic"`: retain the
      engine's OWN `category` and `severity`, `source` = the pack (`"mxcli"`/`"mxlint"`),
      `ruleId` = the engine rule id. NO acrCode.
 2. Calculate `fingerprint` (section 3) and apply exclusions — for BOTH kinds.
 
-PRECEDENCE / DEDUPLICATION (confirmed decision): the ACR registry CLAIMS the check.
-If an `engineRuleKey` is in the ACR registry, that violation is NEVER also added as a
+PRECEDENCE / DEDUPLICATION (confirmed decision): the Lint registry CLAIMS the check.
+If an `engineRuleKey` is in the Lint registry, that violation is NEVER also added as a
 generic rule — even if the bundled mxcli/mxlint pack contains the same check.
-A claimed-and-verified check appears once as an ACR rule; a claimed-but-not-verified
+A claimed-and-verified check appears once as an Lint rule; a claimed-but-not-verified
 check appears once in the "in development" section.
 Only UNCLAIMED pack rules become generic. This prevents double counting and duplicate
-work: every check appears exactly once, with ACR as the authoritative source.
+work: every check appears exactly once, with Lint as the authoritative source.
 
 ### Engine precedence on overlap (Phase 3B — multiple engines in one overview)
-Order: **mxcli > ACR > mxlint**. If more than one engine checks (approximately) the same thing,
+Order: **mxcli > Lint > mxlint**. If more than one engine checks (approximately) the same thing,
 the highest in this order wins — mxcli (Mendix's own direction) first, then the
-calibrated ACR rule, mxlint last. The losing variant is suppressed.
+calibrated Lint rule, mxlint last. The losing variant is suppressed.
 DELIBERATE CHOICE: on overlap the overview shows the metadata of the WINNING source, not
-a blend — this may replace the calibrated ACR metadata with that of the winner.
+a blend — this may replace the calibrated Lint metadata with that of the winner.
 
 OVERLAP TABLE (suppressed on the mxlint side; these 6 mxlint Rego rules check
-the same thing as existing ACR rules, so ACR wins and the mxlint variant is dropped):
+the same thing as existing Lint rules, so Lint wins and the mxlint variant is dropped):
 
-| mxlint rule (rulenumber) | ACR rule | subject |
+| mxlint rule (rulenumber) | Lint rule | subject |
 |---|---|---|
 | AnonymousDisabled (001_0001)        | ACR_SEC_GUEST      | anonymous/guest access |
 | DemoUsersDisabled (001_0002)        | ACR_SEC_DEMOUSERS  | demo users |
@@ -350,28 +350,28 @@ remaining mxlint rules pass through normally as `source: "mxlint"`.
 
 ---
 
-## 5. Report (ACR style)
+## 5. Report (Lint style)
 
-ONE overview: ALL improvements (ACR + generic) distributed across the SIX ACR categories
+ONE overview: ALL improvements (Lint + generic) distributed across the SIX Lint categories
 (section 1). The ORIGIN remains always visible (badge per rule + breakdown in the
-count card), so that a developer never mistakes a calibrated ACR rule for an
+count card), so that a developer never mistakes a calibrated Lint rule for an
 engine-generic rule — the separation is now in the badge, not in a separate section.
 
 1. App info (project name, date, Mendix version, # scanned documents).
 2. Count card — counts ALL improvements:
    - per category (the six, section 1),
    - per severity (see severity display below),
-   - per ORIGIN: ACR (calibrated) / MxCLI Mxlint / Mxlint.com.
-3. Improvements — grouped by the six ACR categories (section 1) and WITHIN each
+   - per ORIGIN: Lint (calibrated) / MxCLI Mxlint / Mxlint.com.
+3. Improvements — grouped by the six Lint categories (section 1) and WITHIN each
    category by rule (grouping model below). Each rule shows an
-   ORIGIN badge (ACR / MxCLI / Mxlint.com); ACR rules also show their `acrCode`.
+   ORIGIN badge (Lint / MxCLI / Mxlint.com); Lint rules also show their `acrCode`.
 4. Exclusions separately visible — what is suppressed, by whom, why, since when.
    Applies to both kinds; `kind` remains visible.
 
 ### Category of generic rules — DISPLAY mapping (per-rule mxcli category)
 Generic rules retain INTERNALLY their own engine category (section 2: `Violation.category`
 = the mxcli prefix, unchanged). For the report they are placed in one of the six
-ACR categories. The mapping lives in the render layer; the Violation contract does not change.
+Lint categories. The mapping lives in the render layer; the Violation contract does not change.
 
 CORRECTED (mapping bug): map on the **REAL per-rule mxcli category**, NOT on the
 ruleId prefix. mxcli provides a category per rule (style/quality/correctness/performance/
@@ -381,7 +381,7 @@ e.g. performance (CONV011 NoCommitInLoop), naming (CONV001) and quality rules mi
 causing Performance to be empty (fed only by the non-existent prefix `PERF`) and
 Reliability to have no mapping.
 
-| mxcli category  | ACR category     | reason |
+| mxcli category  | Lint category     | reason |
 |-----------------|------------------|--------|
 | security        | Security         | security |
 | naming          | Project hygiene  | naming conventions → clean project |
@@ -397,7 +397,7 @@ Reliability to have no mapping.
 Unknown/new mxcli category → **Maintainability** (fallback, to be revisited). If the
 mxcli category is missing (e.g. `--list-rules` could not be loaded), a coarse
 prefix fallback applies (SEC→Security, ARCH/DESIGN→Architecture, PERF→Performance, otherwise
-Maintainability). ACR rules (`kind: "acr"`) use their registry category (section 4),
+Maintainability). Lint rules (`kind: "lint"`) use their registry category (section 4),
 not this table.
 
 Verified on TRB (2625 improvements): with this mapping **Reliability = 388** and
@@ -406,15 +406,15 @@ Maintainability 1080 / Architecture 252 / Security 403.
 
 ### Category of mxlint rules — DISPLAY mapping (Phase 3B)
 mxlint (Rego) delivers its own category LITERALLY in the failure message (section 2:
-`Violation.category` remains unchanged). Those categories differ from the six ACR names
+`Violation.category` remains unchanged). Those categories differ from the six Lint names
 and are mapped for the report — again purely in the render layer, contract unchanged:
 
-| mxlint category  | ACR category    | reason |
+| mxlint category  | Lint category    | reason |
 |------------------|-----------------|--------|
 | Security         | Security        | security |
 | Maintainability  | Maintainability | direct |
 | Performance      | Performance     | performance |
-| **Accessibility**| **Maintainability** | **deliberate choice: no own ACR category → maintainability** |
+| **Accessibility**| **Maintainability** | **deliberate choice: no own Lint category → maintainability** |
 | Microflows       | Maintainability | microflow structure → maintainability |
 | Complexity       | Maintainability | complexity → maintainability |
 | Error            | Reliability     | runtime errors ≈ reliability |
@@ -423,13 +423,13 @@ Unknown mxlint category → **Maintainability** (fallback). Present on TRB:
 Maintainability, Accessibility (→ Maintainability), Security.
 
 ### Severity display
-- ACR rules: their ACR severity (Minor/Major/Critical/Blocker, from the registry, section 4).
+- Lint rules: their Lint severity (Minor/Major/Critical/Blocker, from the registry, section 4).
 - Generic rules: LITERALLY the mxcli engine severity (error/warning/info/hint) —
-  NOT translated to an ACR severity (no invented severity). Both are shown as
+  NOT translated to an Lint severity (no invented severity). Both are shown as
   severity chips in the same way.
-- An ACR severity outside the four (e.g. `TODO-confirm`) falls under "To be confirmed".
+- An Lint severity outside the four (e.g. `TODO-confirm`) falls under "To be confirmed".
 
-### GROUPING MODEL — PER RULE, not per instance (like ACR's "Summary per rule"):
+### GROUPING MODEL — PER RULE, not per instance (like Lint's "Summary per rule"):
 - Each rule appears EXACTLY ONCE as a rule entry (rule id/acrCode,
   origin, severity, total number of improvements).
 - Below it, expandable/nested, ALL instances matching that rule
@@ -437,8 +437,8 @@ Maintainability, Accessibility (→ Maintainability), Security.
 - A rule with 12 instances is one rule entry with 12 nested cases —
   NOT 12 separate rule entries. A rule with no instances is not shown.
 
-Exports: HTML (primary, ACR look), CSV and JSON (for CI/pipeline). The count card counts
-all improvements; the origin breakdown keeps visible what is calibrated ACR
+Exports: HTML (primary, Lint look), CSV and JSON (for CI/pipeline). The count card counts
+all improvements; the origin breakdown keeps visible what is calibrated Lint
 (`verified`) and what is engine-generic — so the numbers are both honest and complete.
 
 ---
@@ -446,13 +446,13 @@ all improvements; the origin breakdown keeps visible what is calibrated ACR
 ## 6. MVP build order (contract first, then integrations)
 
 1. Extension skeleton in Studio Pro (TypeScript / Web Extensibility API).
-2. CLEVR ACR pane with HARDCODED example JSON in ACR layout
+2. CLEVR Lint pane with HARDCODED example JSON in Lint layout
    (proves the UI/report before any engine integration).
 3. Integrate engine 1: `mxcli lint --format json` → normaliser → pane.
    FIRST VERIFY that this JSON output exists and is stable (see section 7).
 4. Integrate engine 2: MxLint/Rego CLI → normaliser → pane.
    FIRST VERIFY that a Rego flow-graph rule is feasible (see section 7).
-5. Exclusions (read/write .clevr-acr/exclusions.json + fingerprint logic).
+5. Exclusions (read/write .clevr-lint/exclusions.json + fingerprint logic).
 6. Report export (HTML/CSV/JSON).
 7. Only THEN: migrate rules according to Green/Blue/Orange/Red.
 
@@ -490,7 +490,7 @@ open but is only relevant for engine 2. See the Phase 2 plan in section 9.
 
 ## 8. What is already done (Blue tier, verified)
 
-11 verified .star rules (see acr-mxlint-voortgang.md) are the first
+11 verified .star rules (see lint-mxlint-voortgang.md) are the first
 `verified` entries in the registry. The shell does not need to rebuild those;
 they fill the Blue column and immediately prove the mxcli engine integration with real data.
 
@@ -528,12 +528,12 @@ passing proven end-to-end). The Phase 2 steps:
 2. Run `mxcli lint --format json` on TRB from C# and display the raw JSON in the pane
    (proves the real engine call + that the schema matches step 1).
 3. Normaliser IN C# (engine JSON → `Violation[]` per section 2): map mxcli JSON to
-   the data contract. Determine `kind` per violation via the ACR registry match (section 4):
-   claimed+verified → `kind: "acr"` with ACR metadata; unclaimed pack rule →
+   the data contract. Determine `kind` per violation via the Lint registry match (section 4):
+   claimed+verified → `kind: "lint"` with Lint metadata; unclaimed pack rule →
    `kind: "generic"` with own category/severity + `source`. Calculate `fingerprint` and
    apply exclusions (section 3) — all in C#, for both kinds.
 4. Violations in the C#-hosted pane: replace HardcodedViolationSource with the
-   backend source, so that the real (normalised) mxcli violations appear in the ACR layout.
+   backend source, so that the real (normalised) mxcli violations appear in the Lint layout.
    The web layer does not change.
 5. Only THEN: engine 2 (mxlint-cli, .rego — assumption 3) through the same normaliser,
    exclusions UI (section 3), report export (section 5), rule migration
