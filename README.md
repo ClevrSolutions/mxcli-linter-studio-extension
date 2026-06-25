@@ -70,7 +70,7 @@ See [`dist/README.md`](dist/README.md) for the step-by-step installation guide.
 
 ## Documentation
 
-- [`docs/handover.md`](docs/handover.md) — Architecture overview and project handover (Dutch)
+- [`docs/handover.md`](docs/handover.md) — Architecture overview and project handover
 - [`docs/spec.md`](docs/spec.md) — Functional specification: ACR categories, `Violation` data contract, rule registry
 - [`docs/status.md`](docs/status.md) — Current rule inventory, known issues, deferred items
 - [`docs/dev-guide.md`](docs/dev-guide.md) — Developer guide for the extension source

@@ -1,99 +1,99 @@
-# CLEVR ACR Shell — functionele specificatie & datacontract
+# CLEVR ACR Shell — functional specification & data contract
 
-Doel: een CLEVR Studio Pro-extensie die lint-violations samenvoegt en presenteert zoals de oude ACR —
-zelfde categorieën, exclusions met reden, en een ACR-stijl rapport.
+Goal: a CLEVR Studio Pro extension that aggregates and presents lint violations like the old ACR —
+same categories, exclusions with reason, and an ACR-style report.
 
-Dit document is het KOMPAS voor wie de extensie bouwt (Claude Code / Codex).
-De bouwer codeert tegen dit contract; hij verzint formaten of categorieën niet zelf.
-De mens (Michel/CLEVR) bewaakt de functionele standaard: categorieën, reporting,
-exclusions, en de regel "een rule telt pas als verified".
-
----
-
-## ⚠️ EINDSTAND (juni 2026) — lees dit eerst; het gaat boven de historische delen hieronder
-
-Dit document is geschreven in de **twee-engine-fase** (mxcli .star + mxlint .rego). **De eindstand is anders.**
-Het **datacontract is nog steeds geldig en leidend**; alleen de engine-/fasebeschrijvingen zijn historisch.
-
-**WAT NOG KLOPT (gebruik dit als contract):**
-- **§1** ACR-categorieën (zes) & severities (Minor<Major<Critical<Blocker).
-- **§2** Het genormaliseerde `Violation`-formaat — `kind: "acr" | "generic"`, alle velden, `documentType`-canonicalisatie.
-- **§3** Exclusions + de fingerprint-strategie (`sha1(ruleId|documentQualifiedName|elementName)`).
-- **§4** Rule registry-concept + de gouden regel ("één ruleId = één bron") + de **"telt pas als verified"**-discipline + cross-engine-ontdubbeling (claim-tabel).
-- **§5** Rapport (per-regel-groepering, herkomst-badge, display-mapping van mxcli-categorie → ACR-categorie).
-
-**WAT IS ACHTERHAALD (historisch — zie `CLEVR-ACR-overdracht.md` + `clevr-acr-shell-status.md` voor de echte stand):**
-- **mxlint/.rego is VOLLEDIG verwijderd.** Eén engine: **mxcli** (Apache-2.0, v0.12.0). Geen tweede engine, geen Rego, geen `modelsource/`-YAML-export, geen mxlint-binary/-download/-bootstrap.
-- **`source`-waarden:** in de praktijk alleen `"clevr-acr"` (ACR-regels) en `"mxcli"` (generiek). `"mxlint"` komt niet meer voor (de UI-takken ervoor blijven als dode, onschadelijke guards).
-- **`packs.json`** met een mxlint-pack is achterhaald; alleen mxcli's bundled regels zijn de generieke bron.
-- **De overlap-/onderdrukkingstabel (§4, 6 mxlint-twins)** is vervangen door de **claim-tabel + twee tripwire-tests** (mxcli-vs-CLEVR-ontdubbeling, intern).
-- **De databronnen (§3-historisch, §7, §9)** zijn nu allemaal mxcli: `lint --format json`, `CATALOG.*` (SQLite), `describe <type>`, `describe projectsecurity`/`userrole`, `project-tree`. GEEN modelsource/YAML.
-- **De MVP-/fasebouwvolgorde (§6, §9)** is afgerond; het product is live.
-- **Regels:** 12 gemigreerd (7 catalog + 5 describe), 4 gedefereerd aan mxcli's eigen regels, security via describe. Twee scan-modi (snel/diep) met **progressief streamen** van findings. Drie geparkeerde heractiveringen (SEC-006; MAINT-015/REL-003; severity-kalibratie). Details in de overdracht + status.
+This document is the COMPASS for whoever builds the extension (Claude Code / Codex).
+The builder codes against this contract; they do not invent formats or categories themselves.
+The human (Michel/CLEVR) maintains the functional standard: categories, reporting,
+exclusions, and the rule "a rule only counts once verified".
 
 ---
 
-## 0. Architectuur (samenvatting) — HYBRIDE C# + TypeScript
+## ⚠️ FINAL STATE (June 2026) — read this first; it supersedes the historical sections below
 
-GECORRIGEERD na verkenning, BEWEZEN door de C#-spike (juni 2026): een pure
-web/TypeScript-extensie kan GEEN extern proces starten (de web-UI draait in een
-sandboxed webview zonder procesexecutie-API). Een extern CLI-proces draaien moet
-via een C#-backendcomponent (.NET 10, Process.Start). De C#-backend HOST bovendien
-de web-UI (Studio Pro's ingebouwde webserver, WebServerExtension) en communiceert
-ermee via de WebView-message-bus (IWebView.PostMessage ⇄ window.chrome.webview),
-NIET via studioPro.ui.messagePassing. De extensie is dus hybride:
+This document was written during the **two-engine phase** (mxcli .star + mxlint .rego). **The final state is different.**
+The **data contract is still valid and authoritative**; only the engine/phase descriptions are historical.
 
-    CLEVR ACR Shell (Studio Pro extension — C#-host + web-UI in de webview)
+**WHAT STILL APPLIES (use this as the contract):**
+- **§1** ACR categories (six) & severities (Minor<Major<Critical<Blocker).
+- **§2** The normalised `Violation` format — `kind: "acr" | "generic"`, all fields, `documentType` canonicalisation.
+- **§3** Exclusions + the fingerprint strategy (`sha1(ruleId|documentQualifiedName|elementName)`).
+- **§4** Rule registry concept + the golden rule ("one ruleId = one source") + the **"only counts once verified"** discipline + cross-engine deduplication (claim table).
+- **§5** Report (per-rule grouping, origin badge, display mapping of mxcli category → ACR category).
+
+**WHAT IS OUTDATED (historical — see `CLEVR-ACR-overdracht.md` + `clevr-acr-shell-status.md` for the actual state):**
+- **mxlint/.rego has been COMPLETELY removed.** One engine: **mxcli** (Apache-2.0, v0.12.0). No second engine, no Rego, no `modelsource/` YAML export, no mxlint binary/download/bootstrap.
+- **`source` values:** in practice only `"clevr-acr"` (ACR rules) and `"mxcli"` (generic). `"mxlint"` no longer occurs (the UI branches for it remain as dead, harmless guards).
+- **`packs.json`** with an mxlint pack is outdated; only mxcli's bundled rules are the generic source.
+- **The overlap/suppression table (§4, 6 mxlint twins)** has been replaced by the **claim table + two tripwire tests** (mxcli-vs-CLEVR deduplication, internal).
+- **The data sources (§3-historical, §7, §9)** are now all mxcli: `lint --format json`, `CATALOG.*` (SQLite), `describe <type>`, `describe projectsecurity`/`userrole`, `project-tree`. NO modelsource/YAML.
+- **The MVP/phase build order (§6, §9)** has been completed; the product is live.
+- **Rules:** 12 migrated (7 catalog + 5 describe), 4 deferred to mxcli's own rules, security via describe. Two scan modes (fast/deep) with **progressive streaming** of findings. Three parked reactivations (SEC-006; MAINT-015/REL-003; severity calibration). Details in the handover + status.
+
+---
+
+## 0. Architecture (summary) — HYBRID C# + TypeScript
+
+CORRECTED after exploration, PROVEN by the C# spike (June 2026): a pure
+web/TypeScript extension CANNOT start an external process (the web UI runs in a
+sandboxed webview without a process execution API). Running an external CLI process must
+go through a C# backend component (.NET 10, Process.Start). The C# backend also HOSTS
+the web UI (Studio Pro's built-in web server, WebServerExtension) and communicates
+with it via the WebView message bus (IWebView.PostMessage ⇄ window.chrome.webview),
+NOT via studioPro.ui.messagePassing. The extension is therefore hybrid:
+
+    CLEVR ACR Shell (Studio Pro extension — C# host + web UI in the webview)
        │
-       ├─ C#-backend (.NET 10 .dll, in-process)       ← procesexecutie + UI-hosting
-       │    ├─ DockablePaneExtension  → registreert de pane (Id + Open())
-       │    ├─ MenuExtension          → opent de pane via IDockingWindowService.OpenPane
-       │    ├─ WebServerExtension     → serveert de ui-render-bundle uit wwwroot
+       ├─ C# backend (.NET 10 .dll, in-process)       ← process execution + UI hosting
+       │    ├─ DockablePaneExtension  → registers the pane (Id + Open())
+       │    ├─ MenuExtension          → opens the pane via IDockingWindowService.OpenPane
+       │    ├─ WebServerExtension     → serves the ui-render-bundle from wwwroot
        │    ├─ engine: mxcli   → Process.Start "mxcli lint --format json" (.star)
        │    ├─ engine: mxlint  → Process.Start "mxlint-cli lint" (.rego, OPA)
-       │    │                     output via mxlint.yaml (jsonFile / xunitReport), GEEN SARIF
-       │    └─ stuurt violations naar de webview via de WebView-message-bus
+       │    │                     output via mxlint.yaml (jsonFile / xunitReport), NO SARIF
+       │    └─ sends violations to the webview via the WebView message bus
        │       (IWebView.PostMessage  ⇄  window.chrome.webview)
        │
-       └─ web-UI (de Fase 1 ui-render-bundle, in de door C# gehoste webview)  ← de UI
-            ├─ normalizer      → mapt engine-output naar EEN Violation-formaat (sectie 2)
-            ├─ rule registry   → bewaakt: elke ruleId een engine (sectie 4)
-            ├─ exclusions      → suppress met reden + fingerprint (sectie 3)
-            └─ report          → ACR-stijl HTML/CSV/JSON (sectie 5)
+       └─ web UI (the Phase 1 ui-render-bundle, in the C#-hosted webview)  ← the UI
+            ├─ normalizer      → maps engine output to ONE Violation format (section 2)
+            ├─ rule registry   → enforces: every ruleId to one engine (section 4)
+            ├─ exclusions      → suppress with reason + fingerprint (section 3)
+            └─ report          → ACR-style HTML/CSV/JSON (section 5)
 
-TWEE GESCHEIDEN MESSAGING-BRUGGEN (niet verwarren — dit bepaalt de architectuur):
-- WebView-message-bus (window.chrome.webview ⇄ IWebView): C# ↔ web-content IN een
-  door C# gehoste webview. DIT is de brug tussen engine-output en de UI.
-- studioPro.ui.messagePassing (web ↔ web): alleen tussen web-entrypoints BINNEN een
-  web-extensie. C# kan hier NIET in.
-Gevolg: C# kan NIET in het losse Fase 1-TS-paneel (studioPro.ui.panes) praten. Het
-violations-paneel wordt daarom in Fase 2 C#-GEHOST; het serveert de bestaande Fase 1
-ui-render-bundle als content. De render-laag (consumeert Violation[] via een
-ViolationSource) hoeft niet te wijzigen — alleen de databron verandert.
+TWO SEPARATE MESSAGING BRIDGES (do not confuse — this determines the architecture):
+- WebView message bus (window.chrome.webview ⇄ IWebView): C# ↔ web content IN a
+  C#-hosted webview. THIS is the bridge between engine output and the UI.
+- studioPro.ui.messagePassing (web ↔ web): only between web entry points WITHIN a
+  web extension. C# CANNOT participate here.
+Consequence: C# CANNOT communicate with the standalone Phase 1 TS pane (studioPro.ui.panes).
+The violations pane is therefore C#-HOSTED in Phase 2; it serves the existing Phase 1
+ui-render-bundle as content. The render layer (consumes Violation[] via a
+ViolationSource) does not need to change — only the data source changes.
 
-Niet afhankelijk worden van de MxLint-UI; alleen de engine/CLI gebruiken, alles in
-het eigen CLEVR-paneel tonen.
+Do not depend on the MxLint UI; use only the engine/CLI, show everything in
+the CLEVR pane.
 
-LET OP twee engines, twee tools (niet verwarren):
-- mxcli (mendixlabs/mxcli): de .star/Starlark-engine, ondersteunt --format sarif.
-- mxlint-cli (github.com/mxlint/mxlint-cli): de .rego/OPA-engine, output via
-  mxlint.yaml (jsonFile + xunitReport XML), GEEN SARIF en GEEN --format-vlag.
+NOTE two engines, two tools (do not confuse):
+- mxcli (mendixlabs/mxcli): the .star/Starlark engine, supports --format sarif.
+- mxlint-cli (github.com/mxlint/mxlint-cli): the .rego/OPA engine, output via
+  mxlint.yaml (jsonFile + xunitReport XML), NO SARIF and NO --format flag.
 
-BEWEZEN door de spike (Studio Pro 11.10, juni 2026): een C#-extensie startte via
-Process.Start het commando `cmd /c echo test` (exitCode 0, stdout "test") en stuurde
-de output via de WebView-message-bus naar het pane, dat het als ruwe tekst toonde.
-Procesexecutie én message passing werken dus. Bevestigde feiten (zie csharp-spike/):
-- Runtime: .NET 10 (de ExtensionsAPI 11.10.0 vereist net10.0; net8.0 wordt NIET
-  ondersteund — NU1202).
-- Pane openen: er is GEEN ViewMenuCaption in 11.10; de route is een MenuExtension die
-  IDockingWindowService.OpenPane(paneId) aanroept (pane verschijnt onder Extensions).
-Fase 1 (schil + hardcoded JSON) hing hier niet van af en is al af.
+PROVEN by the spike (Studio Pro 11.10, June 2026): a C# extension started via
+Process.Start the command `cmd /c echo test` (exitCode 0, stdout "test") and sent
+the output via the WebView message bus to the pane, which displayed it as raw text.
+Process execution and message passing both work. Confirmed facts (see csharp-spike/):
+- Runtime: .NET 10 (the ExtensionsAPI 11.10.0 requires net10.0; net8.0 is NOT
+  supported — NU1202).
+- Opening the pane: there is NO ViewMenuCaption in 11.10; the route is a MenuExtension that
+  calls IDockingWindowService.OpenPane(paneId) (pane appears under Extensions).
+Phase 1 (shell + hardcoded JSON) did not depend on this and is already done.
 
 ---
 
-## 1. ACR-categorieën & severities (vastgelegd — niet zelf verzinnen)
+## 1. ACR categories & severities (fixed — do not invent your own)
 
-Categorieën (exact deze zes, zoals ACR ze toont):
+Categories (exactly these six, as ACR displays them):
 - Project hygiene
 - Maintainability
 - Performance
@@ -101,108 +101,108 @@ Categorieën (exact deze zes, zoals ACR ze toont):
 - Reliability
 - Security
 
-Severities (oplopend): Minor < Major < Critical < Blocker.
-(Mapping vanuit engine-severity: een .star/.rego-regel declareert zijn ACR-severity
-in metadata; de shell vertaalt NIET zelf, maar leest het uit de regel-metadata.)
+Severities (ascending): Minor < Major < Critical < Blocker.
+(Mapping from engine severity: a .star/.rego rule declares its ACR severity
+in metadata; the shell does NOT translate it itself, but reads it from the rule metadata.)
 
-LET OP — scope: deze zes categorieën en vier severities gelden voor ACR-regels
-(`kind: "acr"`, sectie 2). Generieke best-practice-regels (`kind: "generic"`,
-bundled mxcli / mxlint.com) behouden hun EIGEN engine-categorie en -severity en
-zijn NIET beperkt tot deze lijst.
+NOTE — scope: these six categories and four severities apply to ACR rules
+(`kind: "acr"`, section 2). Generic best-practice rules (`kind: "generic"`,
+bundled mxcli / mxlint.com) retain their OWN engine category and severity and
+are NOT restricted to this list.
 
 ---
 
-## 2. Genormaliseerd Violation-formaat (het datacontract)
+## 2. Normalised Violation format (the data contract)
 
-Beide engines worden naar exact dit JSON-object gemapt. Dit is de enige vorm die
-de UI, exclusions en het rapport kennen.
+Both engines are mapped to exactly this JSON object. This is the only form that
+the UI, exclusions, and the report know.
 
-Er zijn TWEE soorten violations, onderscheiden door `kind` (de shell toont ALLE
-beschikbare regels, maar houdt de ACR-identiteit scherp gescheiden):
-- `kind: "acr"`     — een CLEVR ACR-regel. Heeft `acrCode`; `category`/`severity`
-                      zijn exact één uit sectie 1 en komen UIT het rule registry
-                      (sectie 4), niet uit de engine.
-- `kind: "generic"` — een generieke best-practice-regel uit een engine-pack (bundled
-                      mxcli of mxlint.com). GEEN `acrCode`; `category` en `severity`
-                      zijn de EIGEN waarden van de engine (vrije tekst, NIET beperkt
-                      tot sectie 1). `source` toont de herkomst in de UI.
+There are TWO kinds of violations, distinguished by `kind` (the shell shows ALL
+available rules, but keeps the ACR identity sharply separated):
+- `kind: "acr"`     — a CLEVR ACR rule. Has `acrCode`; `category`/`severity`
+                      are exactly one from section 1 and come FROM the rule registry
+                      (section 4), not from the engine.
+- `kind: "generic"` — a generic best-practice rule from an engine pack (bundled
+                      mxcli or mxlint.com). NO `acrCode`; `category` and `severity`
+                      are the engine's OWN values (free text, NOT restricted
+                      to section 1). `source` shows the origin in the UI.
 
-Verplicht (beide soorten): ruleId, kind, source, category, severity, documentType,
-documentQualifiedName, reason, fingerprint. ACR-only verplicht: acrCode.
-Optioneel: elementName, suggestion, documentationUrl, documentId.
+Required (both kinds): ruleId, kind, source, category, severity, documentType,
+documentQualifiedName, reason, fingerprint. ACR-only required: acrCode.
+Optional: elementName, suggestion, documentationUrl, documentId.
 
-`documentId` is de stabiele Mendix document-GUID (uit de engine, bv. mxcli). Bruikbaar
-voor navigatie (open het document) en als robuustere fingerprint-basis later. Optioneel
-omdat niet elke engine 'm levert.
+`documentId` is the stable Mendix document GUID (from the engine, e.g. mxcli). Useful
+for navigation (open the document) and as a more robust fingerprint basis later. Optional
+because not every engine provides it.
 
-`source`-waarden: `"clevr-acr"` | `"mxcli"` (bundled best practices) | `"mxlint"`
-(mxlint.com). De `engine`-property (`"star"`|`"rego"`) blijft ALLEEN voor debug; de
-UI toont 'm nooit. Voor generieke regels toont de UI in plaats daarvan `source`, zodat
-de gebruiker een MPR-regel niet voor een ACR-regel aanziet.
+`source` values: `"clevr-acr"` | `"mxcli"` (bundled best practices) | `"mxlint"`
+(mxlint.com). The `engine` property (`"star"`|`"rego"`) is kept ONLY for debug; the
+UI never displays it. For generic rules the UI shows `source` instead, so that
+the user does not mistake an MPR rule for an ACR rule.
 
-ACR-regel (`kind: "acr"`):
+ACR rule (`kind: "acr"`):
 ```json
 {
-  "ruleId": "CLEVR-PERF-014",          // CLEVR-eigen stabiele id (sectie 4)
+  "ruleId": "CLEVR-PERF-014",          // CLEVR's own stable id (section 4)
   "kind": "acr",
   "source": "clevr-acr",
-  "acrCode": "MicroflowDbActionsAtEnd",// originele ACR-rulenaam (traceerbaarheid)
-  "engine": "star",                    // ALLEEN debug
-  "category": "Performance",           // exact één uit sectie 1 (uit registry)
-  "severity": "Major",                 // exact één uit sectie 1 (uit registry)
+  "acrCode": "MicroflowDbActionsAtEnd",// original ACR rule name (traceability)
+  "engine": "star",                    // debug ONLY
+  "category": "Performance",           // exactly one from section 1 (from registry)
+  "severity": "Major",                 // exactly one from section 1 (from registry)
   "documentType": "Microflow",
   "documentQualifiedName": "TRB.SUB_X",
   "elementName": "",
   "reason": "Database action is not at the end of the microflow.",
   "suggestion": "Move commit/change actions to the end.",
-  "fingerprint": "sha1:...",           // stabiele hash (sectie 3)
+  "fingerprint": "sha1:...",           // stable hash (section 3)
   "documentationUrl": "https://.../CLEVR-PERF-014",
-  "documentId": "c0ffee00-1234-5678-9abc-def012345678" // optioneel: Mendix document-GUID
+  "documentId": "c0ffee00-1234-5678-9abc-def012345678" // optional: Mendix document GUID
 }
 ```
 
-Generieke regel (`kind: "generic"`, bundled mxcli of mxlint):
+Generic rule (`kind: "generic"`, bundled mxcli or mxlint):
 ```json
 {
-  "ruleId": "mxcli:MPR-0042",          // stabiele ENGINE-regel-id (geen CLEVR-id)
+  "ruleId": "mxcli:MPR-0042",          // stable ENGINE rule id (no CLEVR id)
   "kind": "generic",
-  "source": "mxcli",                   // getoond in de UI (herkomst)
-  "engine": "star",                    // ALLEEN debug
-  "category": "MPR",                   // EIGEN engine-categorie (vrije tekst, niet sectie 1)
-  "severity": "warning",               // EIGEN engine-severity (vrije tekst, niet sectie 1)
+  "source": "mxcli",                   // displayed in the UI (origin)
+  "engine": "star",                    // debug ONLY
+  "category": "MPR",                   // OWN engine category (free text, not section 1)
+  "severity": "warning",               // OWN engine severity (free text, not section 1)
   "documentType": "Microflow",
   "documentQualifiedName": "TRB.SUB_Y",
   "elementName": "",
   "reason": "...",
   "fingerprint": "sha1:...",
-  "documentId": "..."                  // optioneel: Mendix document-GUID
-  // GEEN acrCode; suggestion/documentationUrl optioneel
+  "documentId": "..."                  // optional: Mendix document GUID
+  // NO acrCode; suggestion/documentationUrl optional
 }
 ```
 
-Exclusions (sectie 3) en de fingerprint werken identiek voor BEIDE soorten
-(de fingerprint gebruikt ruleId — voor generiek de engine-regel-id).
+Exclusions (section 3) and the fingerprint work identically for BOTH kinds
+(the fingerprint uses ruleId — for generic the engine rule id).
 
-### documentType — canonieke waarden (BEIDE engines mappen hiernaartoe)
-De normalizer canonicaliseert de engine-`documentType` naar exact deze PascalCase-vorm,
-zodat de UI consistent groepeert/filtert en .star/.rego naar één vorm convergeren
-(bv. mxcli `"entity"` → `"Entity"`, `"microflow"` → `"Microflow"`). Canonieke lijst:
+### documentType — canonical values (BOTH engines map to these)
+The normaliser canonicalises the engine `documentType` to exactly this PascalCase form,
+so that the UI groups/filters consistently and .star/.rego converge to one form
+(e.g. mxcli `"entity"` → `"Entity"`, `"microflow"` → `"Microflow"`). Canonical list:
 
     Entity, Association, Microflow, Nanoflow, Page, Snippet, Layout, Module,
     Enumeration, ProjectSecurity, ModuleSecurity, Rule, Constant, ScheduledEvent,
     PublishedRestService, ConsumedRestService, MessageDefinition, Image, Document,
     JavaAction, JavaScriptAction
 
-De lijst is uitbreidbaar. Een ENGINE-waarde die hier (case-insensitief) niet in staat,
-wordt met een hoofdletter-begin doorgegeven (bv. `"widget"` → `"Widget"`) en is als
-afwijking te signaleren, zodat een nieuw/onbekend type de groepering niet stil breekt.
+The list is extensible. An ENGINE value not present here (case-insensitive) is passed
+through with an initial capital (e.g. `"widget"` → `"Widget"`) and can be flagged as a
+deviation, so that a new/unknown type does not silently break grouping.
 
 ---
 
-## 3. Exclusions — suppress met reden (kritieke ontwerpbeslissing)
+## 3. Exclusions — suppress with reason (critical design decision)
 
-Opslag: `$project/.clevr-acr/exclusions.json` (in de projectmap, mee te committen
-zodat het team dezelfde exclusions deelt).
+Storage: `$project/.clevr-acr/exclusions.json` (in the project directory, to be committed
+so the team shares the same exclusions).
 
 ```json
 {
@@ -210,53 +210,53 @@ zodat het team dezelfde exclusions deelt).
     {
       "ruleId": "CLEVR-PERF-014",
       "fingerprint": "sha1:ab12...",
-      "reason": "Bewuste bulk-migratie, wordt apart afgehandeld in EPIC-123.",
+      "reason": "Deliberate bulk migration, handled separately in EPIC-123.",
       "excludedBy": "michel@clevr.nl",
       "date": "2026-06-09",
-      "expiry": "2026-12-31"               // optioneel; daarna weer actief
+      "expiry": "2026-12-31"               // optional; active again after this date
     }
   ]
 }
 ```
 
-### Fingerprint-strategie (het subtiele deel — goed doordenken)
-Doel: een uitgesloten violation blijft uitgesloten bij irrelevante modelwijzigingen,
-maar een NIEUWE/ANDERE violation wordt NIET per ongeluk mee-onderdrukt.
+### Fingerprint strategy (the subtle part — think carefully)
+Goal: an excluded violation remains excluded after irrelevant model changes,
+but a NEW/DIFFERENT violation is NOT accidentally suppressed along with it.
 
-Aanbevolen fingerprint = sha1 van de stabiele identiteit, NIET van vluchtige tekst:
+Recommended fingerprint = sha1 of the stable identity, NOT of volatile text:
     fingerprint = sha1( ruleId + "|" + documentQualifiedName + "|" + elementName )
 
-Bewust WEL opnemen: ruleId, het gekwalificeerde document, en het subelement
-(widget/attribuut) — dat is de identiteit van "wat" wordt geflagd.
-Bewust NIET opnemen: de `reason`-tekst, drempelgetallen, of tellingen — die
-veranderen bij elke modelaanpassing en zouden de exclusion laten "weglekken".
+Deliberately INCLUDED: ruleId, the qualified document, and the sub-element
+(widget/attribute) — that is the identity of "what" is being flagged.
+Deliberately EXCLUDED: the `reason` text, threshold numbers, or counts — these
+change with every model modification and would cause the exclusion to "drift away".
 
-Gevolgen die de bouwer expliciet moet afhandelen:
-- HERNOEMEN van een element verandert documentQualifiedName → fingerprint verschuift
-  → exclusion vervalt en de violation komt terug. Dit is CORRECT (het is feitelijk
-  een ander element), maar moet in de UI zichtbaar zijn als "exclusion no longer
-  matches" i.p.v. stil verdwijnen.
-- Een exclusion die NERGENS meer matcht (stale) moet de UI tonen als "stale
-  exclusion" zodat het team 'm kan opruimen — niet stil negeren.
-- Model-drift (element toegevoegd ná een scan) is GEEN exclusion-zaak maar een
-  nieuwe violation; toon 'm gewoon. (cf. Tabsnippet_Editable_AdL-casus.)
+Consequences the builder must explicitly handle:
+- RENAMING an element changes documentQualifiedName → fingerprint shifts
+  → exclusion lapses and the violation reappears. This is CORRECT (it is effectively
+  a different element), but must be visible in the UI as "exclusion no longer
+  matches" rather than silently disappearing.
+- An exclusion that no longer matches ANYTHING (stale) must be shown by the UI as a
+  "stale exclusion" so the team can clean it up — do not silently ignore it.
+- Model drift (element added after a scan) is NOT an exclusion matter but a
+  new violation; just show it. (cf. the Tabsnippet_Editable_AdL case.)
 
 ---
 
-## 4. Rule registry — ACR-identiteit afdwingen, generieke regels toelaten
+## 4. Rule registry — enforce ACR identity, allow generic rules
 
-Het registry kent twee rollen:
-- **(A) ACR-regels** — expliciet geregistreerd, met afgedwongen gouden regel. Worden
+The registry has two roles:
+- **(A) ACR rules** — explicitly registered, with the golden rule enforced. Become
   `kind: "acr"`.
-- **(B) Generieke packs** — aangevinkte best-practice-packs (bundled mxcli, mxlint.com)
-  waarvan de regels ONGEWIJZIGD (met eigen categorie/severity) worden doorgelaten als
+- **(B) Generic packs** — enabled best-practice packs (bundled mxcli, mxlint.com)
+  whose rules are passed through UNCHANGED (with their own category/severity) as
   `kind: "generic"`.
 
-### (A) ACR-regels — `$project/.clevr-acr/rules.json`
-Eén CLEVR-ruleId heeft precies ÉÉN source of truth (één engine). Dit wordt AFGEDWONGEN.
-Elke entry bindt een engine-regel aan ACR-metadata. `engineRuleKey` is de identifier
-waarmee de engine die regel rapporteert — hiermee herkent de normalizer welke
-engine-violation een ACR-regel is.
+### (A) ACR rules — `$project/.clevr-acr/rules.json`
+One CLEVR ruleId has exactly ONE source of truth (one engine). This is ENFORCED.
+Each entry binds an engine rule to ACR metadata. `engineRuleKey` is the identifier
+with which the engine reports that rule — this is how the normaliser recognises which
+engine violation is an ACR rule.
 ```json
 {
   "rules": [
@@ -272,30 +272,30 @@ engine-violation een ACR-regel is.
 }
 ```
 
-De shell MOET bij het laden valideren (de gouden regel, ongewijzigd):
-- geen twee entries met dezelfde ruleId,
-- geen ruleId die zowel een actieve .star als .rego heeft,
-- geen twee ACR-entries die dezelfde `engineRuleKey` claimen,
-- alleen regels met `"status": "verified"` tellen mee in het ACR-hoofdrapport;
-  `todo`/`approximate` worden apart getoond (niet als harde violation gemengd).
+The shell MUST validate on load (the golden rule, unchanged):
+- no two entries with the same ruleId,
+- no ruleId that has both an active .star and .rego,
+- no two ACR entries claiming the same `engineRuleKey`,
+- only rules with `"status": "verified"` count in the main ACR report;
+  `todo`/`approximate` are shown separately (not mixed in as hard violations).
 
-`status` waarden: verified | needs-threshold | approximate | todo | out-of-reach.
-(Dit is de "een rule telt pas als verified"-discipline, in het datamodel verankerd.)
+`status` values: verified | needs-threshold | approximate | todo | out-of-reach.
+(This is the "a rule only counts once verified" discipline, anchored in the data model.)
 
-`ruleId`-schema: `CLEVR-<CAT>-<NNN>`, waarbij CAT de ACR-categorie codeert
+`ruleId` schema: `CLEVR-<CAT>-<NNN>`, where CAT encodes the ACR category
 (MAINT = Maintainability, HYG = Project hygiene, SEC = Security, PERF = Performance,
-ARCH = Architecture, REL = Reliability), per categorie oplopend genummerd vanaf 001.
-`acrCode` is de originele rule-naam (traceerbaarheid); voor onze eigen .star-regels is
-dat het .star rule-id (= engineRuleKey), behalve waar een beschrijvende naam bestaat
-(bv. ACR_ENT_ATTRS → "EntityAmountAttributes").
-Severity-bron: de ACR-grondwaarheid (count-export) wint boven eerdere aannames — bv.
-ACR_ENT_ATTRS is Minor (Maintainability), niet Major. Een regel zonder baseline-rij
-(0 violations op TRB, zoals de vier Security-regels) krijgt severity `"TODO-confirm"`:
-niet verzinnen, wel `verified` (de regel werkt).
+ARCH = Architecture, REL = Reliability), numbered ascending from 001 per category.
+`acrCode` is the original rule name (traceability); for our own .star rules this is
+the .star rule id (= engineRuleKey), except where a descriptive name exists
+(e.g. ACR_ENT_ATTRS → "EntityAmountAttributes").
+Severity source: the ACR ground truth (count export) overrides earlier assumptions — e.g.
+ACR_ENT_ATTRS is Minor (Maintainability), not Major. A rule without a baseline row
+(0 violations on TRB, such as the four Security rules) gets severity `"TODO-confirm"`:
+do not invent one, but mark as `verified` (the rule works).
 
-### (B) Generieke packs — `$project/.clevr-acr/packs.json`
-Lijst van aangevinkte packs; hun regels komen ONGEWIJZIGD binnen als `kind: "generic"`
-en worden NIET per stuk vooraf geregistreerd (het zijn er te veel). Aan/uit per pack:
+### (B) Generic packs — `$project/.clevr-acr/packs.json`
+List of enabled packs; their rules arrive UNCHANGED as `kind: "generic"`
+and are NOT registered individually in advance (there are too many). On/off per pack:
 ```json
 {
   "packs": [
@@ -305,244 +305,242 @@ en worden NIET per stuk vooraf geregistreerd (het zijn er te veel). Aan/uit per 
 }
 ```
 
-### Normalizer-mapping (beide soorten) — draait in C# (sectie 9)
-Voor ELKE binnenkomende engine-violation:
-1. Zoek de engine-regel-key op in de ACR-registry (A):
-   - **MATCH + status = verified** → `kind: "acr"`: neem `acrCode` + ACR-`category`/
-     `severity` UIT de registry (niet uit de engine), `source: "clevr-acr"`,
-     `ruleId` = de CLEVR-id.
-   - **MATCH + status ≠ verified** → ACR-regel "in ontwikkeling": apart tonen
-     (sectie 5), NIET als harde ACR-violation meetellen.
-   - **GEEN match** (regel uit een ingeschakeld pack) → `kind: "generic"`: behoud de
-     EIGEN engine-`category` en -`severity`, `source` = het pack (`"mxcli"`/`"mxlint"`),
-     `ruleId` = de engine-regel-id. GEEN acrCode.
-2. Bereken `fingerprint` (sectie 3) en pas exclusions toe — voor BEIDE soorten.
+### Normaliser mapping (both kinds) — runs in C# (section 9)
+For EVERY incoming engine violation:
+1. Look up the engine rule key in the ACR registry (A):
+   - **MATCH + status = verified** → `kind: "acr"`: take `acrCode` + ACR `category`/
+     `severity` FROM the registry (not from the engine), `source: "clevr-acr"`,
+     `ruleId` = the CLEVR id.
+   - **MATCH + status ≠ verified** → ACR rule "in development": show separately
+     (section 5), do NOT count as a hard ACR violation.
+   - **NO match** (rule from an enabled pack) → `kind: "generic"`: retain the
+     engine's OWN `category` and `severity`, `source` = the pack (`"mxcli"`/`"mxlint"`),
+     `ruleId` = the engine rule id. NO acrCode.
+2. Calculate `fingerprint` (section 3) and apply exclusions — for BOTH kinds.
 
-PRECEDENTIE / ONTDUBBELING (bevestigd besluit): de ACR-registry CLAIMT de check.
-Als een `engineRuleKey` in de ACR-registry staat, wordt die violation NOOIT óók als
-generieke regel toegevoegd — ook niet als de bundled mxcli/mxlint-pack dezelfde check
-bevat. Een geclaimde-en-verified check verschijnt één keer als ACR-regel; een
-geclaimde-maar-niet-verified check verschijnt één keer in de "in ontwikkeling"-sectie.
-Alleen NIET-geclaimde pack-regels worden generiek. Dit voorkomt dubbele tellingen en
-dubbel werk: elke check verschijnt precies één keer, met ACR als bovenliggende bron.
+PRECEDENCE / DEDUPLICATION (confirmed decision): the ACR registry CLAIMS the check.
+If an `engineRuleKey` is in the ACR registry, that violation is NEVER also added as a
+generic rule — even if the bundled mxcli/mxlint pack contains the same check.
+A claimed-and-verified check appears once as an ACR rule; a claimed-but-not-verified
+check appears once in the "in development" section.
+Only UNCLAIMED pack rules become generic. This prevents double counting and duplicate
+work: every check appears exactly once, with ACR as the authoritative source.
 
-### Engine-precedentie bij overlap (Fase 3B — meerdere engines in één overzicht)
-Volgorde: **mxcli > ACR > mxlint**. Checkt meer dan één engine (ongeveer) hetzelfde,
-dan wint de hoogste in deze volgorde — mxcli (Mendix' eigen richting) eerst, dan de
-gekalibreerde ACR-regel, mxlint als laatste. De verliezende variant wordt onderdrukt.
-BEWUSTE KEUZE: bij overlap toont het overzicht de metadata van de WINNENDE bron, niet
-een mengvorm — dit kan de gekalibreerde ACR-metadata vervangen door die van de winnaar.
+### Engine precedence on overlap (Phase 3B — multiple engines in one overview)
+Order: **mxcli > ACR > mxlint**. If more than one engine checks (approximately) the same thing,
+the highest in this order wins — mxcli (Mendix's own direction) first, then the
+calibrated ACR rule, mxlint last. The losing variant is suppressed.
+DELIBERATE CHOICE: on overlap the overview shows the metadata of the WINNING source, not
+a blend — this may replace the calibrated ACR metadata with that of the winner.
 
-OVERLAP-TABEL (onderdrukt aan de mxlint-kant; deze 6 mxlint-Rego-regels checken
-hetzelfde als bestaande ACR-regels, dus ACR wint en de mxlint-variant wordt gedropt):
+OVERLAP TABLE (suppressed on the mxlint side; these 6 mxlint Rego rules check
+the same thing as existing ACR rules, so ACR wins and the mxlint variant is dropped):
 
-| mxlint-regel (rulenumber) | ACR-regel | onderwerp |
+| mxlint rule (rulenumber) | ACR rule | subject |
 |---|---|---|
-| AnonymousDisabled (001_0001)        | ACR_SEC_GUEST      | anonieme/guest-toegang |
-| DemoUsersDisabled (001_0002)        | ACR_SEC_DEMOUSERS  | demo-gebruikers |
-| SecurityChecks (001_0003)           | ACR_SEC_CHECKED    | security-check aan |
-| StrongPasswordPolicy (001_0004)     | ACR_SEC_PWPOLICY   | wachtwoordbeleid |
-| NumberOfAttributes (002_0002)       | ACR_ENT_ATTRS      | aantal attributen |
-| AvoidUsingValidationRules (002_0007)| ACR_ENT_VALRULES   | validatieregels |
+| AnonymousDisabled (001_0001)        | ACR_SEC_GUEST      | anonymous/guest access |
+| DemoUsersDisabled (001_0002)        | ACR_SEC_DEMOUSERS  | demo users |
+| SecurityChecks (001_0003)           | ACR_SEC_CHECKED    | security check on |
+| StrongPasswordPolicy (001_0004)     | ACR_SEC_PWPOLICY   | password policy |
+| NumberOfAttributes (002_0002)       | ACR_ENT_ATTRS      | number of attributes |
+| AvoidUsingValidationRules (002_0007)| ACR_ENT_VALRULES   | validation rules |
 
-De onderdrukking gebeurt deterministisch in de mxlint-normalizer (op rulenumber); de
-overige mxlint-regels komen normaal mee als `source: "mxlint"`.
+The suppression happens deterministically in the mxlint normaliser (by rulenumber); the
+remaining mxlint rules pass through normally as `source: "mxlint"`.
 
 ---
 
-## 5. Rapport (ACR-stijl)
+## 5. Report (ACR style)
 
-ÉÉN overzicht: ALLE improvements (ACR + generiek) verdeeld over de ZES ACR-categorieën
-(sectie 1). De HERKOMST blijft altijd zichtbaar (badge per regel + uitsplitsing in de
-telkaart), zodat een developer een gekalibreerde ACR-regel nooit voor een
-engine-generieke regel aanziet — de scheiding zit nu in de badge, niet in een aparte
-sectie.
+ONE overview: ALL improvements (ACR + generic) distributed across the SIX ACR categories
+(section 1). The ORIGIN remains always visible (badge per rule + breakdown in the
+count card), so that a developer never mistakes a calibrated ACR rule for an
+engine-generic rule — the separation is now in the badge, not in a separate section.
 
-1. App info (projectnaam, datum, Mendix-versie, # gescande documenten).
-2. Telkaart — telt ALLE improvements:
-   - per categorie (de zes, sectie 1),
-   - per severity (zie severity-weergave hieronder),
-   - per HERKOMST: ACR (gekalibreerd) / MxCLI Mxlint / Mxlint.com.
-3. Improvements — gegroepeerd per de zes ACR-categorieën (sectie 1) en BINNEN elke
-   categorie per regel (groeperingsmodel hieronder). Elke regel toont een
-   HERKOMST-badge (ACR / MxCLI / Mxlint.com); ACR-regels tonen daarnaast hun `acrCode`.
-4. Exclusions apart zichtbaar — wat is onderdrukt, door wie, waarom, sinds wanneer.
-   Geldt voor beide soorten; `kind` blijft zichtbaar.
+1. App info (project name, date, Mendix version, # scanned documents).
+2. Count card — counts ALL improvements:
+   - per category (the six, section 1),
+   - per severity (see severity display below),
+   - per ORIGIN: ACR (calibrated) / MxCLI Mxlint / Mxlint.com.
+3. Improvements — grouped by the six ACR categories (section 1) and WITHIN each
+   category by rule (grouping model below). Each rule shows an
+   ORIGIN badge (ACR / MxCLI / Mxlint.com); ACR rules also show their `acrCode`.
+4. Exclusions separately visible — what is suppressed, by whom, why, since when.
+   Applies to both kinds; `kind` remains visible.
 
-### Categorie van generieke regels — DISPLAY-mapping (per-regel mxcli-categorie)
-Generieke regels behouden INTERN hun eigen engine-categorie (sectie 2: `Violation.category`
-= de mxcli-prefix, ongewijzigd). Voor het rapport worden ze in één van de zes
-ACR-categorieën geplaatst. De mapping zit in de render-laag; het Violation-contract
-verandert niet.
+### Category of generic rules — DISPLAY mapping (per-rule mxcli category)
+Generic rules retain INTERNALLY their own engine category (section 2: `Violation.category`
+= the mxcli prefix, unchanged). For the report they are placed in one of the six
+ACR categories. The mapping lives in the render layer; the Violation contract does not change.
 
-GECORRIGEERD (mapping-bug): map op de **ECHTE per-regel mxcli-categorie**, NIET op de
-ruleId-prefix. mxcli geeft per regel een categorie (style/quality/correctness/performance/
-…) mee — opvraagbaar via `mxcli lint --list-rules` (die we al ophalen voor de regelnamen;
-per ruleId staat er een `Category:`-regel). De prefix was te grof: de `CONV`-prefix bevat
-bv. performance- (CONV011 NoCommitInLoop), naming- (CONV001) én quality-regels door elkaar,
-waardoor Performance leeg bleef (alleen door de niet-bestaande prefix `PERF` gevoed) en
-Reliability door niets werd gemapt.
+CORRECTED (mapping bug): map on the **REAL per-rule mxcli category**, NOT on the
+ruleId prefix. mxcli provides a category per rule (style/quality/correctness/performance/
+…) — queryable via `mxcli lint --list-rules` (which we already fetch for rule names;
+each ruleId has a `Category:` line). The prefix was too coarse: the `CONV` prefix contains
+e.g. performance (CONV011 NoCommitInLoop), naming (CONV001) and quality rules mixed together,
+causing Performance to be empty (fed only by the non-existent prefix `PERF`) and
+Reliability to have no mapping.
 
-| mxcli-categorie | ACR-categorie    | reden |
-|-----------------|------------------|-------|
-| security        | Security         | beveiliging |
-| naming          | Project hygiene  | naamgevingsconventies → opgeruimd project |
-| style           | Project hygiene  | stijl/conventie → opgeruimd project |
-| quality         | Maintainability  | codekwaliteit → onderhoudbaarheid |
-| complexity      | Maintainability  | (McCabe-)complexiteit → onderhoudbaarheid |
+| mxcli category  | ACR category     | reason |
+|-----------------|------------------|--------|
+| security        | Security         | security |
+| naming          | Project hygiene  | naming conventions → clean project |
+| style           | Project hygiene  | style/convention → clean project |
+| quality         | Maintainability  | code quality → maintainability |
+| complexity      | Maintainability  | (McCabe) complexity → maintainability |
 | maintainability | Maintainability  | direct |
-| design          | Architecture     | ontwerp/structuur → architectuur |
-| architecture    | Architecture     | architectuur |
-| **correctness** | **Reliability**  | **bewuste vertaling: runtime-correctheid (crashes, lege validatie) ≈ betrouwbaarheid** |
+| design          | Architecture     | design/structure → architecture |
+| architecture    | Architecture     | architecture |
+| **correctness** | **Reliability**  | **deliberate translation: runtime correctness (crashes, empty validation) ≈ reliability** |
 | performance     | Performance      | performance |
 
-Onbekende/nieuwe mxcli-categorie → **Maintainability** (fallback, te herzien). Ontbreekt
-de mxcli-categorie (bv. `--list-rules` kon niet geladen worden), dan geldt een grove
-prefix-fallback (SEC→Security, ARCH/DESIGN→Architecture, PERF→Performance, anders
-Maintainability). ACR-regels (`kind: "acr"`) gebruiken hun registry-categorie (sectie 4),
-niet deze tabel.
+Unknown/new mxcli category → **Maintainability** (fallback, to be revisited). If the
+mxcli category is missing (e.g. `--list-rules` could not be loaded), a coarse
+prefix fallback applies (SEC→Security, ARCH/DESIGN→Architecture, PERF→Performance, otherwise
+Maintainability). ACR rules (`kind: "acr"`) use their registry category (section 4),
+not this table.
 
-Geverifieerd op TRB (2625 improvements): met deze mapping is **Reliability = 388** en
-**Performance = 11** (beide voorheen leeg); de overige verdeling Project hygiene 491 /
+Verified on TRB (2625 improvements): with this mapping **Reliability = 388** and
+**Performance = 11** (both previously empty); the remaining distribution Project hygiene 491 /
 Maintainability 1080 / Architecture 252 / Security 403.
 
-### Categorie van mxlint-regels — DISPLAY-mapping (Fase 3B)
-mxlint (Rego) levert z'n eigen categorie LETTERLIJK in de failure-message (sectie 2:
-`Violation.category` blijft ongewijzigd). Die categorieën wijken af van de zes ACR-namen
-en worden voor het rapport gemapt — opnieuw puur in de render-laag, contract ongewijzigd:
+### Category of mxlint rules — DISPLAY mapping (Phase 3B)
+mxlint (Rego) delivers its own category LITERALLY in the failure message (section 2:
+`Violation.category` remains unchanged). Those categories differ from the six ACR names
+and are mapped for the report — again purely in the render layer, contract unchanged:
 
-| mxlint-categorie | ACR-categorie   | reden |
-|------------------|-----------------|-------|
-| Security         | Security        | beveiliging |
+| mxlint category  | ACR category    | reason |
+|------------------|-----------------|--------|
+| Security         | Security        | security |
 | Maintainability  | Maintainability | direct |
 | Performance      | Performance     | performance |
-| **Accessibility**| **Maintainability** | **bewuste keuze: geen eigen ACR-categorie → onderhoudbaarheid** |
-| Microflows       | Maintainability | microflow-structuur → onderhoudbaarheid |
-| Complexity       | Maintainability | complexiteit → onderhoudbaarheid |
-| Error            | Reliability     | runtime-fouten ≈ betrouwbaarheid |
+| **Accessibility**| **Maintainability** | **deliberate choice: no own ACR category → maintainability** |
+| Microflows       | Maintainability | microflow structure → maintainability |
+| Complexity       | Maintainability | complexity → maintainability |
+| Error            | Reliability     | runtime errors ≈ reliability |
 
-Onbekende mxlint-categorie → **Maintainability** (fallback). Op TRB komen voor:
+Unknown mxlint category → **Maintainability** (fallback). Present on TRB:
 Maintainability, Accessibility (→ Maintainability), Security.
 
-### Severity-weergave
-- ACR-regels: hun ACR-severity (Minor/Major/Critical/Blocker, uit het registry, sectie 4).
-- Generieke regels: LETTERLIJK de mxcli engine-severity (error/warning/info/hint) —
-  NIET vertaald naar een ACR-severity (geen verzonnen severity). Beide worden als
-  severity-chip getoond op dezelfde manier.
-- Een ACR-severity buiten de vier (bv. `TODO-confirm`) valt onder "Te bevestigen".
+### Severity display
+- ACR rules: their ACR severity (Minor/Major/Critical/Blocker, from the registry, section 4).
+- Generic rules: LITERALLY the mxcli engine severity (error/warning/info/hint) —
+  NOT translated to an ACR severity (no invented severity). Both are shown as
+  severity chips in the same way.
+- An ACR severity outside the four (e.g. `TODO-confirm`) falls under "To be confirmed".
 
-### GROEPERINGSMODEL — PER REGEL, niet per instantie (zoals ACR's "Summary per rule"):
-- Elke regel verschijnt PRECIES ÉÉN keer als regelvermelding (regel-id/acrCode,
-  herkomst, severity, totaal aantal improvements).
-- Daaronder, uitklapbaar/genest, ALLE instanties die aan die regel voldoen
-  (document + elementName + reason per instantie).
-- Een regel met 12 instanties is één regelvermelding met 12 geneste gevallen —
-  NIET 12 losse regelvermeldingen. Een regel zonder instanties wordt niet getoond.
+### GROUPING MODEL — PER RULE, not per instance (like ACR's "Summary per rule"):
+- Each rule appears EXACTLY ONCE as a rule entry (rule id/acrCode,
+  origin, severity, total number of improvements).
+- Below it, expandable/nested, ALL instances matching that rule
+  (document + elementName + reason per instance).
+- A rule with 12 instances is one rule entry with 12 nested cases —
+  NOT 12 separate rule entries. A rule with no instances is not shown.
 
-Exports: HTML (primair, ACR-look), CSV en JSON (voor CI/pipeline). De telkaart telt
-alle improvements; de herkomst-uitsplitsing houdt zichtbaar wat gekalibreerd ACR is
-(`verified`) en wat engine-generiek — zodat de cijfers eerlijk én volledig zijn.
+Exports: HTML (primary, ACR look), CSV and JSON (for CI/pipeline). The count card counts
+all improvements; the origin breakdown keeps visible what is calibrated ACR
+(`verified`) and what is engine-generic — so the numbers are both honest and complete.
 
 ---
 
-## 6. MVP-bouwvolgorde (eerst contract, dan integraties)
+## 6. MVP build order (contract first, then integrations)
 
 1. Extension skeleton in Studio Pro (TypeScript / Web Extensibility API).
-2. CLEVR ACR-paneel met HARDCODED voorbeeld-JSON in ACR-layout
-   (bewijst de UI/het rapport vóór enige engine-integratie).
-3. Integreer engine 1: `mxcli lint --format json` → normalizer → paneel.
-   VERIFIEER eerst dat die JSON-output bestaat en stabiel is (zie sectie 7).
-4. Integreer engine 2: MxLint/Rego-CLI → normalizer → paneel.
-   VERIFIEER eerst dat een Rego-flowgraaf-regel haalbaar is (zie sectie 7).
-5. Exclusions (lezen/schrijven .clevr-acr/exclusions.json + fingerprint-logica).
-6. Rapport-export (HTML/CSV/JSON).
-7. Pas DAARNA: regels migreren volgens Green/Blue/Orange/Red.
+2. CLEVR ACR pane with HARDCODED example JSON in ACR layout
+   (proves the UI/report before any engine integration).
+3. Integrate engine 1: `mxcli lint --format json` → normaliser → pane.
+   FIRST VERIFY that this JSON output exists and is stable (see section 7).
+4. Integrate engine 2: MxLint/Rego CLI → normaliser → pane.
+   FIRST VERIFY that a Rego flow-graph rule is feasible (see section 7).
+5. Exclusions (read/write .clevr-acr/exclusions.json + fingerprint logic).
+6. Report export (HTML/CSV/JSON).
+7. Only THEN: migrate rules according to Green/Blue/Orange/Red.
 
 ---
 
-## 7. Aannames — status na verkenning (juni 2026)
+## 7. Assumptions — status after exploration (June 2026)
 
-1. mxcli JSON-output: NOG TE BEVESTIGEN empirisch. We weten dat mxcli `--format sarif`
-   heeft; of `--format json` bestaat en bruikbaar is, bepaal je door het te draaien op
-   TRB. Stel het exacte schema vast vOOr de normalizer.
-2. MxLint/Rego headless CLI: BEVESTIGD. `mxlint-cli lint` (Go-CLI, OPA/Rego), output
-   via mxlint.yaml (jsonFile + xunitReport XML). GEEN SARIF, GEEN --format-vlag. Exact
-   JSON-schema nog empirisch vast te stellen vOOr de normalizer.
-3. Rego-flowgraaf-regel (complexity / db-actions-at-end) haalbaar + kalibreerbaar tegen
-   grondwaarheid (315 / 31): NOG TE BEWIJZEN. Valideert de "twee engines"-reden, maar
-   blokkeert de MVP niet (de mxcli-engine alleen levert al een werkend product).
-4. Eigen paneel + procesexecutie: BEWEZEN (spike, Studio Pro 11.10, juni 2026).
-   - Eigen dockable paneel: BEVESTIGD. In Fase 1 via studioPro.ui.panes (web); voor
-     het eindproduct C#-gehost via DockablePaneExtension + IDockingWindowService.OpenPane.
-   - Procesexecutie + message passing: BEWEZEN. C#-extensie draaide `cmd /c echo test`
-     via Process.Start (exitCode 0, stdout "test") en leverde de output via de
-     WebView-message-bus (IWebView.PostMessage ⇄ window.chrome.webview) aan het pane,
-     dat het als ruwe tekst toonde. Geen losse aanname meer; zie csharp-spike/.
-   - Runtime: .NET 10 (ExtensionsAPI 11.10.0 vereist net10.0; net8.0 → NU1202).
+1. mxcli JSON output: STILL TO BE CONFIRMED empirically. We know mxcli has `--format sarif`;
+   whether `--format json` exists and is usable, determine by running it on
+   TRB. Establish the exact schema BEFORE the normaliser.
+2. MxLint/Rego headless CLI: CONFIRMED. `mxlint-cli lint` (Go CLI, OPA/Rego), output
+   via mxlint.yaml (jsonFile + xunitReport XML). NO SARIF, NO --format flag. Exact
+   JSON schema still to be established empirically BEFORE the normaliser.
+3. Rego flow-graph rule (complexity / db-actions-at-end) feasible + calibratable against
+   ground truth (315 / 31): STILL TO BE PROVEN. Validates the "two engines" rationale, but
+   does not block the MVP (the mxcli engine alone delivers a working product).
+4. Own pane + process execution: PROVEN (spike, Studio Pro 11.10, June 2026).
+   - Own dockable pane: CONFIRMED. In Phase 1 via studioPro.ui.panes (web); for
+     the final product C#-hosted via DockablePaneExtension + IDockingWindowService.OpenPane.
+   - Process execution + message passing: PROVEN. C# extension ran `cmd /c echo test`
+     via Process.Start (exitCode 0, stdout "test") and delivered the output via the
+     WebView message bus (IWebView.PostMessage ⇄ window.chrome.webview) to the pane,
+     which displayed it as raw text. No longer a loose assumption; see csharp-spike/.
+   - Runtime: .NET 10 (ExtensionsAPI 11.10.0 requires net10.0; net8.0 → NU1202).
 
-Node.js/npm: BEVESTIGD aanwezig (v24 / npm 11).
+Node.js/npm: CONFIRMED present (v24 / npm 11).
 
-Volgorde-gevolg: Fase 1 (schil + hardcoded JSON in het paneel) is af. De
-C#-procesexecutie-spike — de poort naar Fase 2 — is GESLAAGD. Aanname 1 (mxcli
-JSON-schema) is nu de EERSTE Fase 2-stap: ze gateert de normalizer en moet als
-eerste empirisch worden opgelost. Aanname 3 (Rego-flowgraaf) blijft open maar is pas
-relevant bij engine 2. Zie het Fase 2-plan in sectie 9.
-
----
-
-## 8. Wat er al klaar is (Blue-tier, verified)
-
-11 geverifieerde .star-regels (zie acr-mxlint-voortgang.md) zijn de eerste
-`verified`-entries in het registry. De shell hoeft die niet opnieuw te bouwen;
-ze vullen de Blue-kolom en bewijzen de mxcli-engine-integratie meteen met echte data.
+Order consequence: Phase 1 (shell + hardcoded JSON in the pane) is done. The
+C# process execution spike — the gateway to Phase 2 — has SUCCEEDED. Assumption 1 (mxcli
+JSON schema) is now the FIRST Phase 2 step: it gates the normaliser and therefore the
+entire engine integration until it is resolved. Assumption 3 (Rego flow-graph) remains
+open but is only relevant for engine 2. See the Phase 2 plan in section 9.
 
 ---
 
-## 9. Fase 2 — plan (na geslaagde spike)
+## 8. What is already done (Blue tier, verified)
 
-Architectuurbesluit (volgt uit sectie 0 + de spike): het violations-paneel wordt
-C#-GEHOST. De C#-backend draait de engines via Process.Start en serveert de bestaande
-Fase 1 ui-render-bundle als content (WebServerExtension → wwwroot).
+11 verified .star rules (see acr-mxlint-voortgang.md) are the first
+`verified` entries in the registry. The shell does not need to rebuild those;
+they fill the Blue column and immediately prove the mxcli engine integration with real data.
 
-BESLUIT — NORMALISATIE DRAAIT IN C# (niet in de web-laag):
-Beide engines komen via Process.Start in de C#-laag binnen (mxcli → JSON,
-mxlint-cli → XML/JSON). C# mapt die daar naar één `Violation[]` (sectie 2), zodat de
-web-laag ENGINE-ONBEWUST blijft — een harde spec-eis (de gebruiker mag niet weten of
-een regel uit .star of .rego komt). Bovendien horen `fingerprint` (sectie 3) en het
-toepassen van exclusions bij het genormaliseerde Violation-object; C# berekent de
-fingerprint en past exclusions toe VÓÓRDAT de data naar de webview gaat. Gevolg:
-- C# = engines draaien + normaliseren + fingerprint + exclusions + registry-validatie.
-- web-laag = PUUR presentatie. De render-laag blijft ongewijzigd en consumeert
-  `Violation[]` via een ViolationSource; in Fase 2 levert een nieuwe ViolationSource
-  de (al genormaliseerde) data uit de C#-backend — via de WebView-message-bus of een
-  HTTP-route van de ingebouwde webserver.
+---
 
-Bouw incrementeel — elke stap is op zichzelf verifieerbaar voordat de volgende start.
-Stap 0 (`cmd /c echo test` → pane) is ✅ KLAAR via de spike (procesexecutie + message
-passing end-to-end bewezen). De Fase 2-stappen:
+## 9. Phase 2 — plan (after successful spike)
 
-1. EERSTE FASE 2-STAP — stel het ECHTE JSON-schema van `mxcli lint --format json`
-   op TRB vast. Dit gaat vooraf aan al het andere: de normalizer (stap 3) kan pas
-   geschreven worden als dit schema bekend is, en het lost aanname 1 op (we weten dat
-   `--format sarif` bestaat; `--format json` + het exacte schema moet empirisch
-   bevestigd). Voorwaarde: `mxcli` is aanroepbaar vanuit de C#-extensie (PATH of
-   volledig pad — desnoods eerst kort met `mxcli --version` checken).
-2. Draai `mxcli lint --format json` op TRB vanuit C# en toon de ruwe JSON in de pane
-   (bewijst de echte engine-aanroep + dat het schema klopt met stap 1).
-3. Normalizer IN C# (engine-JSON → `Violation[]` per sectie 2): map mxcli-JSON naar
-   het datacontract. Bepaal per violation `kind` via de ACR-registry-match (sectie 4):
-   geclaimd+verified → `kind: "acr"` met ACR-metadata; niet-geclaimd pack-regel →
-   `kind: "generic"` met eigen categorie/severity + `source`. Bereken `fingerprint` en
-   pas exclusions toe (sectie 3) — alles in C#, voor beide soorten.
-4. Violations in het C#-gehoste paneel: vervang HardcodedViolationSource door de
-   backend-bron, zodat de echte (genormaliseerde) mxcli-violations in de ACR-layout
-   verschijnen. De web-laag verandert niet.
-5. Pas DAARNA: engine 2 (mxlint-cli, .rego — aanname 3) door dezelfde normalizer,
-   exclusions-UI (sectie 3), rapport-export (sectie 5), regelmigratie
+Architecture decision (follows from section 0 + the spike): the violations pane will be
+C#-HOSTED. The C# backend runs the engines via Process.Start and serves the existing
+Phase 1 ui-render-bundle as content (WebServerExtension → wwwroot).
+
+DECISION — NORMALISATION RUNS IN C# (not in the web layer):
+Both engines arrive via Process.Start in the C# layer (mxcli → JSON,
+mxlint-cli → XML/JSON). C# maps them there to one `Violation[]` (section 2), so that the
+web layer remains ENGINE-UNAWARE — a hard spec requirement (the user must not know whether
+a rule comes from .star or .rego). Furthermore `fingerprint` (section 3) and applying
+exclusions belong to the normalised Violation object; C# calculates the
+fingerprint and applies exclusions BEFORE the data goes to the webview. Consequence:
+- C# = run engines + normalise + fingerprint + exclusions + registry validation.
+- web layer = PURE presentation. The render layer remains unchanged and consumes
+  `Violation[]` via a ViolationSource; in Phase 2 a new ViolationSource
+  delivers the (already normalised) data from the C# backend — via the WebView message bus or an
+  HTTP route from the built-in web server.
+
+Build incrementally — each step is independently verifiable before the next starts.
+Step 0 (`cmd /c echo test` → pane) is ✅ DONE via the spike (process execution + message
+passing proven end-to-end). The Phase 2 steps:
+
+1. FIRST PHASE 2 STEP — establish the REAL JSON schema of `mxcli lint --format json`
+   on TRB. This precedes everything else: the normaliser (step 3) can only be
+   written once this schema is known, and it resolves assumption 1 (we know that
+   `--format sarif` exists; `--format json` + the exact schema must be confirmed empirically).
+   Precondition: `mxcli` is callable from the C# extension (PATH or
+   full path — if necessary first check briefly with `mxcli --version`).
+2. Run `mxcli lint --format json` on TRB from C# and display the raw JSON in the pane
+   (proves the real engine call + that the schema matches step 1).
+3. Normaliser IN C# (engine JSON → `Violation[]` per section 2): map mxcli JSON to
+   the data contract. Determine `kind` per violation via the ACR registry match (section 4):
+   claimed+verified → `kind: "acr"` with ACR metadata; unclaimed pack rule →
+   `kind: "generic"` with own category/severity + `source`. Calculate `fingerprint` and
+   apply exclusions (section 3) — all in C#, for both kinds.
+4. Violations in the C#-hosted pane: replace HardcodedViolationSource with the
+   backend source, so that the real (normalised) mxcli violations appear in the ACR layout.
+   The web layer does not change.
+5. Only THEN: engine 2 (mxlint-cli, .rego — assumption 3) through the same normaliser,
+   exclusions UI (section 3), report export (section 5), rule migration
    (Green/Blue/Orange/Red).
 
-Open aannames die Fase 2 raken:
-- Aanname 1 (mxcli `--format json`-schema): is letterlijk stap 1 — blokkeert de
-  normalizer en dus de hele engine-integratie tot ze opgelost is.
-- Aanname 3 (Rego-flowgraaf-regel kalibreert tegen 315/31): pas relevant bij engine 2
-  (stap 5); de mxcli-engine alleen levert al een werkend product.
+Open assumptions affecting Phase 2:
+- Assumption 1 (mxcli `--format json` schema): is literally step 1 — blocks the
+  normaliser and therefore the entire engine integration until resolved.
+- Assumption 3 (Rego flow-graph rule calibrates against 315/31): only relevant for engine 2
+  (step 5); the mxcli engine alone already delivers a working product.

@@ -1,239 +1,237 @@
-# CLEVR ACR — C#-spike: procesexecutie + message passing
+# CLEVR ACR — C# spike: process execution + message passing
 
-Gerichte spike voor de openstaande aanname uit
-[`../clevr-acr-shell-spec.md`](../clevr-acr-shell-spec.md) **sectie 7 / punt 4**:
+Targeted spike for the open assumption from
+[`../clevr-acr-shell-spec.md`](../clevr-acr-shell-spec.md) **section 7 / point 4**:
 
-> Kan een **C#-backendcomponent** van de extensie (a) een **extern proces** starten
-> via `Process.Start`, en (b) de **output via Message Passing** bij het web-paneel
-> krijgen?
+> Can a **C# backend component** of the extension (a) start an **external process**
+> via `Process.Start`, and (b) get the **output via Message Passing** to the web panel?
 
-Dit is **alleen** een ja/nee-bewijs. Geen normalizer, geen echte lint, geen Fase 2.
+This is **only** a yes/no proof. No normalizer, no real lint, no Phase 2.
 
 ---
 
-## TL;DR — uitkomst
+## TL;DR — outcome
 
-| Deel | Status | Onderbouwing |
+| Part | Status | Substantiation |
 |---|---|---|
-| (a) `Process.Start` vanuit C#-extensie | **Ja (gegarandeerd)** | Een C#-extensie is een gewone **.NET 10**-class library; `System.Diagnostics.Process` is standaard en wordt door Mendix niet gesandboxt. Geen Mendix-API nodig. |
-| (b) Output via Message Passing naar de webview | **Ja (gedocumenteerd + code-compleet)** | `IWebView.PostMessage(string, object?)` (C#→web) ⇄ `window.chrome.webview.postMessage` / `MessageReceived` (web→C#). Signatures geverifieerd in de officiële API-referentie. |
-| End-to-end gedraaid in Studio Pro | **NIET geverifieerd in deze omgeving** | Er is hier **geen .NET SDK** (alleen de runtime) en geen Studio Pro. De code is geschreven tegen de echte API; compileren + draaien moet op jouw machine. |
+| (a) `Process.Start` from C# extension | **Yes (guaranteed)** | A C# extension is a regular **.NET 10** class library; `System.Diagnostics.Process` is standard and is not sandboxed by Mendix. No Mendix API required. |
+| (b) Output via Message Passing to the webview | **Yes (documented + code-complete)** | `IWebView.PostMessage(string, object?)` (C#→web) ⇄ `window.chrome.webview.postMessage` / `MessageReceived` (web→C#). Signatures verified in the official API reference. |
+| End-to-end run in Studio Pro | **NOT verified in this environment** | There is **no .NET SDK** here (only the runtime) and no Studio Pro. The code is written against the real API; compiling + running must be done on your machine. |
 
-**Belangrijkste architectuur-bevinding (lees dit):** de gedocumenteerde C#↔web-brug
-werkt alleen als de **C#-kant de webview-pane bezit** (`DockablePaneExtension` +
-`WebServerExtension` die `wwwroot` serveert). Dat is een **andere** brug dan de
-web-extensie z'n `studioPro.ui.messagePassing` (die is web-entrypoint↔web-entrypoint
-*binnen* de web-extensie). Er is **geen** gedocumenteerde manier voor C# om een
-bericht te duwen naar de pane die de Fase-1 TypeScript-extensie registreerde via
-`studioPro.ui.panes`. Gevolg voor Fase 2: het violations-paneel wordt dan
-**door C# gehost** (het serveert onze bestaande render-UI uit `wwwroot`), in plaats
-van door de losse TS-pane. Dit is een ontwerpkeuze die je bewust moet maken.
+**Key architecture finding (read this):** the documented C#↔web bridge
+only works if the **C# side owns the webview pane** (`DockablePaneExtension` +
+`WebServerExtension` serving `wwwroot`). That is a **different** bridge from the
+web extension's `studioPro.ui.messagePassing` (which is web-entrypoint↔web-entrypoint
+*within* the web extension). There is **no** documented way for C# to push a
+message to the pane that the Phase 1 TypeScript extension registered via
+`studioPro.ui.panes`. Consequence for Phase 2: the violations panel will then be
+**hosted by C#** (it serves our existing render UI from `wwwroot`), rather than
+by the standalone TS pane. This is a design choice you need to make consciously.
 
 ---
 
-## Fase 2A + 2B — echte mxcli-data in de ACR-layout (op deze spike gebouwd)
+## Phase 2A + 2B — real mxcli data in the ACR layout (built on this spike)
 
-Bovenop de bewezen spike (Process.Start + message passing) is de **echte mxcli-engine**
-aangesloten op de **bestaande, geteste normalizer** (deel A), en de **ACR-layout** uit
-de Fase 1 web-extensie is naar de `wwwroot` van deze C#-gehoste pane geport (deel B).
+On top of the proven spike (Process.Start + message passing), the **real mxcli engine**
+has been connected to the **existing, tested normalizer** (part A), and the **ACR layout**
+from the Phase 1 web extension has been ported to the `wwwroot` of this C#-hosted pane (part B).
 
-**Keten:** knop "Scan for improvements" → C# draait `mxcli lint -p "<.mpr>" --format json`
-via `Process.Start` (cwd = projectmap) → `MxcliOutputParser` → `MxcliNormalizer` +
-`RuleRegistry` (uit `rules.json`) → `Violation[]` → als JSON via de message-bus naar de
-pane → **ACR-layout** (`wwwroot/main.js`). De `engine`-property wordt **niet** getoond.
+**Chain:** button "Scan for improvements" → C# runs `mxcli lint -p "<.mpr>" --format json`
+via `Process.Start` (cwd = project folder) → `MxcliOutputParser` → `MxcliNormalizer` +
+`RuleRegistry` (from `rules.json`) → `Violation[]` → as JSON via the message bus to the
+pane → **ACR layout** (`wwwroot/main.js`). The `engine` property is **not** shown.
 
-**ACR-layout (deel B), zoals spec sectie 5:**
-- **Per-regel groepering:** elke regel verschijnt één keer (uitklapbaar `<details>`),
-  met severity, ruleId, acrCode/source-badge en totaal aantal improvements; de
-  individuele gevallen (document + reden) zitten genest eronder. MPR008 met 12 gevallen
-  = één uitklapbare regel met 12 items, niet 12 rijen.
-- **Alles in de zes categorieën + herkomst zichtbaar (spec sectie 5):** ALLE improvements
-  (ACR + generiek) staan in de zes ACR-categorieën. Generieke regels worden voor de
-  weergave in een categorie geplaatst via een vaste mxcli-prefix→categorie-mapping
+**ACR layout (part B), as per spec section 5:**
+- **Per-rule grouping:** each rule appears once (expandable `<details>`),
+  with severity, ruleId, acrCode/source badge and total number of improvements; the
+  individual cases (document + reason) are nested underneath. MPR008 with 12 cases
+  = one expandable rule with 12 items, not 12 rows.
+- **Everything in the six categories + origin visible (spec section 5):** ALL improvements
+  (ACR + generic) are in the six ACR categories. Generic rules are placed in a category for
+  display via a fixed mxcli-prefix→category mapping
   (`GENERIC_CATEGORY_MAP`: SEC→Security, PERF→Performance, DESIGN/ARCH→Architecture,
-  CONV→Project hygiene, MPR/QUAL→Maintainability; onbekend→Maintainability). Per regel
-  een **herkomst-badge** (ACR / MxCLI / Mxlint.com) — ACR-regels eerst — zodat
-  gekalibreerd ACR nooit met engine-generiek wordt verward. Het interne
-  `Violation.category` blijft de engine-prefix; dit is puur een display-mapping.
-- **Severity:** ACR-regels tonen hun ACR-severity (uit het registry); generieke regels
-  tonen LETTERLIJK de mxcli engine-severity (error/warning/info/hint) — niet vertaald.
-  Beide als severity-chip. Een ACR-severity buiten de vier (`TODO-confirm`) valt onder
-  "Te bevestigen".
-- **Telkaart (drie kaarten):** telt ALLE improvements — per categorie, per severity, en
-  per **herkomst** (ACR (gekalibreerd) / MxCLI Mxlint / Mxlint.com) zodat de verdeling
-  ACR-vs-generiek zichtbaar blijft.
-- **Terminologie:** de UI zegt overal **"Improvements"** (kop, telkaart, secties,
-  knop). Dit is ALLEEN UI-tekst — het interne `Violation`-type/datacontract is
-  ongewijzigd.
+  CONV→Project hygiene, MPR/QUAL→Maintainability; unknown→Maintainability). Per rule
+  an **origin badge** (ACR / MxCLI / Mxlint.com) — ACR rules first — so that
+  calibrated ACR is never confused with engine-generic. The internal
+  `Violation.category` remains the engine prefix; this is purely a display mapping.
+- **Severity:** ACR rules show their ACR severity (from the registry); generic rules
+  show the mxcli engine severity LITERALLY (error/warning/info/hint) — not translated.
+  Both as a severity chip. An ACR severity outside the four (`TODO-confirm`) falls under
+  "To be confirmed".
+- **Summary card (three cards):** counts ALL improvements — per category, per severity, and
+  per **origin** (ACR (calibrated) / MxCLI Mxlint / Mxlint.com) so that the distribution
+  ACR-vs-generic remains visible.
+- **Terminology:** the UI says **"Improvements"** everywhere (heading, summary card, sections,
+  button). This is ONLY UI text — the internal `Violation` type/data contract is
+  unchanged.
 
-De render-laag in `wwwroot/main.js` is puur en bron-onbewust: `renderReport(root,
-violations, query)` consumeert het `Violation[]`-array en weet niet dat het uit mxcli
-komt (zelfde data/UI-scheiding als Fase 1). Een filterveld doorzoekt de improvements.
+The render layer in `wwwroot/main.js` is pure and source-agnostic: `renderReport(root,
+violations, query)` consumes the `Violation[]` array and does not know it comes from mxcli
+(same data/UI separation as Phase 1). A filter field searches the improvements.
 
-**Regelnaam op de regel-kop:** elke regel toont een herkenbare naam naast het id —
-ACR-regels hun `acrCode` (bv. CLEVR-HYG-001 → DuplicateEntityNames), generieke
-mxcli-regels de naam uit de **mxcli-catalogus** (`mxcli lint --list-rules`, bv. CONV001
-→ BooleanNaming, MPR001 → NamingConvention). De lint-JSON zelf bevat GEEN naam (alleen
-de ruleId), daarom haalt `AcrScanService` de catalogus apart op en stuurt 'm als
-`ruleNames` (ruleId → naam) mee in de payload; `MxcliRulesCatalogParser` parseert de
-tekstoutput. Best-effort: lukt `--list-rules` niet, dan tonen generieke regels alleen
-hun id + preview.
+**Rule name on the rule heading:** each rule shows a recognizable name next to the id —
+ACR rules their `acrCode` (e.g. CLEVR-HYG-001 → DuplicateEntityNames), generic
+mxcli rules the name from the **mxcli catalog** (`mxcli lint --list-rules`, e.g. CONV001
+→ BooleanNaming, MPR001 → NamingConvention). The lint JSON itself contains NO name (only
+the ruleId), which is why `AcrScanService` fetches the catalog separately and sends it as
+`ruleNames` (ruleId → name) in the payload; `MxcliRulesCatalogParser` parses the
+text output. Best-effort: if `--list-rules` fails, generic rules only show their id + preview.
 
-**Detailtekst op de regel-kop:** elke dichtgeklapte regel toont daarnaast een korte
-preview — de `reason` van het eerste geval, afgekapt op ~60 tekens (de VOLLEDIGE reason,
-geen document-strip-heuristiek: voorspelbaarder). Bij uitklappen blijft de volledige
-reason per geval zichtbaar.
+**Detail text on the rule heading:** each collapsed rule also shows a short
+preview — the `reason` of the first case, truncated to ~60 characters (the FULL reason,
+no document-strip heuristic: more predictable). When expanded, the full
+reason per case remains visible.
 
-**Statusregel:** toont de volledige herkomst-uitsplitsing met dezelfde labels als de
-filter/telkaart, bv. `2185 improvements (77 ACR / 2108 MxCLI Mxlint / 0 Mxlint.com)
-— 2185 ruw, exit 0` (counts berekend uit de violations via `originOf`).
+**Status line:** shows the full origin breakdown with the same labels as the
+filter/summary card, e.g. `2185 improvements (77 ACR / 2108 MxCLI Mxlint / 0 Mxlint.com)
+— 2185 raw, exit 0` (counts calculated from the violations via `originOf`).
 
-**Engine-filter (herkomst):** onder de knop staan toggles **ACR / MxCLI Mxlint /
-Mxlint.com** (met totaal-count per herkomst uit de volledige scan). Hiermee filter je
-de getoonde improvements op herkomst. Mxlint.com verschijnt al maar is grijs/uitgeschakeld
-zolang er geen mxlint-data binnenkomt (count 0). **Keuze:** de telkaarten **bewegen mee
-met de actieve filter** (ze tellen de gefilterde set), zodat de aantallen altijd matchen
-met de zichtbare lijst — consistent met het tekstfilter. De per-herkomst-count in de
-filter-toggles zelf blijft het totaal tonen.
+**Engine filter (origin):** below the button there are toggles **ACR / MxCLI Mxlint /
+Mxlint.com** (with total count per origin from the full scan). This filters the displayed
+improvements by origin. Mxlint.com appears already but is greyed out/disabled
+as long as no mxlint data comes in (count 0). **Choice:** the summary cards **move with
+the active filter** (they count the filtered set), so the numbers always match
+the visible list — consistent with the text filter. The per-origin count in the
+filter toggles themselves continues to show the total.
 
-**Nieuwe bestanden:**
-| Bestand | Rol |
+**New files:**
+| File | Role |
 |---|---|
-| [`AcrScanSettings.cs`](AcrScanSettings.cs) | configureerbaar `mxcliPath` + `projectPath` (uit `acr-scan-settings.json`) |
-| [`AcrScanService.cs`](AcrScanService.cs) | orkestreert run → parse → normaliseer → JSON (alleen IO/bedrading, géén normalisatielogica) |
-| [`acr-scan-settings.json`](acr-scan-settings.json) | de instellingen (zie hieronder) |
-| `rules.json` (build-link naar [`../csharp-normalizer/rules.sample.json`](../csharp-normalizer/rules.sample.json)) | het ACR-registry, één bron van waarheid |
+| [`AcrScanSettings.cs`](AcrScanSettings.cs) | configurable `mxcliPath` + `projectPath` (from `acr-scan-settings.json`) |
+| [`AcrScanService.cs`](AcrScanService.cs) | orchestrates run → parse → normalize → JSON (IO/wiring only, no normalization logic) |
+| [`acr-scan-settings.json`](acr-scan-settings.json) | the settings (see below) |
+| `rules.json` (build-link to [`../csharp-normalizer/rules.sample.json`](../csharp-normalizer/rules.sample.json)) | the ACR registry, single source of truth |
 
-De normalizer + registry zijn **ongewijzigd** hergebruikt (project-referentie naar
-`Clevr.Acr.Normalizer`). De pure parse-helpers `MxcliOutputParser` en
-`RuleRegistryJson` zijn als **nieuwe** bestanden aan die library toegevoegd (de
-bestaande, geteste klassen zijn niet aangeraakt).
+The normalizer + registry are reused **unchanged** (project reference to
+`Clevr.Acr.Normalizer`). The pure parse helpers `MxcliOutputParser` and
+`RuleRegistryJson` have been added as **new** files to that library (the
+existing, tested classes have not been touched).
 
-### Instellen (niet hardcoded)
-Vul vóór het draaien [`acr-scan-settings.json`](acr-scan-settings.json) in:
+### Configuration (not hardcoded)
+Fill in [`acr-scan-settings.json`](acr-scan-settings.json) before running:
 ```json
-{ "mxcliPath": "C:\\pad\\naar\\mxcli.exe", "projectPath": "C:\\pad\\naar\\App" }
+{ "mxcliPath": "C:\\path\\to\\mxcli.exe", "projectPath": "C:\\path\\to\\App" }
 ```
-- `mxcliPath` leeg/weg → `mxcli` (verondersteld op PATH).
-- `projectPath` = de **projectmap** (waarin precies één `.mpr` staat) óf direct een
-  `.mpr`-pad. Leeg → valt terug op de map van de **geopende app** (`CurrentApp`).
+- `mxcliPath` empty/absent → `mxcli` (assumed on PATH).
+- `projectPath` = the **project folder** (containing exactly one `.mpr`) or directly a
+  `.mpr` path. Empty → falls back to the folder of the **opened app** (`CurrentApp`).
 
-De scan draait mxcli net als de werkende handmatige run: **WorkingDirectory = de
-projectmap** (mxcli vindt z'n `.mxcli`-cache relatief) en `-p` krijgt de
-**.mpr-bestandsnaam** (relatief), niet de map. Bij een start-fout, exit≠0 of
-parse-fout toont de pane de volledige diagnostiek: command-line, working directory,
-exitcode en de eerste ~1000 tekens van stdout én stderr.
+The scan runs mxcli just like the working manual run: **WorkingDirectory = the
+project folder** (mxcli finds its `.mxcli` cache relatively) and `-p` receives the
+**.mpr filename** (relative), not the folder. On a start error, exit≠0 or
+parse error the pane shows the full diagnostics: command line, working directory,
+exit code and the first ~1000 characters of stdout and stderr.
 
-Dit bestand staat in de extensiemap (naast de dll's) en wordt bij elke build
-meegekopieerd. Je kunt het ook ná deployment in de extensiemap aanpassen.
+This file lives in the extension folder (next to the dlls) and is copied with every build.
+You can also modify it after deployment in the extension folder.
 
-### Bouwen, laden, draaien
-1. `dotnet build -c Debug` (in `csharp-spike`). Output: `bin\Debug\net10.0\` met
+### Building, loading, running
+1. `dotnet build -c Debug` (in `csharp-spike`). Output: `bin\Debug\net10.0\` with
    `Clevr.AcrSpike.dll`, **`Clevr.Acr.Normalizer.dll`**, `manifest.json`,
-   `rules.json`, `acr-scan-settings.json` en `wwwroot\`.
-2. Kopieer de **hele** inhoud van `bin\Debug\net10.0\` naar
-   `<app>\extensions\clevracrspike\` (de normalizer-dll moet mee!).
-3. Start Studio Pro met `--enable-extension-development`, **F4** om te (her)laden.
-4. **Extensions → … → CLEVR ACR Spike** → klik **Scan for improvements**.
+   `rules.json`, `acr-scan-settings.json` and `wwwroot\`.
+2. Copy the **entire** contents of `bin\Debug\net10.0\` to
+   `<app>\extensions\clevracrspike\` (the normalizer dll must be included!).
+3. Start Studio Pro with `--enable-extension-development`, **F4** to (re)load.
+4. **Extensions → … → CLEVR ACR Spike** → click **Scan for improvements**.
 
-### Wat je verwacht te zien
-- Een samenvattingsregel, bv. `2185 improvements (77 ACR / 2108 generiek) — 2185 ruw, exit 0`.
-- De **ACR-layout**: een telkaart (per categorie / per severity / per herkomst) en de
-  zes ACR-categorieën met per categorie uitklapbare regels. In elke categorie staan zowel
-  onze geverifieerde ACR-regels (badge **ACR**, CLEVR-ruleId, categorie/severity uit het
-  registry — ENT_ATTRS = Maintainability/Minor) als de bundled mxcli-regels (badge
-  **MxCLI**, eigen engine-severity), in dezelfde categorie maar met zichtbaar verschillende
-  herkomst. Bijvoorbeeld: in **Maintainability** zie je CLEVR-MAINT-* naast MPR/QUAL-regels.
-- Lukt het starten van mxcli niet (verkeerd pad / niet op PATH), dan toont de pane
-  de volledige diagnostiek (command, cwd, exitcode, stdout/stderr) i.p.v. te crashen.
+### What you expect to see
+- A summary line, e.g. `2185 improvements (77 ACR / 2108 generic) — 2185 raw, exit 0`.
+- The **ACR layout**: a summary card (per category / per severity / per origin) and the
+  six ACR categories with expandable rules per category. Each category contains both
+  our verified ACR rules (badge **ACR**, CLEVR ruleId, category/severity from the
+  registry — ENT_ATTRS = Maintainability/Minor) and the bundled mxcli rules (badge
+  **MxCLI**, own engine severity), in the same category but with visibly different
+  origin. For example: in **Maintainability** you see CLEVR-MAINT-* next to MPR/QUAL rules.
+- If starting mxcli fails (wrong path / not on PATH), the pane shows
+  the full diagnostics (command, cwd, exit code, stdout/stderr) instead of crashing.
 
-> Bekend aandachtspunt: de scan draait **synchroon** in de message-handler (zoals de
-> spike). Een lint op een groot project kan de UI even laten wachten; async +
-> terug-marshallen naar de UI-thread is een latere verbetering.
+> Known point of attention: the scan runs **synchronously** in the message handler (as in the
+> spike). A lint on a large project may cause the UI to wait briefly; async +
+> marshalling back to the UI thread is a later improvement.
 
-### Verificatiestatus van deze stap
-- **Compileert:** ja — `Clevr.AcrSpike` + `Clevr.Acr.Normalizer` bouwen schoon (.NET 10).
-- **Keten klopt:** bewezen met unit-tests (`DataChainTests`): `rules.sample.json` →
-  registry, mxcli-gevormde JSON → DTO's → normalizer → `Violation[]` met juiste
-  kind/categorie/severity (ACR_ENT_ATTRS → acr/Maintainability/Minor; MPR001 →
-  generic/MPR). **16/16 tests slagen.**
-- **End-to-end in Studio Pro met echte mxcli:** doe jij (geen mxcli/Studio Pro hier).
-  `MxcliOutputParser` knipt nu de **statusregels** weg die mxcli vóór de JSON op stdout
-  schrijft (bv. "Connected to…", "✓ Catalog ready") — het pakt de tekst vanaf de eerste
-  regel die met `{` of `[` begint — en dekt zowel bare-array als object-wrapper. Lukt
-  parsen toch niet, dan toont de pane de eerste ~500 tekens van de ruwe stdout, zodat
-  de werkelijke vorm zichtbaar is.
+### Verification status of this step
+- **Compiles:** yes — `Clevr.AcrSpike` + `Clevr.Acr.Normalizer` build cleanly (.NET 10).
+- **Chain correct:** proven with unit tests (`DataChainTests`): `rules.sample.json` →
+  registry, mxcli-shaped JSON → DTOs → normalizer → `Violation[]` with correct
+  kind/category/severity (ACR_ENT_ATTRS → acr/Maintainability/Minor; MPR001 →
+  generic/MPR). **16/16 tests pass.**
+- **End-to-end in Studio Pro with real mxcli:** you do this (no mxcli/Studio Pro here).
+  `MxcliOutputParser` now strips the **status lines** that mxcli writes to stdout before the JSON
+  (e.g. "Connected to…", "✓ Catalog ready") — it picks up the text from the first
+  line starting with `{` or `[` — and covers both bare array and object wrapper. If
+  parsing still fails, the pane shows the first ~500 characters of raw stdout, so
+  the actual format is visible.
 
 ---
 
-## Wat de spike doet
+## What the spike does
 
-1. Registreert een **door C# beheerde** dockable pane, geopend via
+1. Registers a **C#-managed** dockable pane, opened via
    **Extensions → … → CLEVR ACR Spike** (`IDockingWindowService.OpenPane`).
-2. De pane toont een mini-webpagina (knop **Run command** + een output-veld).
-3. Klik → JS stuurt `RunCommand` naar C# → C# draait `cmd /c echo test` via
-   `Process.Start` → C# stuurt de ruwe stdout/stderr/exitcode terug met
-   `PostMessage("CommandOutput", tekst)` → JS toont het als ruwe tekst.
+2. The pane displays a mini web page (button **Run command** + an output field).
+3. Click → JS sends `RunCommand` to C# → C# runs `cmd /c echo test` via
+   `Process.Start` → C# sends the raw stdout/stderr/exit code back with
+   `PostMessage("CommandOutput", text)` → JS displays it as raw text.
 
-Het commando staat in [`ProcessRunner.cs`](ProcessRunner.cs) → `RunSpikeCommand()`.
-Begin met `cmd /c echo test`; zet daarna het commentaar om naar `mxcli --version`.
+The command is in [`ProcessRunner.cs`](ProcessRunner.cs) → `RunSpikeCommand()`.
+Start with `cmd /c echo test`; then uncomment the `mxcli --version` line.
 
-### Bestanden
-| Bestand | Rol |
+### Files
+| File | Role |
 |---|---|
-| `Clevr.AcrSpike.csproj` | .NET 10-project, refereert `Mendix.StudioPro.ExtensionsAPI` |
+| `Clevr.AcrSpike.csproj` | .NET 10 project, references `Mendix.StudioPro.ExtensionsAPI` |
 | `manifest.json` | `{ "mx_extensions": [ "Clevr.AcrSpike.dll" ] }` |
-| `SpikeDockablePaneExtension.cs` | registreert de pane (`Id` + `Open()`) |
-| `SpikeMenuExtension.cs` | menu-item dat de pane opent via `IDockingWindowService.OpenPane` |
-| `SpikeDockablePaneViewModel.cs` | **de brug**: `MessageReceived` → proces → `PostMessage` |
-| `ProcessRunner.cs` | **(a)** `Process.Start`, vangt stdout/stderr/exit |
-| `SpikeWebServerExtension.cs` | serveert `wwwroot/index.html` + `main.js` |
-| `HttpListenerResponseUtils.cs` | mini-helper om een bestand te serveren |
-| `wwwroot/index.html`, `wwwroot/main.js` | **(b)** web-kant van de message-bus |
+| `SpikeDockablePaneExtension.cs` | registers the pane (`Id` + `Open()`) |
+| `SpikeMenuExtension.cs` | menu item that opens the pane via `IDockingWindowService.OpenPane` |
+| `SpikeDockablePaneViewModel.cs` | **the bridge**: `MessageReceived` → process → `PostMessage` |
+| `ProcessRunner.cs` | **(a)** `Process.Start`, captures stdout/stderr/exit |
+| `SpikeWebServerExtension.cs` | serves `wwwroot/index.html` + `main.js` |
+| `HttpListenerResponseUtils.cs` | mini helper for serving a file |
+| `wwwroot/index.html`, `wwwroot/main.js` | **(b)** web side of the message bus |
 
 ---
 
-## Vereisten (op jouw machine)
+## Requirements (on your machine)
 
-- **.NET 10 SDK** (niet alleen de runtime) — de ExtensionsAPI voor Studio Pro 11.10
-  vereist `net10.0`. (bv. via `winget install Microsoft.DotNet.SDK.10`.)
-- Visual Studio 2022 **of** de `dotnet` CLI. (Rider/VS Code kan ook.)
-- Studio Pro 11.10 (jouw versie). De NuGet-versie in de `.csproj` moet **≤** je
-  Studio Pro-versie zijn — staat nu op `11.10.0`.
-- Toegang tot de NuGet-bron met `Mendix.StudioPro.ExtensionsAPI` (nuget.org).
+- **.NET 10 SDK** (not just the runtime) — the ExtensionsAPI for Studio Pro 11.10
+  requires `net10.0`. (e.g. via `winget install Microsoft.DotNet.SDK.10`.)
+- Visual Studio 2022 **or** the `dotnet` CLI. (Rider/VS Code works too.)
+- Studio Pro 11.10 (your version). The NuGet version in the `.csproj` must be **≤** your
+  Studio Pro version — currently set to `11.10.0`.
+- Access to the NuGet source with `Mendix.StudioPro.ExtensionsAPI` (nuget.org).
 
 ---
 
-## Bouwen
+## Building
 
-**Met de CLI:**
+**With the CLI:**
 ```powershell
 cd csharp-spike
 dotnet build -c Debug
 ```
-De output (dll + `manifest.json` + `wwwroot/`) staat in `bin\Debug\net10.0\`.
+The output (dll + `manifest.json` + `wwwroot/`) is in `bin\Debug\net10.0\`.
 
-**Met Visual Studio 2022:** open/maak een solution met dit project en **Build**.
+**With Visual Studio 2022:** open/create a solution with this project and **Build**.
 
 ---
 
-## Laden in Studio Pro
+## Loading in Studio Pro
 
-1. Open je app-map (in Studio Pro: **App → Show App Directory in Explorer**).
-2. Maak `<app>\extensions\clevracrspike\`.
-3. Kopieer de **inhoud** van `bin\Debug\net10.0\` daarheen (dll, `manifest.json`,
-   en de `wwwroot`-map).
-   - Of: zet in `Clevr.AcrSpike.csproj` het `PostBuild`-`Copy`-pad goed en haal het
-     commentaar weg, dan kopieert de build zelf.
-4. Start Studio Pro met extensie-ontwikkeling aan:
+1. Open your app folder (in Studio Pro: **App → Show App Directory in Explorer**).
+2. Create `<app>\extensions\clevracrspike\`.
+3. Copy the **contents** of `bin\Debug\net10.0\` there (dll, `manifest.json`,
+   and the `wwwroot` folder).
+   - Or: set the `PostBuild` `Copy` path correctly in `Clevr.AcrSpike.csproj` and uncomment it,
+     then the build copies it automatically.
+4. Start Studio Pro with extension development enabled:
    ```powershell
    .\studiopro.exe --enable-extension-development
    ```
-5. Open je app. In Studio Pro: druk **F4** (Synchronize App Directory) om de
-   extensie te (her)laden.
-6. Open het paneel via **Extensions → … → CLEVR ACR Spike** en klik **Run command**.
+5. Open your app. In Studio Pro: press **F4** (Synchronize App Directory) to
+   (re)load the extension.
+6. Open the panel via **Extensions → … → CLEVR ACR Spike** and click **Run command**.
 
-**Verwacht resultaat (= bewijs):** in het output-veld verschijnt zoiets als:
+**Expected result (= proof):** the output field shows something like:
 ```
 exitCode: 0
 ok: True
@@ -246,35 +244,35 @@ test
 
 ---
 
-## Herladen na een wijziging
+## Reloading after a change
 
-- C#-code gewijzigd → opnieuw `dotnet build`, output kopiëren, **F4** in Studio Pro
-  (of Studio Pro herstarten).
-- Alleen `wwwroot` (html/js) gewijzigd → kopiëren en de pane sluiten/heropenen.
+- C# code changed → run `dotnet build` again, copy the output, **F4** in Studio Pro
+  (or restart Studio Pro).
+- Only `wwwroot` (html/js) changed → copy and close/reopen the pane.
 
 ---
 
-## Debuggen
+## Debugging
 
-- **Webview-console** (de JS in de pane): start met
+- **Webview console** (the JS in the pane): start with
   `.\studiopro.exe --enable-extension-development --webview-remote-debugging`,
-  open dan `edge://inspect` en attach. (Of `IWebView.ShowDevTools()` aanroepen mits
-  DevTools toegestaan is.)
-- **C#-code:** Visual Studio → **Debug → Attach to Process** → `studiopro.exe`,
+  then open `edge://inspect` and attach. (Or call `IWebView.ShowDevTools()` if
+  DevTools is permitted.)
+- **C# code:** Visual Studio → **Debug → Attach to Process** → `studiopro.exe`,
   breakpoint in `MessageReceived`/`ProcessRunner`.
-- **Logs:** `ILogService.Info(...)` (gebruikt in de spike) verschijnt in de Studio
-  Pro-log — **Help → Open Log File Directory** → `log.txt`.
+- **Logs:** `ILogService.Info(...)` (used in the spike) appears in the Studio
+  Pro log — **Help → Open Log File Directory** → `log.txt`.
 
 ---
 
-## Eerlijke beperking van dit bewijs
+## Honest limitation of this proof
 
-Ik kon de spike **niet** in deze omgeving compileren of draaien: er is geen .NET SDK
-geïnstalleerd (alleen de .NET-runtime-host) en geen Studio Pro. De code is daarom
-geschreven en gecontroleerd **tegen de officiële Mendix-API-referentie** (signatures
-van `IWebView.PostMessage`, `MessageReceived`, `DockablePaneExtension`,
-`WebServerExtension`, `ILogService` zijn één voor één geverifieerd). Deel (a) is
-sowieso een .NET-garantie. De laatste 5% — daadwerkelijk groen licht in Studio Pro
-11.10 — moet jij op je machine bevestigen met bovenstaande stappen. Verwacht een
-soepele run; het meest waarschijnlijke struikelpunt is de NuGet-versie/Studio
-Pro-versie-match, niet de aanname zelf.
+I was unable to compile or run the spike **in this environment**: no .NET SDK is
+installed (only the .NET runtime host) and no Studio Pro is present. The code has therefore
+been written and verified **against the official Mendix API reference** (signatures
+of `IWebView.PostMessage`, `MessageReceived`, `DockablePaneExtension`,
+`WebServerExtension`, `ILogService` have been verified one by one). Part (a) is
+a .NET guarantee in any case. The final 5% — actually getting a green light in Studio Pro
+11.10 — you must confirm on your machine with the steps above. Expect a
+smooth run; the most likely stumbling block is the NuGet version/Studio
+Pro version match, not the assumption itself.

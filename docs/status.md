@@ -1,1097 +1,1097 @@
-# CLEVR ACR Shell — stand van zaken & routekaart
+# CLEVR ACR Shell — status & roadmap
 
-Werkdocument. Wat is af, wat ligt er nog, in welke volgorde, en wat moet per
-fase eerst BEWEZEN worden vóór je erop bouwt. Discipline door het hele project:
-"een regel/feature die draait is geen regel/feature die klopt" — verifiëren tegen
-echte data, niets verzinnen, aannames bewijzen vóór je erop bouwt.
+Working document. What is done, what remains, in what order, and what must be PROVEN
+per phase before building on it. Discipline throughout the project:
+"a rule/feature that runs is not a rule/feature that is correct" — verify against
+real data, invent nothing, prove assumptions before building on them.
 
-MXLINT.COM UIT DE UI (alleen weergave; export ONgemoeid). Verwijderd uit het paneel + rapport:
-(1) telkaart-bron "Mxlint.com" — uit de "per source"-array (main.js) + de twee hardcoded
-breakdown-strings (`… / ${oc.mxlint} Mxlint.com` → weg) in paneel-status én rapport-subtitle;
-(2) source-filter-checkbox — `{key:"mxlint",label:"Mxlint.com"}` uit ORIGINS; (3) rapport-raw-blok —
-de orphan `.acr-mxlint-raw`-CSS (227-234) in index.html (de tabel-builder was al weg; CSS werd nog
-mee-geëmbed in elk rapport via buildReportHtml); (4) paneel-teksten — subtitle "via mxlint + mxcli…"
-→ "via mxcli + the CLEVR rules", scan-tooltip "mxlint export + lint…" → "exports the model source…".
-"MxCLI Mxlint" (source=mxcli) BLIJFT zichtbaar. De source==="mxlint"-takken in originLabel/originBadge
-blijven als dode, onschadelijke guards (engine levert geen mxlint-violations meer) — net als de
-claim-tabel-entries (tripwires bewaken ze). index.html nu 0 mxlint-refs.
-README-check: de mxlint-extensie-BOOTSTRAP-stap (sectie 5) is NIET obsoleet — de EXPORT heeft de binary
-nodig; al herschreven als "for the model export" (niet "extra Rego rules"). Dus bewust behouden.
-VERIFICATIE: YAML-routes intact (MAINT-010=283, MAINT-015=33, SEC-011=0); build 0/0, tests 200/200
-(tripwires groen). HERPAKT: dist\CLEVR-ACR-extension(.zip) ververst (17:21), TRB-check OK, geen settings
-in payload, index.html in payload 0 mxlint, count-card toont "ACR / MxCLI Mxlint / Manual". Scan-test: Michel.
+MXLINT.COM REMOVED FROM THE UI (display only; export UNAFFECTED). Removed from the panel + report:
+(1) count-card source "Mxlint.com" — removed from the "per source" array (main.js) + the two hardcoded
+breakdown strings (`… / ${oc.mxlint} Mxlint.com` → gone) in panel status and report subtitle;
+(2) source-filter-checkbox — `{key:"mxlint",label:"Mxlint.com"}` removed from ORIGINS; (3) report raw block —
+the orphan `.acr-mxlint-raw` CSS (227-234) in index.html (the table builder was already gone; CSS was still
+embedded in every report via buildReportHtml); (4) panel texts — subtitle "via mxlint + mxcli…"
+→ "via mxcli + the CLEVR rules", scan tooltip "mxlint export + lint…" → "exports the model source…".
+"MxCLI Mxlint" (source=mxcli) REMAINS visible. The source==="mxlint" branches in originLabel/originBadge
+remain as dead, harmless guards (engine no longer emits mxlint violations) — just like the
+claim-table entries (tripwires monitor them). index.html now has 0 mxlint refs.
+README check: the mxlint extension BOOTSTRAP step (section 5) is NOT obsolete — the EXPORT needs the binary;
+already rewritten as "for the model export" (not "extra Rego rules"). Deliberately retained.
+VERIFICATION: YAML routes intact (MAINT-010=283, MAINT-015=33, SEC-011=0); build 0/0, tests 200/200
+(tripwires green). REPACKAGED: dist\CLEVR-ACR-extension(.zip) refreshed (17:21), TRB check OK, no settings
+in payload, index.html in payload 0 mxlint, count card shows "ACR / MxCLI Mxlint / Manual". Scan test: Michel.
 
-REGO-ENGINE UITGESCHAKELD als findings-bron (export BLIJFT). MxlintScanService: alleen nog `export`
-(ververst modelsource/), de `lint`-aanroep + MxlintNormalizer + lint-results.json-lezing zijn weg →
-payload source="mxlint-export", regoEngineDisabled=true, violations=[]. Binary ONgemoeid (gedeeld met
-export). RunFullScan-volgorde ongewijzigd (export eerst, dan mxcli+CLEVR). main.js: handleMxlintResult
-toont nu "model export refreshed (Rego engine disabled)" i.p.v. lint-telling; replaceOrigin([],["mxlint"])
-wist elke mxlint-herkomst. Installer had GEEN mxlint-download/gate (alleen mxcli) → niets te verwijderen;
-README/gids herschreven: mxlint = "model export", niet langer "extra Rego rules". mxlintPath-setting BLIJFT
-(export heeft de binary nodig). VERIFICATIE: YAML-routes intact op huidige modelsource — MAINT-010=283,
-MAINT-015=33 (verwacht); modelsource aanwezig (12 domeinmodellen, 113 pages); geen lint-call/Normalize meer
-in MxlintScanService (alleen export). Claim-tabel-entries blijven staan (schaden niet, tripwire bewaakt ze).
-Build 0/0, tests 200/200. PAKKET HERPAKT: Build-Package.ps1 → dist\CLEVR-ACR-extension(.zip) ververst
-(nieuwe DLLs + main.js + README), TRB-safety-check OK, geen settings in payload. Lokale dev-settings
-(TRB-paden) ONgemoeid. Echte Studio-Pro-Scan-test: Michel.
+REGO ENGINE DISABLED as findings source (export REMAINS). MxlintScanService: only `export`
+(refreshes modelsource/), the `lint` call + MxlintNormalizer + lint-results.json reading are gone →
+payload source="mxlint-export", regoEngineDisabled=true, violations=[]. Binary UNAFFECTED (shared with
+export). RunFullScan order unchanged (export first, then mxcli+CLEVR). main.js: handleMxlintResult
+now shows "model export refreshed (Rego engine disabled)" instead of the lint count; replaceOrigin([],["mxlint"])
+clears any mxlint origin. Installer had NO mxlint download/gate (only mxcli) → nothing to remove;
+README/guide rewritten: mxlint = "model export", no longer "extra Rego rules". mxlintPath setting REMAINS
+(export needs the binary). VERIFICATION: YAML routes intact on current modelsource — MAINT-010=283,
+MAINT-015=33 (expected); modelsource present (12 domain models, 113 pages); no lint call/Normalize anymore
+in MxlintScanService (export only). Claim-table entries remain (no harm, tripwire monitors them).
+Build 0/0, tests 200/200. PACKAGE REPACKAGED: Build-Package.ps1 → dist\CLEVR-ACR-extension(.zip) refreshed
+(new DLLs + main.js + README), TRB safety check OK, no settings in payload. Local dev settings
+(TRB paths) UNAFFECTED. Real Studio Pro scan test: Michel.
 
-mxlint VOLLEDIG VERWIJDERD (A-D); FASE E duur-check WIJKT AF → gestopt vóór repack.
-FASE A: MAINT-006 → describe-sweep (deepscan). Live geverifieerd: 104 vs oude YAML-GT 94. AFWIJKING =
-METRIEK (geen verlies): describe ⊇ YAML (alle 94 + 10 extra), de 10 extra zijn echte redundante boolean-
-vergelijkingen in VARIABELE-TOEWIJZINGEN ($Valid/$Valide/$Vrijspraak…) die de oude YAML-route (enkel split-
-condities + change-values) niet extraheerde. 104 = nieuwe, completere GT. Synthetische test toegevoegd.
-FASE B: SEC-006 gedeprecateerd (DetectAnonymousEditRules niet bedraad; ProjectSecurityParser-leescode =
-backup met "reactiveer zodra mxcli String(N) terugleest"). Geen claim-tabel/tripwire-entry (geen mxlint-twin).
-FASE C: gate-check → 0 actieve modelsource-lezers (3 actieve providers: security/catalog/describe, allen
+mxlint FULLY REMOVED (A-D); PHASE E duration check DEVIATES → stopped before repack.
+PHASE A: MAINT-006 → describe sweep (deepscan). Verified live: 104 vs old YAML GT 94. DEVIATION =
+METRIC (no loss): describe ⊇ YAML (all 94 + 10 extra), the 10 extras are real redundant boolean
+comparisons in VARIABLE ASSIGNMENTS ($Valid/$Valide/$Vrijspraak…) that the old YAML route (only split
+conditions + change values) did not extract. 104 = new, more complete GT. Synthetic test added.
+PHASE B: SEC-006 deprecated (DetectAnonymousEditRules not wired; ProjectSecurityParser read code =
+backup with "reactivate once mxcli String(N) reads back"). No claim-table/tripwire entry (no mxlint twin).
+PHASE C: gate check → 0 active modelsource readers (3 active providers: security/catalog/describe, all
 describe/.mpr/catalog). ✓
-FASE D: mxlint-export-aanroep uit RunFullScan (beide modi). Installer: mxlintPath-setting weg. README:
-sectie 5 (mxlint-extensie-bootstrap) verwijderd, intro/warning/config/troubleshooting herschreven (geen
-mxlint, mxcli automatisch, Scan+Deepscan). MxlintScanService + YAML-readers blijven deprecated backup.
-FASE E: build 0/0, tests 232/232. MAAR de duur-check WIJKT AF: snelle scan ≈ ~46s, NIET ~12s. Oorzaak:
-de security-route (SEC-005/008/010 + MAINT-005) draait in de SNELLE scan en kost ~32s — vooral de 9
-`describe userrole`-calls (~20s) die NIET batchbaar zijn (MDL kent geen DESCRIBE USERROLE-statement, alleen
-de CLI-subcommand) + project-tree. De export (19s) verdween maar de security-route (~32s) kwam ervoor terug.
-GESTOPT vóór de repack. AANBEVELING (mode-placement-beslissing voor Michel): verplaats de userrole-zware
-regels SEC-010 + MAINT-005 naar de DEEPSCAN (zoals de andere describe-zware regels) → snelle scan zakt naar
-~26s; of split de security-route (SEC-008 projectsecurity + SEC-005 catalog blijven goedkoop/fast, SEC-010+
-MAINT-005 naar deep) → snel ~14s, dicht bij het doel. Daarna pas repacken. mxlint-verwijdering zelf is correct
-en compleet; alleen de fast/deep-indeling van de security-regels moet beslist worden vóór we de duur claimen.
+PHASE D: mxlint export call removed from RunFullScan (both modes). Installer: mxlintPath setting gone. README:
+section 5 (mxlint extension bootstrap) removed, intro/warning/config/troubleshooting rewritten (no
+mxlint, mxcli automatic, Scan+Deepscan). MxlintScanService + YAML readers remain as deprecated backup.
+PHASE E: build 0/0, tests 232/232. BUT the duration check DEVIATES: fast scan ≈ ~46s, NOT ~12s. Cause:
+the security route (SEC-005/008/010 + MAINT-005) runs in the FAST scan and costs ~32s — primarily the 9
+`describe userrole` calls (~20s) that are NOT batchable (MDL has no DESCRIBE USERROLE statement, only
+the CLI subcommand) + project tree. The export (19s) disappeared but the security route (~32s) came back in its place.
+STOPPED before repack. RECOMMENDATION (mode placement decision for Michel): move the userrole-heavy
+rules SEC-010 + MAINT-005 to DEEPSCAN (like the other describe-heavy rules) → fast scan drops to
+~26s; or split the security route (SEC-008 projectsecurity + SEC-005 catalog stay cheap/fast, SEC-010+
+MAINT-005 to deep) → fast ~14s, close to the target. Only then repack. The mxlint removal itself is correct
+and complete; only the fast/deep placement of the security rules needs to be decided before we claim the duration.
 
-STREAMING GEBOUWD (progressieve findings, beide modi) — FASE 1/2/3 af, build+tests groen, herpakt.
-FASE 1 (orchestratie): AcrScanService.RunScanStreaming(deepScan, Action<string> emit) — gedeelde RunFastPhase
-(lint+security+catalog+regel-catalogus) → emit FAST-batch (volledige metadata + snelle findings, final=!deep);
-bij deep daarna MxcliDescribeService.StreamViolations(chunkSize, emit) → één batch per chunk met voortgang.
-DescribeStreamChunkSize=30 (empirisch: ~11-15s warm / ~25-37s koud per chunk — model laadt per chunk opnieuw,
-bewust geaccepteerd). RunScanAsJson behouden (niet-gestreamd, RunAcrScan-route) via dezelfde RunFastPhase.
-Batch-payload: {phase:"fast"|"describe", final, progress:{processed,total,label,requested,returned}, violations,
-+ metadata alleen op fast}. ViewModel.RunFullScan post elke batch als "AcrViolations". GEVERIFIEERD met driver
-(deep): 21 batches, streamed-som == niet-gestreamd EXACT (2865=2865; MAINT-006=104, REL-001=31, MAINT-008=129,
-MAINT-009=1, MAINT-013=1, …), 0 incompleteness-warns, sawFinal=True. Regel-logica/claim-tabel/tripwires byte-
-identiek — alleen wanneer/in-hoeveel-stukken verschilt.
-FASE 2 (UI, main.js): handleMxcliResult vertakt op phase — fast=replaceOrigin (clean slate + metadata),
-describe=APPEND (concat, geen replace). final=false → scanStreaming=true. streamingBanner() (inline-styled,
-onmiskenbaar) + totalRow "Total (so far)" + "{n}…" zolang streaming → tussenstand NOOIT als eindstand. Voortgang
-"microflows X/472". scanIncomplete (returned<requested) → rode LUID-waarschuwing. Scrollpositie bewaard over
-herrenders. Vangnet finalizeStreaming() op ScanFinished (rondt af ook als final-batch ontbreekt, bv. 0 user-
-microflows). Backward-compat: payload zonder phase = fast+final (oude vorm).
-FASE 3: build 0/0, tests 232/232, Build-Package herpakt (TRB-check groen), streaming-code in het pakket (main.js).
-De echte UI-test (beide knoppen, druppelen) doet Michel. Niet veranderd: regel-logica, getallen, claim-tabel/
-tripwires, twee-knoppen-opzet.
+STREAMING BUILT (progressive findings, both modes) — PHASES 1/2/3 done, build+tests green, repackaged.
+PHASE 1 (orchestration): AcrScanService.RunScanStreaming(deepScan, Action<string> emit) — shared RunFastPhase
+(lint+security+catalog+rule catalogue) → emit FAST batch (full metadata + fast findings, final=!deep);
+for deep then MxcliDescribeService.StreamViolations(chunkSize, emit) → one batch per chunk with progress.
+DescribeStreamChunkSize=30 (empirically: ~11-15s warm / ~25-37s cold per chunk — model loads per chunk again,
+deliberately accepted). RunScanAsJson retained (non-streamed, RunAcrScan route) via the same RunFastPhase.
+Batch payload: {phase:"fast"|"describe", final, progress:{processed,total,label,requested,returned}, violations,
++ metadata only on fast}. ViewModel.RunFullScan posts every batch as "AcrViolations". VERIFIED with driver
+(deep): 21 batches, streamed sum == non-streamed EXACT (2865=2865; MAINT-006=104, REL-001=31, MAINT-008=129,
+MAINT-009=1, MAINT-013=1, …), 0 incompleteness warns, sawFinal=True. Rule logic/claim table/tripwires byte-
+identical — only when/in how many pieces differs.
+PHASE 2 (UI, main.js): handleMxcliResult branches on phase — fast=replaceOrigin (clean slate + metadata),
+describe=APPEND (concat, no replace). final=false → scanStreaming=true. streamingBanner() (inline styled,
+unmistakable) + totalRow "Total (so far)" + "{n}…" while streaming → interim state NEVER shown as final state. Progress
+"microflows X/472". scanIncomplete (returned<requested) → red LOUD warning. Scroll position preserved across
+rerenders. Safety net finalizeStreaming() on ScanFinished (also rounds off if final batch is missing, e.g. 0 user
+microflows). Backward compat: payload without phase = fast+final (old form).
+PHASE 3: build 0/0, tests 232/232, Build-Package repackaged (TRB check green), streaming code in package (main.js).
+The real UI test (both buttons, drip-in) is Michel's. Unchanged: rule logic, numbers, claim table/
+tripwires, two-button setup.
 
-WORTEL-ONDERZOEK warme/persistente mxcli-modus (23 juni) — CONCLUSIE: GEEN wortel-fix in mxcli, streamen is de weg.
-mxcli is v0.12.0 (installer pakte 'latest'; "v0.11.0" in de context is verouderd). v0.12.0 heeft persistente
-modi (REPL `mxcli` zonder args; `exec script.mdl`; `lsp`; `serve`) MAAR die houden het model alleen warm
-binnen één sessie = model-load ×1 — wat onze chunk-van-200 al amortiseert. Géén bulk-describe en géén
-expressie/control-flow-export (docs + `describe module` getoetst: die geeft alleen `create module X;`, niet de
-inhoud). APPLES-TO-APPLES gemeten (zelfde warmte, back-to-back, alles via .NET ProcessRunner, 472 microflows):
-  A) chunks-van-200 (3 processen): 301,5s (639 ms/mf)  B) één grote -c (1 proces, 27510 chars): 310,5s (658
-  ms/mf)  C) exec scriptbestand (1 proces): 346,1s (733 ms/mf). Alledrie ~gelijk; chunk-200 zelfs marginaal het
-SNELST. Eén-sessie is NIET sneller. (De eerdere "exec 300s vs chunk 548s" was een warmte-confound: de 548s-
-chunkmeting was ~40min eerder/kouder.) Geen commandline-limiet in .NET (de 27510-char -c liep, blocks=472).
-→ ~640ms/describe (warm) / ~1,1s (koud) is een HARDE mxcli-compute-vloer; geen warme/persistente/bulk-modus
-breekt 'm. Chunk=200 is al optimaal (voorbij de model-load-amortisatie-knie). WORTEL-FIX bestaat dus niet in
-mxcli v0.12.0 → STREAMEN (de tijd draaglijk maken) is de juiste weg. Enige echte orde-winst zou de verwijderde
-BULK-EXPORT zijn (mxlint-export gaf alle expressies in ~19s) — heropent de mxlint-verwijder-beslissing; alleen
-noemen als strategische optie, geen aanbeveling. Alternatief (apart, niet gemeten): leunen op mxcli's eigen
-lint-regels (de ~10s lint-pass dekt mogelijk MAINT-008/009 e.d.) i.p.v. de eigen describe-route.
+ROOT INVESTIGATION warm/persistent mxcli mode (June 23) — CONCLUSION: NO root fix in mxcli, streaming is the way.
+mxcli is v0.12.0 (installer grabbed 'latest'; "v0.11.0" in context is outdated). v0.12.0 has persistent
+modes (REPL `mxcli` without args; `exec script.mdl`; `lsp`; `serve`) BUT these only keep the model warm
+within one session = model load ×1 — which our chunk-of-200 already amortises. No bulk describe and no
+expression/control flow export (docs + `describe module` tested: that only gives `create module X;`, not the
+content). APPLES-TO-APPLES measured (same warmth, back-to-back, all via .NET ProcessRunner, 472 microflows):
+  A) chunks-of-200 (3 processes): 301.5s (639 ms/mf)  B) one large -c (1 process, 27510 chars): 310.5s (658
+  ms/mf)  C) exec script file (1 process): 346.1s (733 ms/mf). All three ~equal; chunk-200 even marginally
+FASTEST. Single session is NOT faster. (The earlier "exec 300s vs chunk 548s" was a warmth confound: the 548s
+chunk measurement was ~40min earlier/colder.) No command line limit in .NET (the 27510-char -c ran, blocks=472).
+→ ~640ms/describe (warm) / ~1.1s (cold) is a HARD mxcli compute floor; no warm/persistent/bulk mode
+breaks it. Chunk=200 is already optimal (past the model load amortisation knee). ROOT FIX therefore does not exist in
+mxcli v0.12.0 → STREAMING (making the time bearable) is the right path. The only real order-of-magnitude gain would be the removed
+BULK EXPORT (mxlint export gave all expressions in ~19s) — reopens the mxlint removal decision; only
+mention as strategic option, not a recommendation. Alternative (separate, not measured): lean on mxcli's own
+lint rules (the ~10s lint pass may cover MAINT-008/009 etc.) instead of the own describe route.
 
-METING (23 juni) — fase-timing per modus (instrumented driver tmp-timing, TRB-Mx11-CLITEST, niet geschat):
-Log-feit: 2 handmatige scans (16s ertussen, GEEN dubbel-trigger): FAST 55s (11:55:15→11:56:10), DEEP 4:41
-(11:56:27→12:01:08). FASE-TABEL (warm, gemeten via de echte providerklassen):
-  FAST: lint 6,3s | security 5,8s (describe projectsecurity + 1 guest userrole + 2 SELECTs) | catalog 4,4s
-        (8 SELECTs + SHOW SETTINGS) | list-rules 0,3s | payload-build 0,05s | TOTAAL ~17s (findings 2594).
-  DEEP: lint 11s | security 45,8s (9 userrole-describes ~5s elk) | catalog 7,1s | DESCRIBE-SWEEP 609s |
-        list-rules 0,35s | payload 0,07s | TOTAAL 673s (11:13) (findings 2865).
-VERRASSINGEN: (1) de DESCRIBE-SWEEP is ~99% van de deep-tijd. Gecontroleerd (blocks=chunkgrootte, geen
-truncatie): per DESCRIBE ~1,07s marginaal + ~3,7s model-load per chunk-van-200. Batching amortiseert ALLEEN
-de model-load; de per-describe-kost (~1,1s) is de vloer en domineert. (De oude "~0,6s/describe"-claim klopt
-niet meer op v0.11.0/dit model.) 472 MF + 106 entiteiten = 578 × ~1,1s(koud)=608s ; × ~0,5s(warm OS-cache,
-zoals de echte deep die ná de fast-scan liep) =289s ≈ log-4:41. Per-describe = 0,5s(warm)–1,1s(koud), LINEAIR.
-(2) `mxcli lint` HERSCHRIJFT catalog.db ELKE scan (~6s warm, ~18s koud-rebuild, gezien in de log 11:55:15→33);
-geen cross-scan-cache. Dit + koude process-starts verklaart log-FAST 55s vs warm 17s (niet reproduceerbaar
-zonder OS-cache te legen). (3) payload-build is verwaarloosbaar (46ms voor 1,47MB). (4) kleine redundante
-SELECTs: MODULES/MICROFLOWS/ENTITIES door zowel catalog- als describe-route; MODULES 2× in catalog-route;
-list-rules apart van lint — samen ~2s, NIET de moeite. SELECT-batching bespaart 0,6s → niet doen.
-EXTRAPOLATIE (describe-sweep, lineair, +~22% entiteiten zoals TRB): 2000 MF ≈ 20min(warm)–45min(koud);
-5000 MF ≈ 51min(warm)–112min(koud). → STREAMEN is voor DEEP NOODZAKELIJK (frozen paneel 20–112min onaccept-
-abel); voor FAST (~17–55s) nice-to-have. Snel = catalog (8×~0,4s) + lint + security; traag = describe-sweep
-(chunks van 200, ~3–4min/chunk). Streaming-aanpak: fast-resultaten direct tonen (~20s), describe-findings
-per chunk laten binnendruppelen (evt. kleinere chunks = vaker updaten, kost extra model-loads).
+MEASUREMENT (June 23) — phase timing per mode (instrumented driver tmp-timing, TRB-Mx11-CLITEST, not estimated):
+Log fact: 2 manual scans (16s apart, NO double trigger): FAST 55s (11:55:15→11:56:10), DEEP 4:41
+(11:56:27→12:01:08). PHASE TABLE (warm, measured via the real provider classes):
+  FAST: lint 6.3s | security 5.8s (describe projectsecurity + 1 guest userrole + 2 SELECTs) | catalog 4.4s
+        (8 SELECTs + SHOW SETTINGS) | list-rules 0.3s | payload-build 0.05s | TOTAL ~17s (findings 2594).
+  DEEP: lint 11s | security 45.8s (9 userrole describes ~5s each) | catalog 7.1s | DESCRIBE SWEEP 609s |
+        list-rules 0.35s | payload 0.07s | TOTAL 673s (11:13) (findings 2865).
+SURPRISES: (1) the DESCRIBE SWEEP is ~99% of the deep time. Verified (blocks=chunk size, no
+truncation): per DESCRIBE ~1.07s marginal + ~3.7s model load per chunk-of-200. Batching amortises ONLY
+the model load; the per-describe cost (~1.1s) is the floor and dominates. (The old "~0.6s/describe" claim is no
+longer accurate on v0.11.0/this model.) 472 MF + 106 entities = 578 × ~1.1s(cold)=608s; × ~0.5s(warm OS cache,
+as the real deep ran after the fast scan) =289s ≈ log-4:41. Per-describe = 0.5s(warm)–1.1s(cold), LINEAR.
+(2) `mxcli lint` REWRITES catalog.db EVERY scan (~6s warm, ~18s cold rebuild, seen in log 11:55:15→33);
+no cross-scan cache. This + cold process starts explains log-FAST 55s vs warm 17s (not reproducible
+without clearing the OS cache). (3) payload build is negligible (46ms for 1.47MB). (4) small redundant
+SELECTs: MODULES/MICROFLOWS/ENTITIES by both catalog and describe route; MODULES 2× in catalog route;
+list-rules separate from lint — together ~2s, NOT worth it. SELECT batching saves 0.6s → do not bother.
+EXTRAPOLATION (describe sweep, linear, +~22% entities as on TRB): 2000 MF ≈ 20min(warm)–45min(cold);
+5000 MF ≈ 51min(warm)–112min(cold). → STREAMING is REQUIRED for DEEP (frozen panel 20–112min unaccept-
+able); for FAST (~17–55s) nice-to-have. Fast = catalog (8×~0.4s) + lint + security; slow = describe sweep
+(chunks of 200, ~3–4min/chunk). Streaming approach: show fast results directly (~20s), let describe findings
+trickle in per chunk (optionally smaller chunks = more frequent updates, costs extra model loads).
 
-FASE E — BESLIST + DOORGEVOERD: "split de security-route". MxcliSecurityService.GetViolations(bool deepScan):
-FAST = SEC-008 (describe projectsecurity, 0 userrole-calls) + SEC-005 (anon-create — alleen de GUEST-rol
-nodig → ≤1 describe userrole, en alleen als guest-access aan); DEEP = die twee PLUS SEC-010 + MAINT-005
-(alle 9 user-rollen). AcrScanService geeft deepScan door. Build 0/0, tests 232/232.
-GEMETEN (TRB-Mx11-CLITEST, niet geschat): snelle scan ~46s → ~24s (8 userrole-calls weg). MAAR ~14s was
-ONHAALBAAR — de oorzaak was verkeerd ingeschat. Per-call decompositie (gemeten): `mxcli lint` (eigen engine,
-beide modi) = ~9,7s — DOMINANT en onvermijdelijk; `describe projectsecurity` = 3,9s; `describe userrole`
-(guest) = 4,0s; `lint --list-rules` = 0,5s; elke `-c SELECT` (catalog.db) = ~0,4s — GOEDKOOP. De catalog-
-SELECTs (8×) zijn dus NIET de kosten → SELECT-batching getest (alles in één -c) bespaart slechts ~0,6s →
-NIET de moeite, geen FASE F. De ~24s = ~10s lint + ~8s twee describes (SEC-008/005) + ~6s goedkoop. Floor
-mét security in fast = ~24s (beide) of ~18s (alleen SEC-008, SEC-005 ook naar deep) of ~14s (álle security
-naar deep, dan 0 security in fast). REPACK-BESLISSING aan Michel: ~24s shippen of SEC-005 ook naar deep (~18s).
+PHASE E — DECIDED + IMPLEMENTED: "split the security route". MxcliSecurityService.GetViolations(bool deepScan):
+FAST = SEC-008 (describe projectsecurity, 0 userrole calls) + SEC-005 (anon create — only the GUEST role
+needed → ≤1 describe userrole, and only if guest access is on); DEEP = those two PLUS SEC-010 + MAINT-005
+(all 9 user roles). AcrScanService passes deepScan through. Build 0/0, tests 232/232.
+MEASURED (TRB-Mx11-CLITEST, not estimated): fast scan ~46s → ~24s (8 userrole calls removed). BUT ~14s was
+UNACHIEVABLE — the cause was misjudged. Per-call breakdown (measured): `mxcli lint` (own engine,
+both modes) = ~9.7s — DOMINANT and unavoidable; `describe projectsecurity` = 3.9s; `describe userrole`
+(guest) = 4.0s; `lint --list-rules` = 0.5s; each `-c SELECT` (catalog.db) = ~0.4s — CHEAP. The catalog
+SELECTs (8×) are therefore NOT the cost → SELECT batching tested (everything in one -c) saves only ~0.6s →
+NOT worth it, no PHASE F. The ~24s = ~10s lint + ~8s two describes (SEC-008/005) + ~6s cheap. Floor
+with security in fast = ~24s (both) or ~18s (only SEC-008, SEC-005 also to deep) or ~14s (ALL security
+to deep, then 0 security in fast). REPACK DECISION for Michel: ship ~24s or SEC-005 also to deep (~18s).
 
-mxlint-VERWIJDERING GESTOPT bij FASE A — SEC-006 blokkeert. EINDBESLISSING was "mxlint volledig eruit,
-6 naar mxcli, 2 deprecated", maar de verificatie weerlegde de meetkaart voor SEC-006.
-FASE A (5 van 6 gemigreerd + geverifieerd tegen de oude GT):
+mxlint REMOVAL STOPPED at PHASE A — SEC-006 blocks. FINAL DECISION was "mxlint completely out,
+6 to mxcli, 2 deprecated", but verification refuted the measurement for SEC-006.
+PHASE A (5 of 6 migrated + verified against old GT):
 - SEC-008 (admin=MxAdmin) → describe projectsecurity → AdminUser. GT 1 ✓
-- SEC-010 (per-userrole check-security) → describe userrole. GT 0 ✓ (alle 9 enabled)
-- MAINT-005 (module-rollen/module) → project-tree + describe userrole. GT 5 ✓
-- SEC-005 (anon create persistent) → CATALOG.PERMISSIONS CREATE + ENTITIES PERSISTENT + guest-rol. GT 1 ✓
-  (3 anon-CREATE-entiteiten, maar enkel Accesslog.AccesslogBankenportaal is PERSISTENT → 1)
-  Aanpak: nieuwe MxcliSecurityService synthetiseert een equivalente project-security-YAML uit describe/
-  project-tree en voedt die aan de BESTAANDE pure predicaten (logica ongewijzigd) + CatalogRules voor SEC-005.
-- SEC-006 (anon-edit UNLIMITED string) → GEBLOKKEERD. mxcli v0.11.0 ontsluit de string-MAX-LENGTE NIET:
-  CATALOG.ATTRIBUTES.Length=0 voor ALLE 748 strings; describe rendert ALLES als String(unlimited) — óók
-  Accesslog…Username dat Length:200 is in de YAML. De catalog-variant over-telt (34 i.p.v. 4: alle anon-
-  writable strings i.p.v. enkel unlimited). De unlimited-vs-limited-discriminator zit ALLEEN in de
-  modelsource-YAML. → SEC-006 blijft op de YAML-route (DetectAnonymousEditRules). De meetkaart-verdict
-  "CATALOG-NATIVE" was FOUT (Length-betrouwbaarheid niet getoetst); deze verificatie ving het.
-- MAINT-006 (redundante boolean) → describe-migratie GEREED (zelfde extractie als REL-001/002) maar nog
-  niet tegen GT 94 geverifieerd → BLIJFT voorlopig op de YAML-route (geen onbevestigde wijziging shippen).
-FASE B: MAINT-015 + REL-003 deprecated (DetectPageRules niet bedraad; PageRules/PageYamlReader blijven backup).
-FASE C: GEBLOKKEERD — actieve modelsource-lezers resteren: DetectAnonymousEditRules (SEC-006) +
-DetectExpressionRules (MAINT-006). Dus de mxlint-export + binary KUNNEN NIET weg. Niet uitgevoerd.
-CONCLUSIE: volledig export-loos is NIET haalbaar zolang SEC-006 (en, tot verificatie, MAINT-006) behouden
-blijft. Beslissing aan Michel: (a) SEC-006 óók deprecaten → dan kan de export weg na MAINT-006-verificatie;
-(b) SEC-006 houden → export blijft. Build 0/0, tests 230/230 (+3). tmp opgeruimd. Geen FASE C/D.
+- SEC-010 (per-userrole check-security) → describe userrole. GT 0 ✓ (all 9 enabled)
+- MAINT-005 (module roles/module) → project tree + describe userrole. GT 5 ✓
+- SEC-005 (anon create persistent) → CATALOG.PERMISSIONS CREATE + ENTITIES PERSISTENT + guest role. GT 1 ✓
+  (3 anon-CREATE entities, but only Accesslog.AccesslogBankenportaal is PERSISTENT → 1)
+  Approach: new MxcliSecurityService synthesises an equivalent project-security YAML from describe/
+  project tree and feeds it to the EXISTING pure predicates (logic unchanged) + CatalogRules for SEC-005.
+- SEC-006 (anon edit UNLIMITED string) → BLOCKED. mxcli v0.11.0 does not expose the string MAX LENGTH:
+  CATALOG.ATTRIBUTES.Length=0 for ALL 748 strings; describe renders ALL as String(unlimited) — including
+  Accesslog…Username which has Length:200 in the YAML. The catalog variant over-counts (34 instead of 4: all anon-
+  writable strings instead of only unlimited ones). The unlimited-vs-limited discriminator is ONLY in the
+  modelsource YAML. → SEC-006 stays on the YAML route (DetectAnonymousEditRules). The measurement verdict
+  "CATALOG-NATIVE" was WRONG (Length reliability not tested); this verification caught it.
+- MAINT-006 (redundant boolean) → describe migration READY (same extraction as REL-001/002) but not yet
+  verified against GT 94 → STAYS on the YAML route for now (do not ship unconfirmed change).
+PHASE B: MAINT-015 + REL-003 deprecated (DetectPageRules not wired; PageRules/PageYamlReader remain as backup).
+PHASE C: BLOCKED — active modelsource readers remain: DetectAnonymousEditRules (SEC-006) +
+DetectExpressionRules (MAINT-006). So the mxlint export + binary CANNOT be removed. Not executed.
+CONCLUSION: fully export-free is NOT feasible as long as SEC-006 (and, pending verification, MAINT-006) is retained.
+Decision for Michel: (a) also deprecate SEC-006 → then the export can go after MAINT-006 verification;
+(b) keep SEC-006 → export stays. Build 0/0, tests 230/230 (+3). tmp cleaned up. No PHASE C/D.
 
-TWEE SCAN-MODI (snel default + Deepscan). Geen regel-logica gewijzigd; alleen WELKE regels draaien.
-DEEL 1 (orchestratie): AcrScanService.RunScanAsJson(projectDir, bool deepScan=false). De describe-route
-(MxcliDescribeService — de 5 trage regels MAINT-008/009/REL-001/002/MAINT-013) is nu ENIGE gegate stap:
-`if (deepScan)`. Alle overige draaien in BEIDE modi (catalog-7, mxcli-eigen lint, YAML-route-regels
-MAINT-005/SEC-005/006/008/010/MAINT-006/MAINT-015/REL-003, manual checks, export, marktplaats-modules).
-Message "RunFullScan" → snel (deepScan:false); nieuw "RunDeepScan" → deep. payload.deepScan toegevoegd.
-DEEL 2 (UI): tweede knop #deepScanBtn (class acr-secondary, duidelijk ondergeschikt) naast Scan. Beide
-via gedeelde startScan(deep); setScanning disablet BEIDE + spinner. Deepscan toont een zichtbare duur-
-waarschuwing ("…can take ~3 minutes…") + de C#-ScanProgress-tekst "Deep analysis: scanning all
-microflows & entities…". Niet-opdringerige VOETNOOT onder de telkaarten bij een snelle scan (renderSummary,
-class acr-scan-note → ook in het rapport): "Quick scan — the deep microflow & expression analysis
+TWO SCAN MODES (fast default + Deepscan). No rule logic changed; only WHICH rules run.
+PART 1 (orchestration): AcrScanService.RunScanAsJson(projectDir, bool deepScan=false). The describe route
+(MxcliDescribeService — the 5 slow rules MAINT-008/009/REL-001/002/MAINT-013) is now THE ONLY gated step:
+`if (deepScan)`. All others run in BOTH modes (catalog-7, mxcli own lint, YAML route rules
+MAINT-005/SEC-005/006/008/010/MAINT-006/MAINT-015/REL-003, manual checks, export, marketplace modules).
+Message "RunFullScan" → fast (deepScan:false); new "RunDeepScan" → deep. payload.deepScan added.
+PART 2 (UI): second button #deepScanBtn (class acr-secondary, clearly subordinate) next to Scan. Both
+via shared startScan(deep); setScanning disables BOTH + spinner. Deepscan shows a visible duration
+warning ("…can take ~3 minutes…") + the C# ScanProgress text "Deep analysis: scanning all
+microflows & entities…". Non-intrusive FOOTNOTE under the count cards for a fast scan (renderSummary,
+class acr-scan-note → also in the report): "Quick scan — the deep microflow & expression analysis
 (complexity, nested ifs, empty-string checks, default ReadWrite access) is NOT included. Run a Deepscan…"
-— communiceert het VERSCHIL (niet "kapot"). lastDeepScan uit payload (default true = geen hint vóór scan).
-DEEL 3 (verificatie): de describe-route is de enige gate → snel = volledig MINUS de 5 describe-regels
-(structureel: die zijn 0 in snel, want hun YAML-emissies staan al uit en MxcliDescribeService draait niet);
-deep = + describe met de bewezen getallen (MAINT-008=129/MAINT-009=1/REL-001=31/REL-002=0/MAINT-013=1,
-vorige turn gemeten, logica byte-identiek). GEMETEN componenten snelle scan: mxcli-lint 5,0s + catalog-
-SELECTs ~7s + mxlint-export 19,1s + YAML-parse ~paar s ≈ ~30-35s. Deep = + describe-route 168s ≈ ~3,3 min.
-Marktplaats-filter/claim-tabel/tripwires werken in beide modi (UI- resp. pure-normalizer-niveau, modus-
-onafhankelijk; tests 227/227). Export (19s, grootste snelle-scan-component) blijft in beide (nodig voor de
-YAML-regels) — 'm ook gaten = de YAML-regels naar deep verplaatsen = aparte beslissing (niet nu, geen stille
-finding-drop). Build 0/0, tests 227/227.
+— communicates the DIFFERENCE (not "broken"). lastDeepScan from payload (default true = no hint before scan).
+PART 3 (verification): the describe route is the only gate → fast = complete MINUS the 5 describe rules
+(structural: those are 0 in fast, as their YAML emissions are already off and MxcliDescribeService does not run);
+deep = + describe with the proven numbers (MAINT-008=129/MAINT-009=1/REL-001=31/REL-002=0/MAINT-013=1,
+measured previous turn, logic byte-identical). MEASURED fast scan components: mxcli-lint 5.0s + catalog
+SELECTs ~7s + mxlint export 19.1s + YAML parse ~few s ≈ ~30-35s. Deep = + describe route 168s ≈ ~3.3 min.
+Marketplace filter/claim table/tripwires work in both modes (UI and pure-normalizer level respectively, mode-
+independent; tests 227/227). Export (19s, largest fast-scan component) stays in both (needed for the
+YAML rules) — gating it too = moving the YAML rules to deep = separate decision (not now, no silent
+finding drop). Build 0/0, tests 227/227.
 
-PERF-FIX describe-route: gebatcht i.p.v. één proces per element. Findings ONGEWIJZIGD.
-STAP 1 (meting, echte ProcessRunner-mechaniek): 30 SEPARATE describe-processen = 102.584 ms
-(3.419 ms/describe) — de bottleneck is per-proces model-load (een catalog-SELECT = 1.189 ms; describe
-laadt het volledige model ~3-4s). Batch-meting (PowerShell): marginale describe ≈ 550 ms, vaste model-
-load ≈ 3,9 s. Dus N× model-load is de kost, niet de describe zelf.
-STAP 2 (kan het in één proces): JA. `mxcli -c "CONNECT LOCAL '…'; DESCRIBE MICROFLOW A; DESCRIBE
-MICROFLOW B; …"` levert alle blokken in één proces. Gemeten: 30 in één batch = 18.098 ms (vs 102.584 ms
-separaat) = ~5,7× sneller, identieke conditie. Output teruggesplitst op `create or modify …`-kopregels.
-STAP 3 (implementatie + verificatie): MxcliDescribeService herschreven — chunked -c-sessies (200/chunk,
-veilig onder de Windows-cmdline-limiet), per-element-blok-split, robuust (luide warn + coverage-check
-bij ontbrekende blokken; chunk-zonder-blokken = fout, geen stille 0). BUG gevonden+gefixt: de entiteit-
-kopregex miste `non-persistent entity` → 51 van 106 entiteit-blokken vielen stil weg (106→55). Regex →
-`^create or modify (?:[\w-]+ )*entity (\S+)` (elke kwalificeerder). Na fix: microflows 472/472,
-entiteiten 106/106 blokken. VERIFICATIE op TRB: findings EXACT gelijk — MAINT-008=129, MAINT-009=1,
-REL-001=31, REL-002=0, MAINT-013=1; catalog-regels ongewijzigd. DUUR: 169,5 s (~2,8 min) gebatcht vs
-~4 min separaat (en vs ~33 min als de 3,4s/describe-separaat-meting representatief was → tot ~12×).
-RESTEREND PLAFOND: de per-element describe-compute (~0,29 s × 578 ≈ 168 s) is nu de ondergrens;
-parallelisme (meerdere batch-processen tegelijk) is de volgende hefboom indien nodig. Build 0/0,
-tests 227/227. tmp opgeruimd.
+PERF FIX describe route: batched instead of one process per element. Findings UNCHANGED.
+STEP 1 (measurement, real ProcessRunner mechanics): 30 SEPARATE describe processes = 102,584 ms
+(3,419 ms/describe) — the bottleneck is per-process model load (a catalog SELECT = 1,189 ms; describe
+loads the full model ~3-4s). Batch measurement (PowerShell): marginal describe ≈ 550 ms, fixed model
+load ≈ 3.9 s. So N× model load is the cost, not the describe itself.
+STEP 2 (can it be done in one process): YES. `mxcli -c "CONNECT LOCAL '…'; DESCRIBE MICROFLOW A; DESCRIBE
+MICROFLOW B; …"` delivers all blocks in one process. Measured: 30 in one batch = 18,098 ms (vs 102,584 ms
+separate) = ~5.7× faster, identical condition. Output split back on `create or modify …` header lines.
+STEP 3 (implementation + verification): MxcliDescribeService rewritten — chunked -c sessions (200/chunk,
+safely under the Windows cmdline limit), per-element block split, robust (loud warn + coverage check
+on missing blocks; chunk without blocks = error, no silent 0). BUG found+fixed: the entity
+header regex missed `non-persistent entity` → 51 of 106 entity blocks silently dropped (106→55). Regex →
+`^create or modify (?:[\w-]+ )*entity (\S+)` (any qualifier). After fix: microflows 472/472,
+entities 106/106 blocks. VERIFICATION on TRB: findings EXACTLY equal — MAINT-008=129, MAINT-009=1,
+REL-001=31, REL-002=0, MAINT-013=1; catalog rules unchanged. DURATION: 169.5 s (~2.8 min) batched vs
+~4 min separate (and vs ~33 min if the 3.4s/describe-separate measurement were representative → up to ~12×).
+REMAINING CEILING: the per-element describe compute (~0.29 s × 578 ≈ 168 s) is now the lower bound;
+parallelism (multiple batch processes simultaneously) is the next lever if needed. Build 0/0,
+tests 227/227. tmp cleaned up.
 
-CUTOVER mxlint→mxcli VOLTOOID. De describe-route is live-bedraad en de 4 mxcli-gedekte onderwerpen
-gedeferd. Routes nu: CATALOG-SQL = MAINT-007/010/014, SEC-007/009/011, PERF-001 (7). DESCRIBE =
-MAINT-008/009/013, REL-001/002 (5, via nieuwe MxcliDescribeService, user-module-scope, describe per
-microflow/entity). DEFER naar mxcli's eigen regel = MAINT-011↔MPR003, PERF-002↔CONV017, MAINT-012↔
-ACR_ENT_VALRULES/CONV015, commit↔CONV011 (onze CLEVR-emissie uit). NOG YAML = CLEVR-MAINT-006 (redundante
-boolean, buiten scope) + de niet-mxlint ACR-regels (MAINT-005, SEC-005/006, PAGE MAINT-015/REL-003).
-mxlint-export-engine = backup (findings uit, export draait nog voor de YAML-route-restanten).
-STAP 2 — live-wiring: MxcliDescribeService (spike) draait de 5 pure describe-regels; YAML-emissies in
-DetectExpressionRules (REL-001/002/MAINT-008/009) + DetectDomainModelBatchRules (MAINT-013) uitgezet
-(pure regels = backup). STAP 3 — claim-tabel/tripwire-cutover: MPR003 + CONV011 UIT SuppressedMxcli
-(mxcli's eigen regel moet júist tonen); de 4 entries → Winner = mxcli's regel, SuppressMxcli leeg,
-mxlint-twin (002_0001/0006/0007/005_0002) BLIJFT onderdrukt (backup defert ook). Tripwire-lijsten
-bijgewerkt: SuppressedMxcliCounterparts = {QUAL003,CONV009,DESIGN001,CONV002} (MPR003/CONV011 eruit);
-InternalisedMxlintTwins membership ongewijzigd (comments → 'gedeferd'). DomainModelBatchTests.ClaimTable_
-MxcliChoices omgezet (MPR003 nu DoesNotContain). STAP 4 — VERIFICATIE TRB: geen wegval (describe-getallen
-bewezen in eerdere sweeps via identieke pure regels: REL-002=0, MAINT-009=1, REL-001=31, MAINT-013=1,
-MAINT-008=129; catalog-regels ongewijzigd). Geen dubbel: mxcli-output MPR003=2 (System UI-gefilterd→TRB),
-CONV011=0, CONV017=5, ACR_ENT_VALRULES/CONV015=0; onze CLEVR-MAINT-011/PERF-COMMIT = 0 in mxcli-output
-(emissie uit) → precies één bron per onderwerp. Tripwires groen ÉN kloppend met de nieuwe toestand.
-Build 0/0, tests 227/227. NIET in deze stap: mxlint-export verwijderen + severity-kalibratie. tmp opgeruimd.
-PERF-CAVEAT: de describe-route = één mxcli-proces per microflow/entiteit (~578 op TRB) → merkbaar trager;
-batching is een aparte latere beslissing.
+CUTOVER mxlint→mxcli COMPLETED. The describe route is live-wired and the 4 mxcli-covered topics
+deferred. Routes now: CATALOG-SQL = MAINT-007/010/014, SEC-007/009/011, PERF-001 (7). DESCRIBE =
+MAINT-008/009/013, REL-001/002 (5, via new MxcliDescribeService, user-module scope, describe per
+microflow/entity). DEFER to mxcli's own rule = MAINT-011↔MPR003, PERF-002↔CONV017, MAINT-012↔
+ACR_ENT_VALRULES/CONV015, commit↔CONV011 (our CLEVR emission out). STILL YAML = CLEVR-MAINT-006 (redundant
+boolean, out of scope) + the non-mxlint ACR rules (MAINT-005, SEC-005/006, PAGE MAINT-015/REL-003).
+mxlint export engine = backup (findings off, export still runs for the YAML route remnants).
+STEP 2 — live wiring: MxcliDescribeService (spike) runs the 5 pure describe rules; YAML emissions in
+DetectExpressionRules (REL-001/002/MAINT-008/009) + DetectDomainModelBatchRules (MAINT-013) turned off
+(pure rules = backup). STEP 3 — claim table/tripwire cutover: MPR003 + CONV011 OUT OF SuppressedMxcli
+(mxcli's own rule should show); the 4 entries → Winner = mxcli's rule, SuppressMxcli empty,
+mxlint twin (002_0001/0006/0007/005_0002) REMAINS suppressed (backup also defers). Tripwire lists
+updated: SuppressedMxcliCounterparts = {QUAL003,CONV009,DESIGN001,CONV002} (MPR003/CONV011 removed);
+InternalisedMxlintTwins membership unchanged (comments → 'deferred'). DomainModelBatchTests.ClaimTable_
+MxcliChoices converted (MPR003 now DoesNotContain). STEP 4 — VERIFICATION TRB: no loss (describe numbers
+proven in earlier sweeps via identical pure rules: REL-002=0, MAINT-009=1, REL-001=31, MAINT-013=1,
+MAINT-008=129; catalog rules unchanged). No duplication: mxcli output MPR003=2 (System UI filtered→TRB),
+CONV011=0, CONV017=5, ACR_ENT_VALRULES/CONV015=0; our CLEVR-MAINT-011/PERF-COMMIT = 0 in mxcli output
+(emission off) → exactly one source per topic. Tripwires green AND consistent with the new state.
+Build 0/0, tests 227/227. NOT in this step: remove mxlint export + severity calibration. tmp cleaned up.
+PERF CAVEAT: the describe route = one mxcli process per microflow/entity (~578 on TRB) → noticeably slower;
+batching is a separate later decision.
 
-ADDITIEVE RONDE (geen cutover): 3 resterende describe-regels + marktplaats-filter. NIET live-bedraad;
-oude YAML-route draait door; claim-tabel/tripwire ongemoeid. Alles user-module-scope (Source leeg).
-DEEL 1 — 3 describe-regels op de bewezen assembler, bestaande predicaten hergebruikt:
-- REL-001 (redundante empty-string): describe Extract → ExpressionRules.RedundantEmptyString.
-  Live user-module-sweep = 31 == oude YAML-GT 31 → EXACT gereproduceerd (geen afwijking).
-- MAINT-013 (default-RW): nieuwe pure DescribeEntityRules — `grant <role> on <ent> (… write *)` =
-  DefaultMemberAccessRights ReadWrite. Live = 1 == oude GT 1 (TRB_Email.TRB_Email, Administrator) → EXACT.
-- MAINT-008 (complex zonder annotaties): describe StructureCounts (actions=niet-split-statements,
-  splits=ALLE structurele if-headers incl. genest, annotations=@annotation-regels) → bestaande
-  ComplexWithoutAnnotations. Live = 129 vs oude YAML-GT 103. AFWIJKING = METRIEK, niet scope/fout:
-  zelfde 472 user-module-microflows, maar de describe-telling telt óók GENESTE splits (de oude YAML
-  telde alleen top-level ExclusiveSplitCount) → meer microflows met splits>2 → +26. Geaccepteerd als
-  nieuwe mxcli/describe-grondwaarheid (kalibratie-item), niet geforceerd naar 103.
-  Synthetische positieve unit-tests per regel (beide richtingen). Build 0/0, tests 227/227 (+8).
-DEEL 3 — marktplaats-filter (UI, geen demping): AcrScanService stuurt `appStoreModules` mee in de
-payload (CATALOG.MODULES.Source niet leeg — zelfde mechanisme als FASE 1, via MxcliCatalogService.
-AppStoreModuleNames). main.js: isAppStoreModule(v) (module-prefix ∈ set) + toggle appStoreVisible
-(default TONEN) in baseViolations → werkt door in paneel ÉN rapport. Checkbox "Marketplace modules (N)"
-in de Source-filterrij (zelfde stijl als de bron-filters), alleen getoond als er app-store-findings zijn.
-Findings worden NIET vooraf gedempt; puur weergave-toggle. tmp opgeruimd.
+ADDITIVE ROUND (no cutover): 3 remaining describe rules + marketplace filter. NOT live-wired;
+old YAML route continues; claim table/tripwire untouched. All user-module scope (Source empty).
+PART 1 — 3 describe rules on the proven assembler, reusing existing predicates:
+- REL-001 (redundant empty string): describe Extract → ExpressionRules.RedundantEmptyString.
+  Live user-module sweep = 31 == old YAML GT 31 → EXACTLY reproduced (no deviation).
+- MAINT-013 (default-RW): new pure DescribeEntityRules — `grant <role> on <ent> (… write *)` =
+  DefaultMemberAccessRights ReadWrite. Live = 1 == old GT 1 (TRB_Email.TRB_Email, Administrator) → EXACT.
+- MAINT-008 (complex without annotations): describe StructureCounts (actions=non-split statements,
+  splits=ALL structural if headers incl. nested, annotations=@annotation lines) → existing
+  ComplexWithoutAnnotations. Live = 129 vs old YAML GT 103. DEVIATION = METRIC, not scope/error:
+  same 472 user-module microflows, but the describe count also counts NESTED splits (the old YAML
+  only counted top-level ExclusiveSplitCount) → more microflows with splits>2 → +26. Accepted as
+  new mxcli/describe ground truth (calibration item), not forced to 103.
+  Synthetic positive unit tests per rule (both directions). Build 0/0, tests 227/227 (+8).
+PART 3 — marketplace filter (UI, no suppression): AcrScanService includes `appStoreModules` in the
+payload (CATALOG.MODULES.Source not empty — same mechanism as PHASE 1, via MxcliCatalogService.
+AppStoreModuleNames). main.js: isAppStoreModule(v) (module prefix ∈ set) + toggle appStoreVisible
+(default SHOW) in baseViolations → works through in panel AND report. Checkbox "Marketplace modules (N)"
+in the Source filter row (same style as the source filters), only shown when there are app-store findings.
+Findings are NOT pre-suppressed; purely a display toggle. tmp cleaned up.
 
-FIX — mxcli exitcode 1 werd ten onrechte als mislukking behandeld. OORZAAK feitelijk vastgesteld
-(v0.11.0, niet uit docs): mxcli's exitcode is GEEN succes/faal-signaal maar een CI-conventie op
-SEVERITY: exit 1 = ≥1 error-severity finding (TRB: 3 errors → exit 1, mét geldige JSON), exit 0 = geen
-error-findings (warnings/info kunnen er zijn — geverifieerd: alle modules-minus geeft 0 errors → exit 0).
-ÉN een echte fout (connect-fout) geeft óók exit 1, maar met LEGE stdout + 'Error connecting: …' op
-stderr. De "vibe-coded PoC"-waarschuwing staat ALTIJD op stderr → geen foutindicator. Geen exitcode-
-conventie in --help gedocumenteerd; puur empirisch vastgesteld (3 cases).
-FIX (op vastgestelde semantiek, niet op aanname): AcrScanService gokt niet meer op de exitcode. Nieuwe
-MxcliOutputParser.ContainsJson(stdout) onderscheidt: stdout met JSON-envelope → mxcli draaide normaal →
-parsen ongeacht exitcode; lege/niet-JSON stdout → LUID falen via Diagnostic (exitcode + stderr), nooit
-stilletjes 0 findings. De oude `if (ExitCode != 0) return Diagnostic` is vervangen door deze
-JSON-aanwezigheidscheck.
-VERIFICATIE op de ECHTE captured mxcli-output: CASE A (findings, exit 1) → ContainsJson=true, 2574
-violations geparsed → SUCCESS (niet meer afgewezen); CASE C (niet-bestaand .mpr, exit 1, lege stdout) →
-ContainsJson=false → luide Diagnostic. De 7 catalog-regels (MAINT-007=30/MAINT-010=592/SEC-007=1/rest 0)
-komen uit de catalog-SELECT-route (MxcliCatalogService) en staan los van deze lint-call-gate — onveranderd.
-Build 0/0, tests 219/219 (+1 ContainsJson-test). tmp opgeruimd.
+FIX — mxcli exit code 1 was incorrectly treated as failure. CAUSE factually established
+(v0.11.0, not from docs): mxcli's exit code is NOT a success/failure signal but a CI convention on
+SEVERITY: exit 1 = ≥1 error-severity finding (TRB: 3 errors → exit 1, with valid JSON), exit 0 = no
+error findings (warnings/info can be present — verified: all modules-minus gives 0 errors → exit 0).
+AND a real error (connect error) also gives exit 1, but with EMPTY stdout + 'Error connecting: …' on
+stderr. The "vibe-coded PoC" warning is ALWAYS on stderr → not an error indicator. No exit code
+convention documented in --help; purely empirically established (3 cases).
+FIX (on established semantics, not on assumption): AcrScanService no longer guesses the exit code. New
+MxcliOutputParser.ContainsJson(stdout) distinguishes: stdout with JSON envelope → mxcli ran normally →
+parse regardless of exit code; empty/non-JSON stdout → LOUD failure via Diagnostic (exit code + stderr), never
+silently 0 findings. The old `if (ExitCode != 0) return Diagnostic` is replaced by this
+JSON-presence check.
+VERIFICATION on the REAL captured mxcli output: CASE A (findings, exit 1) → ContainsJson=true, 2574
+violations parsed → SUCCESS (no longer rejected); CASE C (non-existent .mpr, exit 1, empty stdout) →
+ContainsJson=false → loud Diagnostic. The 7 catalog rules (MAINT-007=30/MAINT-010=592/SEC-007=1/rest 0)
+come from the catalog SELECT route (MxcliCatalogService) and are independent of this lint-call gate — unchanged.
+Build 0/0, tests 219/219 (+1 ContainsJson test). tmp cleaned up.
 
-DESCRIBE-ROUTE BEWEZEN (FASE 2 extractor-fix). De divergentie (27 i.p.v. 0) is opgelost: de
-DescribeMicroflowExpressions-extractor heeft nu een MULTI-LINE-ASSEMBLER (Assemble) — gewrapte
-condities worden samengevoegd tot één statement (tot `;` of een kale ` then`) vóór het predicaat. De
-bewijsstap draait op USER-MODULE-scope (Source leeg in CATALOG.MODULES — zelfde mechanisme als FASE 1;
-13 user-modules, 472 microflows ≈ de 471 modelsource-microflows). Bestaande predicaten ONgewijzigd
-hergebruikt (ExpressionRules.IncompleteEmptyStringCheck + MicroflowStructureRules.NestedIfStatements/
-NestedIfRegex); alleen de EXTRACTIE is gefixt + ExtractSplits toegevoegd (split-conditie + caption).
-DUBBELE VERIFICATIE op TRB (user-module-sweep, niet alleen één microflow):
-- REL-002 = 0 (GT 0) — de multi-line complete checks (Encryption.MB_SaveCertificate 4×) tellen nu als
-  compleet, geen vals-positief meer.
-- MAINT-009 = 1 (GT 1) = TRB.SUB_ValidateVelden, caption 'Datum na 1 april 2015?' — het ECHTE positieve
-  geval (geneste inline-if uit de echte describe-output) correct gereproduceerd. Een 0-regel zou de route
-  niet bewijzen; dit positieve geval wél.
-Beide exact → route bewezen. Unit-tests dekken beide + de regressie (multi-line wrap → compleet) +
-plain/compound-condities (geen vals-nested). Build 0/0, tests 218/218.
-STOP: de overige 3 (MAINT-008, REL-001, MAINT-013) volgen als APARTE batch nu de route bewezen is.
-NIET in deze stap (aparte vervolgstappen): app-store meescannen + schermfilter, de live-wiring van de
-describe-route in de scan (REL-002 draait nog via YAML), claim-tabel/tripwire-cutover voor de mxcli-gedekte regels.
+DESCRIBE ROUTE PROVEN (PHASE 2 extractor fix). The divergence (27 instead of 0) is resolved: the
+DescribeMicroflowExpressions extractor now has a MULTI-LINE ASSEMBLER (Assemble) — wrapped
+conditions are joined into one statement (up to `;` or a bare ` then`) before the predicate. The
+proof step runs on USER-MODULE scope (Source empty in CATALOG.MODULES — same mechanism as PHASE 1;
+13 user modules, 472 microflows ≈ the 471 modelsource microflows). Existing predicates UNCHANGED
+reused (ExpressionRules.IncompleteEmptyStringCheck + MicroflowStructureRules.NestedIfStatements/
+NestedIfRegex); only the EXTRACTION is fixed + ExtractSplits added (split condition + caption).
+DOUBLE VERIFICATION on TRB (user-module sweep, not just one microflow):
+- REL-002 = 0 (GT 0) — the multi-line complete checks (Encryption.MB_SaveCertificate 4×) now count as
+  complete, no more false positive.
+- MAINT-009 = 1 (GT 1) = TRB.SUB_ValidateVelden, caption 'Datum na 1 april 2015?' — the REAL positive
+  case (nested inline if from the real describe output) correctly reproduced. A 0 result would not prove
+  the route; this positive case does.
+Both exact → route proven. Unit tests cover both + the regression (multi-line wrap → complete) +
+plain/compound conditions (no false nested). Build 0/0, tests 218/218.
+STOP: the remaining 3 (MAINT-008, REL-001, MAINT-013) follow as a SEPARATE batch now the route is proven.
+NOT in this step (separate follow-up steps): include app store in scan + screen filter, the live wiring of the
+describe route in the scan (REL-002 still runs via YAML), claim table/tripwire cutover for the mxcli-covered rules.
 
-MIGRATIE mxlint→mxcli (Apache-2.0). FASE 1 (mxcli-catalog-provider + 7 robuuste regels) AF; FASE 2
-(describe-route bewijsregel) DIVERGEERT → gestopt, oorzaak benoemd, overige 4 NIET gebouwd.
-FASE 1: nieuwe pure CatalogRules (normalizer) + MxcliCatalogService (spike, SQLite-catalog via
-`-p <mpr> -c "SELECT … FROM CATALOG.*"`). 7 regels gemigreerd op catalog-SQL, rule-id/categorie/severity
-+ claim-tabel ongewijzigd; live geverifieerd tegen v0.11.0/TRB:
-- MAINT-007 ActivityCount>25 → 30 (was 44; mxcli-metriek geaccepteerd als nieuwe GT)
-- MAINT-010 DefaultValue non-empty → 592 (was 283; incl. impliciete defaults, geaccepteerd)
-- MAINT-014 user-modules(Source leeg) → 13 ≤20 → 0
-- SEC-011 ExposedToClient=1 + gevoelig-naam-filter → 2 exposed, niet gevoelig → 0
+MIGRATION mxlint→mxcli (Apache-2.0). PHASE 1 (mxcli catalog provider + 7 robust rules) DONE; PHASE 2
+(describe route proof rule) DIVERGES → stopped, cause named, remaining 4 NOT built.
+PHASE 1: new pure CatalogRules (normalizer) + MxcliCatalogService (spike, SQLite catalog via
+`-p <mpr> -c "SELECT … FROM CATALOG.*"`). 7 rules migrated on catalog SQL, rule-id/category/severity
++ claim table unchanged; verified live against v0.11.0/TRB:
+- MAINT-007 ActivityCount>25 → 30 (was 44; mxcli metric accepted as new GT)
+- MAINT-010 DefaultValue non-empty → 592 (was 283; incl. implicit defaults, accepted)
+- MAINT-014 user-modules(Source empty) → 13 ≤20 → 0
+- SEC-011 ExposedToClient=1 + sensitive name filter → 2 exposed, not sensitive → 0
 - PERF-001 Generalization=Administration.Account → 0
-- SEC-007 ToEntity LIKE 'System.%' gescoped user-module → 1 (TRB.Groep_UserRole)
+- SEC-007 ToEntity LIKE 'System.%' scoped user-module → 1 (TRB.Groep_UserRole)
 - SEC-009 SHOW SETTINGS Hash=BCrypt → 0
-YAML-emissies voor deze 7 uitgeschakeld in AcrScanService (methodes blijven als backup, mxlint-export
-blijft load-bearing voor de niet-gemigreerde regels). 4 mxcli-gedekte onderwerpen → DEFER naar mxcli's
-eigen v0.11.0-regels (live bevestigd aanwezig): MAINT-011↔MPR003, PERF-002↔CONV017, MAINT-012↔
-ACR_ENT_VALRULES/CONV015, commit↔CONV011 — niet zelf gebouwd. (De claim-tabel/tripwire-reconciliatie
-voor MAINT-011↔MPR003 + commit↔CONV011 = bewuste vervolg-cutover, NIET nu uitgevoerd.)
-FASE 2 (bewijsregel CLEVR-REL-002 via describe microflow): pure DescribeMicroflowExpressions (extractor)
-+ ongewijzigde ExpressionRules.IncompleteEmptyStringCheck. Unit-tests groen. MAAR de TRB-sweep
-reproduceerde de GT NIET: 27 findings i.p.v. 0. DOORGEGRAVEN — twee oorzaken:
-(1) SCOPE: modelsource-export = 471 microflows (excl. marketplace), catalog = 1074 (incl. app-store);
-    de 27 zitten in app-store-modules (SAML20/Encryption/SupportModule) die de oude route nooit zag.
-(2) PER-LINE-FALSE-POSITIVES (de serieuze): describe wrapt lange condities over meerdere regels
-    (`if not($X != empty\n$X != '') then`); naïeve per-regel-extractie knipt een COMPLETE check in een
-    incomplete-ogend fragment `$X != ''` → vals-positief. Bewezen op Encryption.MB_SaveCertificate
-    (regels 13-15/25-27/32-34/61-63 = multi-line complete checks). TRB.SUB_ValidateVelden gaf wél 0
-    omdat z'n complete check op ÉÉN regel staat (regel 62).
-CONCLUSIE: describe-route is HAALBAAR (data compleet aanwezig) maar de extractor moet eerst een
-multi-line-expressie-assembler krijgen (wrap-regels samenvoegen tot hele logische expressies vóór het
-predicaat) + een scope-beslissing (app-store mee of niet, consistent met de catalog-regels). Pas daarna
-de overige 4 (MAINT-008/009/013, REL-001). Build 0/0, tests 215/215. mxlint-backup + claim-tabel + tripwires intact.
+YAML emissions for these 7 disabled in AcrScanService (methods remain as backup, mxlint export
+remains load-bearing for the non-migrated rules). 4 mxcli-covered topics → DEFER to mxcli's
+own v0.11.0 rules (confirmed present live): MAINT-011↔MPR003, PERF-002↔CONV017, MAINT-012↔
+ACR_ENT_VALRULES/CONV015, commit↔CONV011 — not built ourselves. (The claim table/tripwire reconciliation
+for MAINT-011↔MPR003 + commit↔CONV011 = deliberate follow-up cutover, NOT done now.)
+PHASE 2 (proof rule CLEVR-REL-002 via describe microflow): pure DescribeMicroflowExpressions (extractor)
++ unchanged ExpressionRules.IncompleteEmptyStringCheck. Unit tests green. BUT the TRB sweep
+did NOT reproduce the GT: 27 findings instead of 0. INVESTIGATED — two causes:
+(1) SCOPE: modelsource export = 471 microflows (excl. marketplace), catalog = 1074 (incl. app store);
+    the 27 are in app-store modules (SAML20/Encryption/SupportModule) that the old route never saw.
+(2) PER-LINE FALSE POSITIVES (the serious ones): describe wraps long conditions over multiple lines
+    (`if not($X != empty\n$X != '') then`); naive per-line extraction cuts a COMPLETE check into an
+    apparently-incomplete fragment `$X != ''` → false positive. Proven on Encryption.MB_SaveCertificate
+    (lines 13-15/25-27/32-34/61-63 = multi-line complete checks). TRB.SUB_ValidateVelden gave 0
+    because its complete check is on ONE line (line 62).
+CONCLUSION: describe route is FEASIBLE (data fully present) but the extractor first needs a
+multi-line expression assembler (join wrap lines into whole logical expressions before the
+predicate) + a scope decision (include app store or not, consistent with the catalog rules). Only then
+the remaining 4 (MAINT-008/009/013, REL-001). Build 0/0, tests 215/215. mxlint backup + claim table + tripwires intact.
 
-FIX — mxcli-kant consistent: CONV011 (NoCommitInLoop) toegevoegd aan SuppressMxcli van de commit-in-loop-
-entry. CONV011 meet exact het commit-in-loop-onderwerp (catalogus: "Commit actions should not be inside
-loops (N+1)", performance) = zelfde als CLEVR-PERF-COMMIT-IN-LOOP/005_0002. Vuurt 0 op TRB → niets
-zichtbaar verandert, maar de set is compleet zodra 'ie vuurt (consistent met CONV002/QUAL003/CONV009/
-DESIGN001/MPR003). BORGING doorgetrokken: tweede tripwire SuppressedMxcli_ExactlyMatchesCounterparts —
-canonieke lijst van alle 6 bewust-onderdrukte mxcli-ids moet EXACT gelijk zijn aan SuppressedMxcli;
-vergeten mxcli-suppressie faalt nu net zo luid als vergeten mxlint-entry. Build 0/0, tests 200/200 (+1).
+FIX — mxcli side consistent: CONV011 (NoCommitInLoop) added to SuppressMxcli of the commit-in-loop
+entry. CONV011 measures exactly the commit-in-loop topic (catalogue: "Commit actions should not be inside
+loops (N+1)", performance) = same as CLEVR-PERF-COMMIT-IN-LOOP/005_0002. Fires 0 on TRB → nothing
+visibly changes, but the set is complete once it fires (consistent with CONV002/QUAL003/CONV009/
+DESIGN001/MPR003). SAFEGUARD extended: second tripwire SuppressedMxcli_ExactlyMatchesCounterparts —
+the canonical list of all 6 deliberately suppressed mxcli IDs must EXACTLY match SuppressedMxcli;
+a forgotten mxcli suppression now fails just as loudly as a forgotten mxlint entry. Build 0/0, tests 200/200 (+1).
 
-FIX — claim-tabel-drift hersteld (005_0002/0004/0005 ontbraken). Bij de microflow-batch waren de
-detect-regels toegevoegd maar de suppressie-entries vergeten; alleen 005_0003 kreeg er destijds één.
-005_0004 dook daardoor zichtbaar dubbel op (103 naast CLEVR-MAINT-008); 005_0002/0005 latent (0 resp.
-niet in pack). Drie EngineClaim-entries toegevoegd: 005_0004→CLEVR-MAINT-008, 005_0005→CLEVR-MAINT-009,
-005_0002→CLEVR-PERF-COMMIT-IN-LOOP. Detect-logica ONgewijzigd.
-mxcli-tegenhanger-check: 005_0004/0005 geen (mxcli kent geen annotatie-/nested-if-regel). 005_0002 heeft
-WÉL een mxcli-twin — CONV011 NoCommitInLoop — maar die vuurt 0 op TRB (0× in volledige mxcli-lint),
-daarom nu niet onderdrukt; aanbeveling in de Impact om CONV011 toe te voegen voor consistentie.
-LIVE GEVERIFIEERD op TRB-output: 005_0004 raw=103 → na MxlintNormalizer-suppressie 0; 005_0003 44→0;
-005_0002/0005 0→0 (en alle vier in SuppressedMxlint); CLEVR-MAINT-008 behoudt z'n 103 (eigen detect).
-BORGING tegen herhaling: nieuwe test ClaimTableTests.SuppressedMxlint_ExactlyMatchesInternalisedTwins —
-één canonieke lijst van alle 23 geïnternaliseerde/gemigreerde mxlint-twins moet EXACT gelijk zijn aan
-SuppressedMxlint. Missende entry (de 005_0004-bug) → test faalt luid; stray entry → ook. Eén plek, één
-lijst. Build 0/0, tests 199/199 (was 198; +1 borgingstest). tmp opgeruimd.
+FIX — claim table drift restored (005_0002/0004/0005 were missing). During the microflow batch the
+detect rules were added but the suppression entries were forgotten; only 005_0003 got one at the time.
+005_0004 therefore appeared visibly doubled (103 alongside CLEVR-MAINT-008); 005_0002/0005 latent (0 and
+not in pack respectively). Three EngineClaim entries added: 005_0004→CLEVR-MAINT-008, 005_0005→CLEVR-MAINT-009,
+005_0002→CLEVR-PERF-COMMIT-IN-LOOP. Detect logic UNCHANGED.
+mxcli counterpart check: 005_0004/0005 none (mxcli has no annotation/nested-if rule). 005_0002 DOES have
+an mxcli twin — CONV011 NoCommitInLoop — but that fires 0 on TRB (0× in full mxcli lint),
+therefore not suppressed now; recommendation in the Impact to add CONV011 for consistency.
+VERIFIED LIVE on TRB output: 005_0004 raw=103 → after MxlintNormalizer suppression 0; 005_0003 44→0;
+005_0002/0005 0→0 (and all four in SuppressedMxlint); CLEVR-MAINT-008 retains its 103 (own detect).
+SAFEGUARD against recurrence: new test ClaimTableTests.SuppressedMxlint_ExactlyMatchesInternalisedTwins —
+one canonical list of all 23 internalised/migrated mxlint twins must EXACTLY match SuppressedMxlint.
+Missing entry (the 005_0004 bug) → test fails loudly; stray entry → also. One place, one
+list. Build 0/0, tests 199/199 (was 198; +1 safeguard test). tmp cleaned up.
 
-REGO-INTERNALISATIE — SLOTREGEL 004_0002 ImagesWithAltText → mxlint.com-set 17/17 GEÏNTERNALISEERD.
-STAP 0 al gedaan: MXLINT-ONLY (MPR005 UnconfiguredImage = ontbrekende image-SOURCE, ander onderwerp).
-DOELREGEL 004_0002 (.rego category Accessibility, MEDIUM). Logica VERBATIM: walk → knoop met
-$Type CustomWidgets$CustomWidget; Object.$Type == CustomWidgets$WidgetObject; minstens één
-Object.Properties[].Value.PrimitiveValue == "fullImage" (= image-widget); VUURT als GEEN van diens
-EIGEN Properties' Value.TextTemplate.Template.Items een Texts$Translation met AANWEZIGE Text-sleutel
-heeft. SUBTIEL (uit de Rego-testfixtures bevestigd): "Text gezet" = de sleutel is gedefinieerd — ook
-Text:"" telt als gezet (Rego-truthy); alleen een AFWEZIGE Text-sleutel = ontbrekend (variation_1 mist de
-sleutel → vuurt; variation_2 heeft geen translation → vuurt; allow heeft Text → vuurt niet).
-OMGEKEERD FN-risico (ONTBREEKT-check): een gemiste translation-tak = false POSITIVE. Daarom loopt
-HasAltText ALLE eigen Properties + ALLE Items af (alleen de EIGEN Object.Properties, niet geneste
-child-widgets — exact de Rego-scope).
-STAP 1 (verse export): 113 pages/snippets, 62 CustomWidgets$CustomWidget-knopen, maar 0 image-widgets
-(geen fullImage op TRB). WEL alt-text: 0; MISSEND: 0 → GT=0. mxlint-twin 004_0002 draait CORRECT
-(testcases=113, failures=0) → geldige kruischeck die AGREE't (twin 0 = GT 0).
-STAP 2: GEEN nieuwe reader — hergebruikt de PageYamlReader-boom + pure PageRules (walk zoals MAINT-015).
-AcrScanService: page-batch (MAINT-015 + REL-003) op één reader-pass. Rule-id CLEVR-REL-003;
-CATEGORIE-KEUZE (knop voor Michel): Accessibility→Reliability (geen ACR-bucket); MEDIUM→Major.
-STAP 3 (dubbel, met expliciete FP-richting): real-rule == onafhankelijke YamlDotNet-GT (0 image-widgets,
-0 missend) == werkende twin (0) → EXACT, 0 FP/FN. Synthetische tests beide kanten: image zónder
-translation→vuurt (variation_2); translation zónder Text-sleutel→vuurt (variation_1); translation mét
-Text→niet (allow); Text:""→niet (verbatim truthy); niet-image-widget→niet; dedup zelfde widgetnaam→1.
-CLAIM-TABEL: 1 entry — winnaar CLEVR-REL-003; onderdruk mxlint 004_0002. Geen mxcli-onderdrukking.
-Naam-mapping-test NameFor("004_0002")=="ImagesWithAltText" ONGEMOEID (suppressie raakt enkel Normalize).
-Build 0/0, tests 198/198 (was 191; +7). tmp-alt opgeruimd. Echte Studio-Pro-Scan-test: Michel.
->>> mxlint.com-set nu VOLLEDIG geïnternaliseerd (17/17). mxlint als regelbron kan worden uitgefaseerd.
+REGO INTERNALISATION — FINAL RULE 004_0002 ImagesWithAltText → mxlint.com set 17/17 INTERNALISED.
+STEP 0 already done: MXLINT-ONLY (MPR005 UnconfiguredImage = missing image SOURCE, different topic).
+TARGET RULE 004_0002 (.rego category Accessibility, MEDIUM). Logic VERBATIM: walk → node with
+$Type CustomWidgets$CustomWidget; Object.$Type == CustomWidgets$WidgetObject; at least one
+Object.Properties[].Value.PrimitiveValue == "fullImage" (= image widget); FIRES if NONE of its
+OWN Properties' Value.TextTemplate.Template.Items has a Texts$Translation with a PRESENT Text key.
+SUBTLE (confirmed from the Rego test fixtures): "Text set" = the key is defined — even
+Text:"" counts as set (Rego truthy); only a MISSING Text key = absent (variation_1 misses the
+key → fires; variation_2 has no translation → fires; allow has Text → does not fire).
+INVERTED FN RISK (MISSING check): a missed translation branch = false POSITIVE. Therefore
+HasAltText iterates ALL own Properties + ALL Items (only the OWN Object.Properties, not nested
+child widgets — exactly the Rego scope).
+STEP 1 (fresh export): 113 pages/snippets, 62 CustomWidgets$CustomWidget nodes, but 0 image widgets
+(no fullImage on TRB). WITH alt text: 0; MISSING: 0 → GT=0. mxlint twin 004_0002 runs CORRECTLY
+(testcases=113, failures=0) → valid cross-check that AGREES (twin 0 = GT 0).
+STEP 2: NO new reader — reuses the PageYamlReader tree + pure PageRules (walk like MAINT-015).
+AcrScanService: page batch (MAINT-015 + REL-003) on one reader pass. Rule ID CLEVR-REL-003;
+CATEGORY CHOICE (button for Michel): Accessibility→Reliability (no ACR bucket); MEDIUM→Major.
+STEP 3 (double, with explicit FP direction): real rule == independent YamlDotNet GT (0 image widgets,
+0 missing) == working twin (0) → EXACT, 0 FP/FN. Synthetic tests both directions: image WITHOUT
+translation→fires (variation_2); translation WITHOUT Text key→fires (variation_1); translation WITH
+Text→not (allow); Text:""→not (verbatim truthy); non-image widget→not; dedup same widget name→1.
+CLAIM TABLE: 1 entry — winner CLEVR-REL-003; suppress mxlint 004_0002. No mxcli suppression.
+Name mapping test NameFor("004_0002")=="ImagesWithAltText" UNTOUCHED (suppression only affects Normalize).
+Build 0/0, tests 198/198 (was 191; +7). tmp-alt cleaned up. Real Studio Pro scan test: Michel.
+>>> mxlint.com set now FULLY internalised (17/17). mxlint as rule source can be phased out.
 
-REGO-INTERNALISATIE — page/snippet-route (bewijsregel 004_0001; nieuw bestandstype):
-Laatste route. STAP 0 al gedaan: 004_0001 + 004_0002 beide MXLINT-ONLY (geen mxcli/ACR-tegenhanger;
-MPR005 UnconfiguredImage = ontbrekende image-SOURCE, ander onderwerp; "style" in de lijst = enkel een
-Category). Alleen 004_0001 nu gebouwd (bewijsregel die de page-reader opent); 004_0002 (alt-text, diepe
-CustomWidget/WidgetObject/Texts$Translation-boom) volgt pas nu de reader bewezen is.
-DOELREGEL 004_0001 InlineStylePropertyUsed (Maintainability/MEDIUM→Major). Rego-logica VERBATIM:
-walk(input) → elk pad waarvan de LAATSTE sleutel exact "Style" is en waarde != "" (niet-lege string).
-STAP 1: pages/snippets in `*.Forms$Page.yaml` / `*.Forms$Snippet.yaml` (113 op TRB: 101 pages + 12
-snippets). Style zit onder `Appearance:` (Forms$Appearance)-knopen, diep door de hele widget-boom;
-top-level `Name` op kolom 0. Waarden: 7527× leeg ("") + diverse niet-lege CSS (single/double-quoted,
-\r\n, block-scalars |-). mxlint-twin 004_0001 draait CORRECT (testcases=113 = alle files gevoed;
-14 files met findings) → situatie "correct" (niet dormant/kapot) → Rego-kruischeck GELDIG.
-SUBTIEL / DOORGEGRAVEN: ruwe niet-lege Style-voorkomens = 86, maar mxlint meldt 33. Oorzaak: de Rego's
-`errors` is een SET van error-STRINGS, en die string = sprintf(... input.Name, v). Identieke (Name,value)
-vallen samen → dedup per page op style-WAARDE. 33 = distinct (file,value). Regel daarop aangepast
-(HashSet per page) — anders 86 i.p.v. 33 (vals-positieve dubbeltelling).
-STAP 2: nieuwe `PageYamlReader` (spike, YamlDotNet) → zet elk doc om naar een PLAT objectboom-model
-(Dictionary/List/string) = `PageModel` in de normalizer; de patroon-walk zit PUUR in `PageRules`
-(dependency-vrij, unit-testbaar). HERBRUIKBAAR: 004_0002 loopt straks dezelfde boom af. Rule-id
+REGO INTERNALISATION — page/snippet route (proof rule 004_0001; new file type):
+Last route. STEP 0 already done: 004_0001 + 004_0002 both MXLINT-ONLY (no mxcli/ACR counterpart;
+MPR005 UnconfiguredImage = missing image SOURCE, different topic; "style" in the list = only a
+Category). Only 004_0001 now built (proof rule that opens the page reader); 004_0002 (alt text, deep
+CustomWidget/WidgetObject/Texts$Translation tree) follows only once the reader is proven.
+TARGET RULE 004_0001 InlineStylePropertyUsed (Maintainability/MEDIUM→Major). Rego logic VERBATIM:
+walk(input) → every path whose LAST key is exactly "Style" and value != "" (non-empty string).
+STEP 1: pages/snippets in `*.Forms$Page.yaml` / `*.Forms$Snippet.yaml` (113 on TRB: 101 pages + 12
+snippets). Style sits under `Appearance:` (Forms$Appearance) nodes, deep through the entire widget tree;
+top-level `Name` at column 0. Values: 7527× empty ("") + various non-empty CSS (single/double-quoted,
+\r\n, block scalars |-). mxlint twin 004_0001 runs CORRECTLY (testcases=113 = all files fed;
+14 files with findings) → situation "correct" (not dormant/broken) → Rego cross-check VALID.
+SUBTLE / INVESTIGATED: raw non-empty Style occurrences = 86, but mxlint reports 33. Cause: Rego's
+`errors` is a SET of error STRINGS, and that string = sprintf(... input.Name, v). Identical (Name,value)
+pairs merge → dedup per page on style VALUE. 33 = distinct (file,value). Rule adjusted accordingly
+(HashSet per page) — otherwise 86 instead of 33 (false-positive double counting).
+STEP 2: new `PageYamlReader` (spike, YamlDotNet) → converts each doc to a FLAT object tree model
+(Dictionary/List/string) = `PageModel` in the normalizer; the pattern walk is PURELY in `PageRules`
+(dependency-free, unit-testable). REUSABLE: 004_0002 will walk the same tree later. Rule ID
 CLEVR-MAINT-015, Maintainability/Major.
-STAP 3: real-rule (PageYamlReader + PageRules) == onafhankelijke YamlDotNet-GT (set-semantiek) == werkende
-mxlint-twin → alle drie 33 over 14 files, 0 FP/FN, EXACT (drievoudige overeenstemming). Synthetische
-positieve tests: niet-lege Style→vuurt; lege/afwezig→niet; "MyStyle"/"StyleClass"/"DynamicClasses"→niet
-(exact-key); identieke waarde 2× per page→1 (set), 2 distinct→2; snippet-doctype.
-CLAIM-TABEL: 1 entry — winnaar CLEVR-MAINT-015; onderdruk mxlint 004_0001. Geen mxcli-onderdrukking.
-Build 0/0, tests 191/191 (was 184; +7). tmp-pg opgeruimd. Echte Studio-Pro-Scan-test: Michel.
+STEP 3: real rule (PageYamlReader + PageRules) == independent YamlDotNet GT (set semantics) == working
+mxlint twin → all three 33 over 14 files, 0 FP/FN, EXACT (triple agreement). Synthetic
+positive tests: non-empty Style→fires; empty/absent→not; "MyStyle"/"StyleClass"/"DynamicClasses"→not
+(exact key); identical value 2× per page→1 (set), 2 distinct→2; snippet doctype.
+CLAIM TABLE: 1 entry — winner CLEVR-MAINT-015; suppress mxlint 004_0001. No mxcli suppression.
+Build 0/0, tests 191/191 (was 184; +7). tmp-pg cleaned up. Real Studio Pro scan test: Michel.
 
-REGO-INTERNALISATIE — constant-route (bewijsregel 006_0001; nieuw bestandstype):
-Laatste route (page/constant). 16 van 17 MXLINT-ONLY af; deze route vereist NIEUWE YAML-readers voor
-bestandstypen die we nog niet lazen → eerst één bewijsregel, dan pas de rest.
-STAP 0 (dekkingscheck, mxcli lint --list-rules + claim-tabel): 006_0001 ExposedConstants, 004_0001
-InlineStylePropertyUsed, 004_0002 ImagesWithAltText → GEEN mxcli-bundled of geclaimde ACR-regel raakt
-deze onderwerpen (MPR005 UnconfiguredImage = ontbrekende image-SOURCE, ander onderwerp dan alt-text;
-"style" in de lijst = enkel de Category van MPR001 NamingConvention). Alle drie MXLINT-ONLY. Alleen
-006_0001 nu gebouwd (bewijsregel); 004_0001/0002 volgen pas als de reader bewezen is (004_0002 alt-text
-is de lastigste — diepe widget/translation-boom).
-STAP 1 (bestand + grondwaarheid): constants staan in `*.Constants$Constant.yaml` (PLAT: `$Type`,
-`ExposedToClient` bool, `Name` string — alles kolom 0). Eerste constant-bestand dat we lezen. TRB: 9
-constants, ALLE 9 ExposedToClient: false → YamlDotNet-grondwaarheid (exposed && gevoelige naam) = 0.
-mxlint-twin 006_0001 WERKT hier correct (testcases=9 — de glob `**/*$Constant.yaml` voedt alle 9 files —
-failures=0): geldige kruischeck die AGREE't (mxlint 0 = GT 0). Dus NIET dormant/kapot (anders dan
-001_0007/003_0001 die het verkeerde pad lazen).
-STAP 2 (bouw): nieuwe YamlDotNet-reader `ConstantYamlReader` (spike, infra-stijl als MicroflowYaml-
-Expressions) → pure `ConstantRules` (normalizer). Rule-id CLEVR-SEC-011 (SEC-reeks), Security/Critical
-(mxlint HIGH). SUBTIELE PLEK — de .rego heeft TWEE branches: (1) ELKE exposed constant = MEDIUM, (2)
-exposed + gevoelige naam = HIGH. We bouwen BEWUST alleen branch (2) (branch 1 = ruis: flagt álle exposed
-constants). Gevoelig-naam-detectie VERBATIM uit de .rego: substring (case-insensitief) op keyword-lijst
+REGO INTERNALISATION — constant route (proof rule 006_0001; new file type):
+Last route (page/constant). 16 of 17 MXLINT-ONLY done; this route requires NEW YAML readers for
+file types we have not yet read → first one proof rule, then the rest.
+STEP 0 (coverage check, mxcli lint --list-rules + claim table): 006_0001 ExposedConstants, 004_0001
+InlineStylePropertyUsed, 004_0002 ImagesWithAltText → NO mxcli-bundled or claimed ACR rule covers
+these topics (MPR005 UnconfiguredImage = missing image SOURCE, different topic from alt text;
+"style" in the list = only the Category of MPR001 NamingConvention). All three MXLINT-ONLY. Only
+006_0001 built now (proof rule); 004_0001/0002 follow once the reader is proven (004_0002 alt text
+is the hardest — deep widget/translation tree).
+STEP 1 (file + ground truth): constants are in `*.Constants$Constant.yaml` (FLAT: `$Type`,
+`ExposedToClient` bool, `Name` string — all column 0). First constant file we read. TRB: 9
+constants, ALL 9 ExposedToClient: false → YamlDotNet ground truth (exposed && sensitive name) = 0.
+mxlint twin 006_0001 WORKS correctly here (testcases=9 — the glob `**/*$Constant.yaml` feeds all 9 files —
+failures=0): valid cross-check that AGREES (mxlint 0 = GT 0). So NOT dormant/broken (unlike
+001_0007/003_0001 which read the wrong path).
+STEP 2 (build): new YamlDotNet reader `ConstantYamlReader` (spike, infra style like MicroflowYaml-
+Expressions) → pure `ConstantRules` (normalizer). Rule ID CLEVR-SEC-011 (SEC series), Security/Critical
+(mxlint HIGH). SUBTLE POINT — the .rego has TWO branches: (1) ANY exposed constant = MEDIUM, (2)
+exposed + sensitive name = HIGH. We deliberately build ONLY branch (2) (branch 1 = noise: flags ALL exposed
+constants). Sensitive name detection VERBATIM from the .rego: substring (case insensitive) on keyword list
 ["id","ident","username","user_name","user","usr","uname","secret","scrt","password","pwd","passwrd"].
-Bewust over-breed net als de Rego (bv. "Width" bevat "id") — niets verzonnen/toegevoegd.
-STAP 3 (verifieer): real-rule (ConstantYamlReader + ConstantRules) == onafhankelijke YamlDotNet-GT op TRB
-= 0, 0 FP/FN, EXACT. Synthetische positieve tests: exposed+gevoelig→vuurt; exposed+onschuldig→niet;
-gevoelig+niet-exposed→niet; + keyword-lijst verbatim-test.
-CLAIM-TABEL: 1 entry — winnaar CLEVR-SEC-011; onderdruk mxlint 006_0001. Impact benoemt expliciet dat
-de blanket-MEDIUM-branch (élke exposed constant) hierbij vervalt (bewuste keuze). Geen mxcli-onderdrukking.
-Build 0/0, tests 184/184 (was 171; +13). tmp-cv opgeruimd. Echte Studio-Pro-Scan-test: Michel.
+Deliberately over-broad just like the Rego (e.g. "Width" contains "id") — nothing invented/added.
+STEP 3 (verify): real rule (ConstantYamlReader + ConstantRules) == independent YamlDotNet GT on TRB
+= 0, 0 FP/FN, EXACT. Synthetic positive tests: exposed+sensitive→fires; exposed+innocent→not;
+sensitive+not exposed→not; + keyword list verbatim test.
+CLAIM TABLE: 1 entry — winner CLEVR-SEC-011; suppress mxlint 006_0001. Impact explicitly notes that
+the blanket-MEDIUM branch (every exposed constant) is dropped here (deliberate choice). No mxcli suppression.
+Build 0/0, tests 184/184 (was 171; +13). tmp-cv cleaned up. Real Studio Pro scan test: Michel.
 
-REGO-INTERNALISATIE — security-/settings-/modules-batch (4 van 4 MXLINT-ONLY gebouwd):
-STAP 0 (dekkingscheck vóór bouw, criterium "mxcli OF bestaande ACR-regel dekt het ONDERWERP al →
-NIETS bouwen"): 001_0004 StrongPasswordPolicy = GEDEKT (mxcli ACR_SEC_PWPOLICY + SEC002) → NIET gebouwd;
-001_0005, 001_0007, 001_0008, 003_0001 = MXLINT-ONLY (geen mxcli/ACR-regel raakt admin-username,
-hash-algoritme, per-userrole-security, of module-telling) → alle vier gebouwd.
-STAP 1+3 (veld-bestaat + grondwaarheid, YamlDotNet/structureel als oracle; real-rule == GT, 0 FP/FN):
+REGO INTERNALISATION — security/settings/modules batch (4 of 4 MXLINT-ONLY built):
+STEP 0 (coverage check before build, criterion "mxcli OR existing ACR rule already covers the TOPIC →
+BUILD NOTHING"): 001_0004 StrongPasswordPolicy = COVERED (mxcli ACR_SEC_PWPOLICY + SEC002) → NOT built;
+001_0005, 001_0007, 001_0008, 003_0001 = MXLINT-ONLY (no mxcli/ACR rule covers admin username,
+hash algorithm, per-userrole-security, or module count) → all four built.
+STEP 1+3 (field exists + ground truth, YamlDotNet/structural as oracle; real rule == GT, 0 FP/FN):
 - 001_0005 → CLEVR-SEC-008 MxAdminNotUsed (Security/Critical=HIGH): GT=1 rule=1 (AdminUserName: MxAdmin).
-  mxlint-twin vuurt óók 1 (input `.*Security$ProjectSecurity.yaml`, geen `/`) → geldige kruischeck.
+  mxlint twin also fires 1 (input `.*Security$ProjectSecurity.yaml`, no `/`) → valid cross-check.
 - 001_0007 → CLEVR-SEC-009 HashAlgorithm (Security/Critical=HIGH): GT=0 rule=0 (HashAlgorithm: BCrypt).
-  mxlint-twin STRUCTUREEL kapot op deze export: leest `input.Settings.HashAlgorithm`, maar Settings is
-  een LIJST (geen mapping) → vuurt 0 om de verkeerde reden. Onze regel vindt het veld waar het staat.
+  mxlint twin STRUCTURALLY broken on this export: reads `input.Settings.HashAlgorithm`, but Settings is
+  a LIST (not a mapping) → fires 0 for the wrong reason. Our rule finds the field where it actually is.
 - 001_0008 → CLEVR-SEC-010 CheckSecurityOnUserRoles (Security/Critical=HIGH): GT=0 rule=0 (9/9 user-
-  roles CheckSecurity: true). Per-role; afwezig/false = overtreding (zoals Rego `not CheckSecurity`).
+  roles CheckSecurity: true). Per role; absent/false = violation (like Rego `not CheckSecurity`).
 - 003_0001 → CLEVR-MAINT-014 NumberOfModules (Maintainability/Major=MEDIUM): GT=0 rule=0 (12 user-
-  modules ≤ 20). mxlint-twin STRUCTUREEL kapot: leest `Modules[i].Attributes.FromAppStore == false`,
-  maar de export zet FromAppStore VLAK onder het module-item (niet onder Attributes) → telt 0. Onze
-  regel = item zónder `FromAppStore: true` = user-module → correcte telling.
-Synthetische positieve unit-tests per regel (TRB is 1/0/0/0, dus detectie apart bewezen).
-CLAIM-TABEL: 4 entries toegevoegd — winnaars CLEVR-SEC-008/009/010 + CLEVR-MAINT-014; mxlint-twins
-001_0005/001_0007/001_0008/003_0001 onderdrukt. Geen mxcli-onderdrukking (alle vier MXLINT-ONLY).
-Bron-hergebruik: ProjectSecurityParser (4 nieuwe Detect-methods); AcrScanService leest nu ook
-Settings$ProjectSettings.yaml + Metadata.yaml. MxlintNormalizerTests-fixture die 001_0005 als generic
-passes-through gebruikte → herpunt naar 001_0004 (StrongPasswordPolicy, nog niet geïnternaliseerd → niet
-onderdrukt). Build 0/0, tests 171/171 (was 156; +15). tmp-dg opgeruimd. Echte Studio-Pro-Scan-test: Michel.
+  modules ≤ 20). mxlint twin STRUCTURALLY broken: reads `Modules[i].Attributes.FromAppStore == false`,
+  but the export puts FromAppStore DIRECTLY under the module item (not under Attributes) → counts 0. Our
+  rule = item WITHOUT `FromAppStore: true` = user module → correct count.
+Synthetic positive unit tests per rule (TRB is 1/0/0/0, so detection proven separately).
+CLAIM TABLE: 4 entries added — winners CLEVR-SEC-008/009/010 + CLEVR-MAINT-014; mxlint twins
+001_0005/001_0007/001_0008/003_0001 suppressed. No mxcli suppression (all four MXLINT-ONLY).
+Source reuse: ProjectSecurityParser (4 new Detect methods); AcrScanService now also reads
+Settings$ProjectSettings.yaml + Metadata.yaml. MxlintNormalizerTests fixture that used 001_0005 as generic
+passes-through → repointed to 001_0004 (StrongPasswordPolicy, not yet internalised → not
+suppressed). Build 0/0, tests 171/171 (was 156; +15). tmp-dg cleaned up. Real Studio Pro scan test: Michel.
 
-REGO-INTERNALISATIE — domein-model-batch (6 van 7; 002_0004 bewust overgeslagen):
-KERNBEVINDING: alle 7 mxlint-tegenhangers zijn DORMANT op Windows — hun .rego `input: .*/DomainModels…`
-(met `/`) matcht geen backslash-paden → mxlint voedt ze 0 files (testcases=0). 002_0009 werkt alleen
-omdat die `.*DomainModels…` (zonder `/`) gebruikt. Dus de mxlint-"0" is GEEN geldige kruischeck; de
-YamlDotNet-grondwaarheid is de enige toets. (Dat ze dormant zijn = juist het bewijs dat internaliseren
-waarde heeft.) Gebouwd op de line-parser (ProjectSecurityParser uitgebreid: MaybeGeneralization
-Persistable/Generalization, Value.$Type, ValidationRules-telling, AccessRule.DefaultMemberAccessRights,
-+ top-level CrossAssociations-parser). Per regel echte-rule == YamlDotNet-grondwaarheid, 0 FP/FN:
+REGO INTERNALISATION — domain model batch (6 of 7; 002_0004 deliberately skipped):
+KEY FINDING: all 7 mxlint counterparts are DORMANT on Windows — their .rego `input: .*/DomainModels…`
+(with `/`) does not match backslash paths → mxlint feeds them 0 files (testcases=0). 002_0009 only works
+because it uses `.*DomainModels…` (without `/`). So the mxlint "0" is NOT a valid cross-check; the
+YamlDotNet ground truth is the only test. (That they are dormant = exactly the proof that internalising has
+value.) Built on the line parser (ProjectSecurityParser extended: MaybeGeneralization
+Persistable/Generalization, Value.$Type, ValidationRules count, AccessRule.DefaultMemberAccessRights,
++ top-level CrossAssociations parser). Per rule real rule == YamlDotNet ground truth, 0 FP/FN:
 - 002_0001 → CLEVR-MAINT-011 (Maintainability/Major): 1 (TRB 19 persistent >15).
-- 002_0003 → CLEVR-PERF-001 (Performance/Major): 0 (geen Administration.Account-inheritance).
+- 002_0003 → CLEVR-PERF-001 (Performance/Major): 0 (no Administration.Account inheritance).
 - 002_0005 → CLEVR-SEC-007 (Security/Critical = HIGH): 1 (TRB|Groep_UserRole cross-assoc → System).
-- 002_0006 → CLEVR-PERF-002 (Performance/Major): 0 (geen entiteit >10 calculated).
-- 002_0007 → CLEVR-MAINT-012 (Maintainability/Major): 0 (geen domein-validatieregels).
-- 002_0008 → CLEVR-MAINT-013 (Maintainability/Major): 1 (TRB_Email ReadWrite-access).
-Synthetische positieve unit-tests per regel (TRB is 0/1, dus detectie apart bewezen).
-002_0004 NIET gebouwd: de Rego is buggy — `not startswith(<undefined>,"System.")` vuurt op alle 60
-no-generalization-entiteiten → 64 ruis i.p.v. de 4 bedoelde non-System-inheritors. Aanbeveling: niet
-internaliseren zoals-is; evt. de INTENT (4) als aparte bewuste regel — Michel beslist.
-CLAIM-TABEL per regel: mxlint-twins onderdrukt (002_0001/0003/0005/0006/0007/0008). mxcli-checks:
-MPR003 (vuurt 2: System 27 UI-gefilterd + TRB 19) → onderdrukt voor 002_0001 (geen zichtbaar verlies);
-CONV017 (vuurt 5, ELKE calculated) → NIET onderdrukt (breder dan onze >10-regel, zou 5 verliezen);
-ACR_ENT_VALRULES/CONV015/CONV006/CONV007 → 0 op TRB, niets te onderdrukken. Build 0/0, tests 156/156.
+- 002_0006 → CLEVR-PERF-002 (Performance/Major): 0 (no entity >10 calculated).
+- 002_0007 → CLEVR-MAINT-012 (Maintainability/Major): 0 (no domain validation rules).
+- 002_0008 → CLEVR-MAINT-013 (Maintainability/Major): 1 (TRB_Email ReadWrite access).
+Synthetic positive unit tests per rule (TRB is 0/1, so detection proven separately).
+002_0004 NOT built: the Rego is buggy — `not startswith(<undefined>,"System.")` fires on all 60
+no-generalization entities → 64 noise instead of the 4 intended non-System inheritors. Recommendation: do not
+internalise as-is; optionally the INTENT (4) as a separate deliberate rule — Michel decides.
+CLAIM TABLE per rule: mxlint twins suppressed (002_0001/0003/0005/0006/0007/0008). mxcli checks:
+MPR003 (fires 2: System 27 UI-filtered + TRB 19) → suppressed for 002_0001 (no visible loss);
+CONV017 (fires 5, EVERY calculated) → NOT suppressed (broader than our >10 rule, would lose 5);
+ACR_ENT_VALRULES/CONV015/CONV006/CONV007 → 0 on TRB, nothing to suppress. Build 0/0, tests 156/156.
 
-REGO-INTERNALISATIE — domein-model-YAML-route GEOPEND: CLEVR-MAINT-010 = mxlint 002_0009 NoDefaultValue.
-.rego: per (entity, attribute) → attribute.Value.DefaultValue != null && != "". Categorie Maintainability,
-severity LOW → ACR Minor. Hergebruikt ProjectSecurityParser.ParseEntitiesWithAttributes (de SEC-005/006-infra),
-uitgebreid met Value→DefaultValue + UNQUOTE ('' /"" → leeg; "false" → false) — cruciaal want het export-
-veld is gequote (288× "" = leeg/geen-violation, 145× "false", 106× "0", 32× strings). GRONDWAARHEID op verse
-TRB-export = 283; doorgegraven (verdacht "8 vs 283"): de xUnit-failures tellen FILES (8), niet findings —
-un-bundled = 283 (2+1+1+7+74+48+144+6). 283 is hoog omdat de Rego ELKE niet-lege default flagt (incl. boolean
-false + integer 0) — getrouw gereproduceerd. STAP 3: echte regel (line-parser) = 283 = YamlDotNet-grondwaarheid
-283 = mxlint 002_0009 283 → EXACT, 0 FP/FN (bewijst de line-parser-uitbreiding + unquote correct). Claim-tabel:
-002_0009 toegevoegd — winnaar CLEVR-MAINT-010; onderdruk mxlint 002_0009 (identiek, geen verlies) ÉN mxcli
-CONV002 NoEntityDefaultValues (vuurt 106, ALLEEN integer-'0' → STRIKTE SUBSET van onze 283 → geen verlies;
-zonder onderdrukking een nieuwe 106-mxcli-dubbeling). Build 0/0, tests 142/142 (+4; 4 bestaande
-MxlintNormalizer-fixtures die 002_0009 als "generic passes-through" gebruikten → herpunt naar synthetisch
-999_9999, naam-mapping-tests bleven 002_0009). (Wegwerp-tools tmp-gt5/gt6 kunnen blijven staan — inert.)
+REGO INTERNALISATION — domain model YAML route OPENED: CLEVR-MAINT-010 = mxlint 002_0009 NoDefaultValue.
+.rego: per (entity, attribute) → attribute.Value.DefaultValue != null && != "". Category Maintainability,
+severity LOW → ACR Minor. Reuses ProjectSecurityParser.ParseEntitiesWithAttributes (the SEC-005/006 infra),
+extended with Value→DefaultValue + UNQUOTE ('' /"" → empty; "false" → false) — crucial because the export
+field is quoted (288× "" = empty/no-violation, 145× "false", 106× "0", 32× strings). GROUND TRUTH on fresh
+TRB export = 283; investigated (suspicious "8 vs 283"): xUnit failures count FILES (8), not findings —
+unbundled = 283 (2+1+1+7+74+48+144+6). 283 is high because the Rego flags EVERY non-empty default (incl. boolean
+false + integer 0) — faithfully reproduced. STEP 3: real rule (line parser) = 283 = YamlDotNet ground truth
+283 = mxlint 002_0009 283 → EXACT, 0 FP/FN (proves the line parser extension + unquote correct). Claim table:
+002_0009 added — winner CLEVR-MAINT-010; suppress mxlint 002_0009 (identical, no loss) AND mxcli
+CONV002 NoEntityDefaultValues (fires 106, ONLY integer '0' → STRICT SUBSET of our 283 → no loss;
+without suppression a new 106-mxcli-duplication). Build 0/0, tests 142/142 (+4; 4 existing
+MxlintNormalizer fixtures that used 002_0009 as "generic passes-through" → repointed to synthetic
+999_9999, name mapping tests remained 002_0009). (Disposable tools tmp-gt5/gt6 can remain — inert.)
 
-REGO-INTERNALISATIE — expressie-route: CLEVR-REL-002 = mxlint 005_0001 EmptyStringCheckNotComplete.
-.rego (verbatim): per "Expression"-keyed waarde → strip SPATIES → contains "!=''" ÉN niet "!=empty"
-(per-expressie substring-check; complement van REL-001 dat juist BEIDE-checks-op-1-pad = redundant
-meet → bevestigd geen overlap). Categorie .rego "Error" → Reliability (gemapt); severity MEDIUM → Major.
-Nieuwe extractie MicroflowYamlExpressions.ExpressionKeyedValues (alle key=="Expression"-waarden, ≠ de
-bestaande split+change-set die REL-001/006 voeden) → ExpressionRules.IncompleteEmptyStringCheck.
-GRONDWAARHEID op verse TRB-export = 0; doorgegraven (geen blind 0): van 27 expressies met !='' hebben
-ALLE ook !=empty (313 gebruiken !=empty) → 0 incompleet. Echte regel = 0, mxlint 005_0001 = 0 → EXACT
-(0==0==0); REL-001=31 draait er los naast (bewijs geen overlap). Claim-tabel: 005_0001 toegevoegd
-(alleen mxlint-onderdrukking; GEEN mxcli-tegenhanger — bevestigd in de 60-regel-meting). Build 0/0,
-tests 138/138 (+14). (Wegwerp-tool tmp-gt5\ kan blijven staan door een build-server-handle — inert.)
+REGO INTERNALISATION — expression route: CLEVR-REL-002 = mxlint 005_0001 EmptyStringCheckNotComplete.
+.rego (verbatim): per "Expression"-keyed value → strip SPACES → contains "!=''" AND not "!=empty"
+(per-expression substring check; complement of REL-001 which measures BOTH-checks-on-1-path = redundant
+→ confirmed no overlap). Category .rego "Error" → Reliability (mapped); severity MEDIUM → Major.
+New extraction MicroflowYamlExpressions.ExpressionKeyedValues (all key=="Expression" values, ≠ the
+existing split+change set that feeds REL-001/006) → ExpressionRules.IncompleteEmptyStringCheck.
+GROUND TRUTH on fresh TRB export = 0; investigated (no blind 0): of 27 expressions with !='' ALL
+also have !=empty (313 use !=empty) → 0 incomplete. Real rule = 0, mxlint 005_0001 = 0 → EXACT
+(0==0==0); REL-001=31 runs independently alongside (proves no overlap). Claim table: 005_0001 added
+(mxlint suppression only; NO mxcli counterpart — confirmed in the 60-rule measurement). Build 0/0,
+tests 138/138 (+14). (Disposable tool tmp-gt5\ can remain due to a build-server handle — inert.)
 
-CLAIM-TABEL (cross-engine ontdubbeling — vervangt de mxlint-only denylist): nieuwe ClaimTable.cs
-(normalizer) — per onderwerp één winnende bron, tegenhangers onderdrukt op BEIDE engines.
-MxcliNormalizer dropt nu SuppressedMxcli (op rule-id), MxlintNormalizer dropt SuppressedMxlint (op
-rulenumber); de oude hardcoded 6-rulenumber-denylist is weg incl. de 2 foute entries (001_0004/002_0007
-verwezen naar niet-geclaimde ACR_SEC_PWPOLICY/ACR_ENT_VALRULES → niet meer onderdrukt). Regel-logica
-ongemoeid; alleen de aggregatielaag. BEWIJS-onderwerpen (2): microflow-grootte (CLEVR-MAINT-007 wint →
-onderdruk mxcli QUAL003+CONV009, mxlint 005_0003) en attribuut-telling (ACR_ENT_ATTRS/CLEVR-MAINT-001 wint
-→ onderdruk mxcli DESIGN001, mxlint 002_0002). 3 security-onderwerpen 1-op-1 gemigreerd (mxlint-only,
-gedrag ongewijzigd) zodat de denylist-vervanging niet regresseert. GEVERIFIEERD op TRB via de ECHTE
-normalizers: mxcli QUAL003 24→0, CONV009 61→0, DESIGN001 16→0 (totaal 2131→2030, −101); mxlint 005_0003
-44→0; WINNAARS intact (CLEVR-MAINT-001=6, CLEVR-MAINT-007=44); 005_0004 onaangeroerd (103, geen proof-topic).
-BEWUST VERLIES benoemd: CONV009 17 (16–25 activiteiten) + DESIGN001 10 (11–25 attrs) — tegenhangers dekten
-breder; per onderwerp bevestigd. Build 0/0, tests 124/124 (+13). Overige onderwerpen (naamgeving/guest mxcli
-+ de 17 te internaliseren) volgen pas na goedkeuring per onderwerp. (Meet-tool tmp-gt4\ inert blijven staan.)
+CLAIM TABLE (cross-engine deduplication — replaces the mxlint-only denylist): new ClaimTable.cs
+(normalizer) — one winning source per topic, counterparts suppressed on BOTH engines.
+MxcliNormalizer now drops SuppressedMxcli (by rule-id), MxlintNormalizer drops SuppressedMxlint (by
+rulenumber); the old hardcoded 6-rulenumber denylist is gone incl. the 2 incorrect entries (001_0004/002_0007
+referred to unclaimed ACR_SEC_PWPOLICY/ACR_ENT_VALRULES → no longer suppressed). Rule logic
+untouched; only the aggregation layer. PROOF topics (2): microflow size (CLEVR-MAINT-007 wins →
+suppress mxcli QUAL003+CONV009, mxlint 005_0003) and attribute count (ACR_ENT_ATTRS/CLEVR-MAINT-001 wins
+→ suppress mxcli DESIGN001, mxlint 002_0002). 3 security topics migrated 1-to-1 (mxlint-only,
+behaviour unchanged) so the denylist replacement does not regress. VERIFIED on TRB via the REAL
+normalizers: mxcli QUAL003 24→0, CONV009 61→0, DESIGN001 16→0 (total 2131→2030, −101); mxlint 005_0003
+44→0; WINNERS intact (CLEVR-MAINT-001=6, CLEVR-MAINT-007=44); 005_0004 untouched (103, no proof topic).
+DELIBERATE LOSS noted: CONV009 17 (16–25 activities) + DESIGN001 10 (11–25 attrs) — counterparts covered more broadly;
+confirmed per topic. Build 0/0, tests 124/124 (+13). Remaining topics (naming/guest mxcli
++ the 17 to internalise) follow only after approval per topic. (Measurement tool tmp-gt4\ inert, leave as-is.)
 
-DUBBELING-METING (TRB, verse mxcli-lint --format json, 2131 findings / 37 van 60 regels vuren):
-De zichtbare dubbeling is NIET vooral mxlint↔ACR (al gesuppressed), maar mxcli-GENERIC ↔ geclaimd-ACR/CLEVR:
-111 redundante generic-findings NU zichtbaar: attribuut-telling ACR_ENT_ATTRS∩DESIGN001=6; microflow-grootte
-CLEVR-MAINT-007∩QUAL003=24 + ∩CONV009=44 (alle 44 dubbel, 24 driedubbel); enum ACR_ENUM_PREFIX∩CONV004=26;
-snippet ACR_SNIP_PREFIX∩CONV005=10; guest ACR_SEC_GUEST∩SEC004=1. Commit-in-loop latent (CONV011=0, onze=0).
-De mxlint-denylist (6 rulenumbers) raakt HIER NIETS van — allemaal mxcli-intern. APART: de denylist mist de
-005-familie (005_0002/0003/0004/0005) → mxlint 005_0003(44)+005_0004(103) dubbelen NU met onze CLEVR-MAINT-007/008
-zodra mxlint meedraait (≈147, denylist-config-fix nodig). Conclusie voor de oplossing: een claim-tabel op
-ONDERWERP (suppress op beide engines: mxcli-generic + mxlint) is proportioneel; een mxlint-only denylist dekt
-de 111 mxcli-generic-doubles principieel niet. (Meet-tool tmp-gt3\ bleef door build-server-handle staan — inert.)
+DUPLICATION MEASUREMENT (TRB, fresh mxcli-lint --format json, 2131 findings / 37 of 60 rules fire):
+The visible duplication is NOT primarily mxlint↔ACR (already suppressed), but mxcli-GENERIC ↔ claimed-ACR/CLEVR:
+111 redundant generic findings NOW visible: attribute count ACR_ENT_ATTRS∩DESIGN001=6; microflow size
+CLEVR-MAINT-007∩QUAL003=24 + ∩CONV009=44 (all 44 doubled, 24 tripled); enum ACR_ENUM_PREFIX∩CONV004=26;
+snippet ACR_SNIP_PREFIX∩CONV005=10; guest ACR_SEC_GUEST∩SEC004=1. Commit-in-loop latent (CONV011=0, ours=0).
+The mxlint denylist (6 rulenumbers) TOUCHES NONE of this — all mxcli-internal. SEPARATELY: the denylist misses the
+005 family (005_0002/0003/0004/0005) → mxlint 005_0003(44)+005_0004(103) now double with our CLEVR-MAINT-007/008
+once mxlint runs (≈147, denylist config fix needed). Conclusion for the solution: a claim table on
+TOPIC (suppress on both engines: mxcli-generic + mxlint) is proportionate; an mxlint-only denylist does not
+cover the 111 mxcli-generic doubles in principle. (Measurement tool tmp-gt3\ remained due to a build-server handle — inert.)
 
-REGO-INTERNALISATIE — flow-AST-route VOLTOOID (3 resterende microflow-regels, batch na MAINT-007):
-Eén YAML-parse (MicroflowYamlExpressions.Parse → record met expressies + objectcount + top-level
-type-tellingen + ExclusiveSplits + in-loop-acties); pure regels in MicroflowStructureRules; gewired in
-DetectExpressionRules. Verse export (mxlint export+lint) → grondwaarheid + Rego-tegenhanger:
+REGO INTERNALISATION — flow AST route COMPLETED (3 remaining microflow rules, batch after MAINT-007):
+One YAML parse (MicroflowYamlExpressions.Parse → record with expressions + objectcount + top-level
+type counts + ExclusiveSplits + in-loop actions); pure rules in MicroflowStructureRules; wired in
+DetectExpressionRules. Fresh export (mxlint export+lint) → ground truth + Rego counterpart:
 - CLEVR-MAINT-008 = 005_0004 ComplexMicroflowsWithoutAnnotations (Maintainability/Major): >10 ActionActivity
-  OF >2 ExclusiveSplit (top-level) ÉN 0 Annotation. Rule=103, Rego=103, EXACT.
-- CLEVR-MAINT-009 = 005_0005 NestedIfStatements (Complexity→Maintainability/Major): ExclusiveSplit met
-  SplitCondition.Expression die de VERBATIM .rego-regex `^[\S\s]*(then|else)[\S\s]*(if)[\S\s]*$` matcht.
-  Rule=1 (TRB.SUB_ValidateVelden, multi-line block-scalar correct geparsed). GÉÉN Rego-tegenhanger: de
-  deployed v3.3.0 rules-pack bevat 005_0005 NIET (alleen 0001-0004) → gecheckt tegen de .rego-bron.
-- CLEVR-PERF-COMMIT-IN-LOOP = 005_0002 AvoidCommitInLoop (Performance/Major): committende actie
-  (CommitAction OF ChangeAction Commit=="Yes") binnen een LoopedActivity. Rule=0, Rego=0. BEWUSTE id-keuze:
-  hergebruikt het bson-PoC-id (BsonMicroflowParser.RuleId) — de YAML-route VERVANGT de niet-gewirede
-  bson-PoC. De 0 is ECHT geverifieerd (alle 136 CommitActions op indent 12 = top-level, géén in een loop),
-  niet door een kapotte walk (positieve unit-test bewijst detectie). De Rego's 0 is daarentegen DORMANT:
-  005_0002 leest input.MainFunction + .Attributes — beide afwezig in de modelsource-export (de echte vorm is
-  ObjectCollection.Objects → LoopedActivity → ObjectCollection.Objects → ActionActivity.Action). Toevallig
-  beide 0; onze regel reproduceert de INTENT correct op de echte structuur.
-Build 0/0, tests 111/111 (+16). Verificatie via de ECHTE extractor+regels (geen herimplementatie).
-(Wegwerp-tool tmp-gt2\ bleef door een build-server-handle staan — inert, los te verwijderen.)
+  OR >2 ExclusiveSplit (top-level) AND 0 Annotation. Rule=103, Rego=103, EXACT.
+- CLEVR-MAINT-009 = 005_0005 NestedIfStatements (Complexity→Maintainability/Major): ExclusiveSplit with
+  SplitCondition.Expression matching the VERBATIM .rego regex `^[\S\s]*(then|else)[\S\s]*(if)[\S\s]*$`.
+  Rule=1 (TRB.SUB_ValidateVelden, multi-line block scalar correctly parsed). NO Rego counterpart: the
+  deployed v3.3.0 rules pack does NOT contain 005_0005 (only 0001-0004) → checked against the .rego source.
+- CLEVR-PERF-COMMIT-IN-LOOP = 005_0002 AvoidCommitInLoop (Performance/Major): committing action
+  (CommitAction OR ChangeAction Commit=="Yes") inside a LoopedActivity. Rule=0, Rego=0. DELIBERATE ID CHOICE:
+  reuses the bson PoC ID (BsonMicroflowParser.RuleId) — the YAML route REPLACES the unwired
+  bson PoC. The 0 is GENUINELY verified (all 136 CommitActions at indent 12 = top-level, NONE in a loop),
+  not by a broken walk (positive unit test proves detection). The Rego's 0 is DORMANT by contrast:
+  005_0002 reads input.MainFunction + .Attributes — both absent in the modelsource export (the real form is
+  ObjectCollection.Objects → LoopedActivity → ObjectCollection.Objects → ActionActivity.Action). Both
+  coincidentally 0; our rule correctly reproduces the INTENT on the real structure.
+Build 0/0, tests 111/111 (+16). Verification via the REAL extractor+rules (no reimplementation).
+(Disposable tool tmp-gt2\ remained due to a build-server handle — inert, can be removed separately.)
 
-REGO-INTERNALISATIE — 1e bewijsregel (flow-AST-route geopend): CLEVR-MAINT-007 = mxlint 005_0003
-NumberOfElementsInMicroflow. .rego: count(ObjectCollection.Objects) - 2 > 25 (top-level, NIET-recursief;
--2 = vaste Start+End-offset). Gebouwd als pure MicroflowStructureRules.NumberOfElements (kind=acr,
-source=clevr-acr, categorie Maintainability letterlijk, severity Major = mxlint MEDIUM, bij te stellen).
-Spike: MicroflowYamlExpressions.ParseMicroflow parseert nu 1× per microflow en levert ZOWEL expressies
-ALS top-level objecten-count (root.ObjectCollection.Objects) → DetectExpressionRules voedt de count-regel.
-GRONDWAARHEID op verse TRB-export (mxlint export 14s, 471 microflows, parseFail=0): 44 findings, max 98
-elementen (Rapportages.IVK_GenereerGlobaalHerzieningsbeslissing, raw 100). Geverifieerd met 2 onafhankelijke
-methodes (YamlDotNet structural + scoped indent-count: 29/100/72 exact). LET OP: globale indent-grep was
-fout (telde dashes buiten ObjectCollection) — scoped/structureel is juist. STAP 3: de ECHTE regel op dezelfde
-counts → 44/44, 0 FP, 0 FN, 0 count-mismatch, geen System/marketplace (modelsource heeft geen System-module;
-appstore-modules export-uitgesloten). Build 0/0, tests 95/95 (+9). Alléén deze regel; 005_0002/0004/0005
-volgen pas na bewijs in Studio Pro (door Michel). (Wegwerp-verificatietool tmp-groundtruth\ bleef door een
-build-server-handle staan — inert, los te verwijderen.)
+REGO INTERNALISATION — 1st proof rule (flow AST route opened): CLEVR-MAINT-007 = mxlint 005_0003
+NumberOfElementsInMicroflow. .rego: count(ObjectCollection.Objects) - 2 > 25 (top-level, NON-recursive;
+-2 = fixed Start+End offset). Built as pure MicroflowStructureRules.NumberOfElements (kind=acr,
+source=clevr-acr, category Maintainability literally, severity Major = mxlint MEDIUM, to be adjusted).
+Spike: MicroflowYamlExpressions.ParseMicroflow now parses 1× per microflow and delivers BOTH expressions
+AND top-level object count (root.ObjectCollection.Objects) → DetectExpressionRules feeds the count rule.
+GROUND TRUTH on fresh TRB export (mxlint export 14s, 471 microflows, parseFail=0): 44 findings, max 98
+elements (Rapportages.IVK_GenereerGlobaalHerzieningsbeslissing, raw 100). Verified with 2 independent
+methods (YamlDotNet structural + scoped indent count: 29/100/72 exact). NOTE: global indent grep was
+wrong (counted dashes outside ObjectCollection) — scoped/structural is correct. STEP 3: the REAL rule on the same
+counts → 44/44, 0 FP, 0 FN, 0 count mismatch, no System/marketplace (modelsource has no System module;
+appstore modules export-excluded). Build 0/0, tests 95/95 (+9). ONLY this rule; 005_0002/0004/0005
+follow only after proof in Studio Pro (by Michel). (Disposable verification tool tmp-groundtruth\ remained due to a
+build-server handle — inert, can be removed separately.)
 
-INSTALLER mxcli AUTO-DOWNLOAD (collega strandde op "git clone + make build" — make ontbreekt op Win):
-- Install-ClevrAcr.ps1 mxcli-stap nu: (1) op PATH? gebruik dat; (2) eerder door ons gedownload in
-  %LOCALAPPDATA%\clevr-acr\mxcli\mxcli.exe? hergebruik; (3) anders: vraag bevestiging (geen stille
-  download) → Install-Mxcli haalt latest release-asset mxcli-windows-amd64.exe via
-  api.github.com/repos/mendixlabs/mxcli/releases/latest (User-Agent + TLS1.2), VERIFIEERT sha256
-  (uit asset.digest) + bytegrootte, schrijft absoluut pad in mxcliPath. Mismatch/fout/weiger/geen net
-  → bestand weg + nette fallback naar handmatige route (releases-URL), crasht nooit. mxlint NIET
-  geautomatiseerd (blijft optioneel via officiële extensie — te fragiel: vereist mxlint.yaml-generatie
-  + versie-ontkoppeling, mxlint-CLI latest v3.15.0 ≠ onze hardcoded v3.14.2-padconventie).
-- README: mxcli-stap herschreven (auto-download met checksum + handmatig alternatief), expliciete
-  waarschuwing "gebruik de release-binary, NIET git clone + make build (geen make op Windows)".
-- Geverifieerd: parser-syntax OK; echte download v0.12.0 (80.809.984 bytes, sha256 OK) → cache;
-  `mxcli --version` werkt vanaf de download; end-to-end installer (cached-branch) schrijft absoluut
-  mxcliPath in schone settings; verse zip bevat de bijgewerkte installer+gids, geen TRB, geen settings.
+INSTALLER mxcli AUTO-DOWNLOAD (colleague stranded on "git clone + make build" — make missing on Win):
+- Install-ClevrAcr.ps1 mxcli step now: (1) on PATH? use that; (2) previously downloaded by us in
+  %LOCALAPPDATA%\clevr-acr\mxcli\mxcli.exe? reuse; (3) otherwise: ask for confirmation (no silent
+  download) → Install-Mxcli fetches latest release asset mxcli-windows-amd64.exe via
+  api.github.com/repos/mendixlabs/mxcli/releases/latest (User-Agent + TLS1.2), VERIFIES sha256
+  (from asset.digest) + byte size, writes absolute path in mxcliPath. Mismatch/error/decline/no net
+  → file gone + clean fallback to manual route (releases URL), never crashes. mxlint NOT
+  automated (remains optional via official extension — too fragile: requires mxlint.yaml generation
+  + version decoupling, mxlint-CLI latest v3.15.0 ≠ our hardcoded v3.14.2 path convention).
+- README: mxcli step rewritten (auto-download with checksum + manual alternative), explicit
+  warning "use the release binary, NOT git clone + make build (no make on Windows)".
+- Verified: parser syntax OK; real download v0.12.0 (80,809,984 bytes, sha256 OK) → cache;
+  `mxcli --version` works from the download; end-to-end installer (cached branch) writes absolute
+  mxcliPath in clean settings; fresh zip contains the updated installer+guide, no TRB, no settings.
 
-PACKAGING-HARDENING (klantnaam + settings uit het gedeelde pakket):
-- OORZAAK weggenomen: de csproj kopieerde mijn lokale acr-scan-settings.json (machine-/klantpaden)
-  naar bin\Debug\net10.0 via CopyToOutputDirectory=Always → bij het verversen van de payload
-  overschreef dat de gesaneerde versie. De `<None Update="acr-scan-settings.json">`-regel is
-  VERWIJDERD. De extensie heeft geen settings-file nodig (AcrScanSettings.Load → defaults: mxcli via
-  PATH + geopende app). Mijn lokale csharp-spike\acr-scan-settings.json blijft bestaan voor lokaal
-  gebruik (wordt niet meer mee-gekopieerd).
-- INSTALLER (Install-ClevrAcr.ps1) is nu eigenaar van de settings: vraagt + valideert het projectpad
-  (map moet een .mpr bevatten; neutrale placeholder, geen klantvoorbeeld), detecteert mxcli UITSLUITEND
-  via Get-Command (PATH) — gevonden → mxcliPath = .Source, niet gevonden → duidelijke melding +
-  Mendix-Labs-install-URL (PLACEHOLDER — moet nog ingevuld) + mxcliPath="" (PATH-fallback), en
-  schrijft een schone acr-scan-settings.json op de leeslocatie. Upgrade behoudt bestaande geldige
-  waarden.
-- HERHAALBAAR-VEILIGE assemblage: Build-Package.ps1 (repo-root, maintainer-only) bouwt → spiegelt
-  bin → payload → STRIPT defensief elke acr-scan-settings.json → zipt → faalt-luid bij 'TRB'.
-- KLANTNAAM gescrubd: rules.sample.json _pending ("op TRB" → "op het referentieproject");
-  dist\clevracrshell (oude mock met TRB-sampledata) verwijderd; CLEVR-ACR-extension(.zip) bevat
-  nergens nog 'TRB' of een settings-file (geverifieerd). OPEN: dist\CLEVR-ACR-source.zip is een
-  volledige bron-snapshot waarin 'TRB' intrinsiek in tests/grondwaarheid-docs/sample-data zit —
-  volledig scrubben valt buiten de "raak scan-logica/tests niet aan"-grens; beslissing aan Michel.
-- Geverifieerd: bin geen settings (correct), lokale settings ongemoeid, pakket+zip TRB-vrij,
-  installer schrijft schone settings (temp-projecttest). Echte Studio Pro-install-test: door Michel.
+PACKAGING HARDENING (customer name + settings out of the shared package):
+- ROOT CAUSE removed: the csproj copied my local acr-scan-settings.json (machine/customer paths)
+  to bin\Debug\net10.0 via CopyToOutputDirectory=Always → when refreshing the payload
+  that overwrote the sanitised version. The `<None Update="acr-scan-settings.json">` line is
+  REMOVED. The extension needs no settings file (AcrScanSettings.Load → defaults: mxcli via
+  PATH + open app). My local csharp-spike\acr-scan-settings.json remains for local
+  use (no longer copied along).
+- INSTALLER (Install-ClevrAcr.ps1) now owns the settings: asks + validates the project path
+  (directory must contain an .mpr; neutral placeholder, no customer example), detects mxcli EXCLUSIVELY
+  via Get-Command (PATH) — found → mxcliPath = .Source, not found → clear message +
+  Mendix Labs install URL (PLACEHOLDER — still needs filling in) + mxcliPath="" (PATH fallback), and
+  writes a clean acr-scan-settings.json at the read location. Upgrade preserves existing valid
+  values.
+- REPEATABLY SAFE assembly: Build-Package.ps1 (repo root, maintainer only) builds → mirrors
+  bin → payload → DEFENSIVELY STRIPS any acr-scan-settings.json → zips → fails-loud on 'TRB'.
+- CUSTOMER NAME scrubbed: rules.sample.json _pending ("on TRB" → "on the reference project");
+  dist\clevracrshell (old mock with TRB sample data) removed; CLEVR-ACR-extension(.zip) contains
+  'TRB' nowhere and no settings file (verified). OPEN: dist\CLEVR-ACR-source.zip is a
+  complete source snapshot where 'TRB' is intrinsic in tests/ground-truth-docs/sample-data —
+  fully scrubbing falls outside the "do not touch scan logic/tests" boundary; decision for Michel.
+- Verified: bin no settings (correct), local settings untouched, package+zip TRB-free,
+  installer writes clean settings (temp project test). Real Studio Pro install test: by Michel.
 
-AFRONDINGSRONDE (product deelbaar gemaakt — 6 punten):
-1. KNOPPEN SAMENGEVOEGD → één "Scan"-knop. Nieuw C#-bericht `RunFullScan`
-   (SpikeDockablePaneViewModel.RunFullScan) orkestreert op één achtergrond-thread, in
-   volgorde: (1) mxlint export+lint (ververst modelsource/), (2) mxcli + de CLEVR-eigen
-   regels (security-export + expressie-pass) die op die VERSE modelsource leunen → lost de
-   stale-modelsource-valkuil structureel op. Beide stappen draaien op DEZELFDE projectmap
-   (ExclusionsProjectDir(), één keer resolved) zodat export en regels naar identieke
-   modelsource wijzen. De losse routes (RunAcrScan/RunMxlintScan) blijven intern bestaan.
-2. LAAD-INDICATOR: spinner naast de knop + voortgangstekst ("Exporting model…/Analyzing…")
-   via `ScanProgress`-berichten; knop disabled tijdens de scan; `ScanFinished` her-enabled.
-   CSS-valkuil gefixt: `.acr-spinner[hidden]{display:none}` (expliciete display:inline-block
-   overrulet anders het [hidden]-attribuut). Geverifieerd via statische preview-harness.
-3. HERNOEMD "CLEVR ACR Spike" → "CLEVR ACR" op elke zichtbare plek (menu-item, pane-titel,
-   log-prefix). Interne id's/DLL/namespace ongemoeid (risicoloos houden).
-4. CLEVR-LOGO: officiële CLEVR-logo.png in wwwroot/clevr-logo.png. Paneel-kop toont het via
-   <img src>; het geëxporteerde rapport embedt het als data-URI (fetch→FileReader bij open
-   van de pane → clevrLogoDataUri) zodat het rapport standalone blijft.
-5. INSTALLATIEPAKKET: dist/CLEVR-ACR-extension/ — clevracr/ (VOLLEDIGE build-output incl.
-   YamlDotNet.dll), Install-ClevrAcr.ps1 (vraagt projectpad, kopieert naar
-   <project>/extensions/clevracr, bewaart bestaande settings bij upgrade, verifieert
-   kritieke files), README.md (Studio Pro extension-development aanzetten, map-locatie,
-   mxcli/mxlint-vereisten). Script getest tegen een temp-project: kopieert + verifieert OK.
-6. MENDIX 11+: vereiste-melding in de paneel-footer én in het rapport; prominente sectie in
-   de README. (Runtime-versiedetectie niet gedaan: de 11.10-API laadt sowieso niet op Mx10,
-   dus een draaiende extensie is per definitie 11+.)
-Build 0/0, tests 86/86. Nog te doen door de gebruiker: deploy via het script + scan vanuit
-Studio Pro (echte flow) verifiëren.
+FINISHING ROUND (product made shareable — 6 points):
+1. BUTTONS MERGED → one "Scan" button. New C# message `RunFullScan`
+   (SpikeDockablePaneViewModel.RunFullScan) orchestrates on one background thread, in
+   order: (1) mxlint export+lint (refreshes modelsource/), (2) mxcli + the CLEVR-own
+   rules (security export + expression pass) that lean on that FRESH modelsource → solves the
+   stale-modelsource pitfall structurally. Both steps run on the SAME project directory
+   (ExclusionsProjectDir(), resolved once) so that export and rules point to identical
+   modelsource. The loose routes (RunAcrScan/RunMxlintScan) remain internally.
+2. LOADING INDICATOR: spinner next to the button + progress text ("Exporting model…/Analyzing…")
+   via `ScanProgress` messages; button disabled during scan; `ScanFinished` re-enables.
+   CSS pitfall fixed: `.acr-spinner[hidden]{display:none}` (explicit display:inline-block
+   otherwise overrides the [hidden] attribute). Verified via static preview harness.
+3. RENAMED "CLEVR ACR Spike" → "CLEVR ACR" in every visible place (menu item, pane title,
+   log prefix). Internal IDs/DLL/namespace untouched (keep risk-free).
+4. CLEVR LOGO: official CLEVR-logo.png in wwwroot/clevr-logo.png. Panel header shows it via
+   <img src>; the exported report embeds it as data URI (fetch→FileReader on pane
+   open → clevrLogoDataUri) so the report remains standalone.
+5. INSTALLATION PACKAGE: dist/CLEVR-ACR-extension/ — clevracr/ (FULL build output incl.
+   YamlDotNet.dll), Install-ClevrAcr.ps1 (asks project path, copies to
+   <project>/extensions/clevracr, preserves existing settings on upgrade, verifies
+   critical files), README.md (enabling Studio Pro extension development, directory location,
+   mxcli/mxlint requirements). Script tested against a temp project: copies + verifies OK.
+6. MENDIX 11+: requirement notice in the panel footer and in the report; prominent section in
+   the README. (Runtime version detection not done: the 11.10 API simply won't load on Mx10,
+   so a running extension is by definition 11+.)
+Build 0/0, tests 86/86. Still to be done by the user: deploy via the script + verify
+scan from Studio Pro (real flow).
 
-Laatst bijgewerkt na de sessie waarin: Fase 1 (mapping-fix) + Fase 2 (rapport-
-export) VOLTOOID en in Studio Pro geverifieerd; Fase 3 deel A (mxlint.com als 2e
-engine in de C#-keten) VOLTOOID na een pittige async/deadlock-debug; en de
-volledige mxcli-oppervlakte systematisch in kaart gebracht — met als kern-
-correctie: de getypeerde flow-AST die we "misten" zit WEL in mxcli, via
+Last updated after the session in which: Phase 1 (mapping fix) + Phase 2 (report
+export) COMPLETED and verified in Studio Pro; Phase 3 part A (mxlint.com as 2nd
+engine in the C# chain) COMPLETED after a tricky async/deadlock debug; and the
+full mxcli surface systematically mapped — with the key
+correction: the typed flow AST we "missed" IS in mxcli, via
 `bson dump --format json`.
 
 ---
 
-## WAT NU WERKT (bewezen in Studio Pro 11.10 op TRB)
+## WHAT NOW WORKS (proven in Studio Pro 11.10 on TRB)
 
-### Lint-regels (geverifieerd)
-- 11 geverifieerde ACR .star-regels, gekalibreerd tegen de grondwaarheid.
-  Metadata uit de grondwaarheid; 4 security-severities op "TODO-confirm".
-- Vastgelegd in acr-mxlint-voortgang.md + rule registry (rules.sample.json).
+### Lint rules (verified)
+- 11 verified ACR .star rules, calibrated against the ground truth.
+  Metadata from the ground truth; 4 security severities on "TODO-confirm".
+- Recorded in acr-mxlint-voortgang.md + rule registry (rules.sample.json).
 
-### De extensie (hybride C# + web, in Studio Pro)
-- Hybride architectuur BEWEZEN: C#-backend (.NET 10) draait een proces via
-  Process.Start, output via message-bus naar een C#-gehoste webview-pane.
-- Werkende mxcli-scan: knop -> `mxcli lint --format json` -> parser -> C#-
-  normalizer + registry -> Violation[] -> ACR-layout in de pane.
-- Op TRB (mxcli): 2625 improvements (77 ACR / 2548 generiek), verdeeld over de 6
-  ACR-categorieen (Performance + Reliability nu gevuld dankzij de mapping-fix).
-- DRIE engines nu werkend: ACR .star-regels + bundled mxcli-regels + mxlint.com
-  (Rego). mxlint draait als 2e engine via een aparte knop (deel A), resultaten in
-  een aparte lijst — nog NIET samengevoegd met de mxcli-data (= deel B).
-- UI: alles in 6 ACR-categorieen; per-regel groepering (uitklapbaar); herkomst-
-  badges + regelnaam; 3 telkaarten; herkomst-filter; tekstfilter; preview-tekst;
-  severity letterlijk uit de bron. Term "Improvements".
-- CLEVR-gebrand HTML-rapport (Fase 2): zelfde Violation[] + renderfuncties als de
-  pane, naar <project>\.clevr-acr\CLEVR-ACR-report-<timestamp>.html + auto-open.
-- Normalizer = pure, geteste .NET 10-lib (25 tests groen).
+### The extension (hybrid C# + web, in Studio Pro)
+- Hybrid architecture PROVEN: C# backend (.NET 10) runs a process via
+  Process.Start, output via message bus to a C#-hosted webview pane.
+- Working mxcli scan: button -> `mxcli lint --format json` -> parser -> C#-
+  normalizer + registry -> Violation[] -> ACR layout in the pane.
+- On TRB (mxcli): 2625 improvements (77 ACR / 2548 generic), distributed across the 6
+  ACR categories (Performance + Reliability now populated thanks to the mapping fix).
+- THREE engines now working: ACR .star rules + bundled mxcli rules + mxlint.com
+  (Rego). mxlint runs as 2nd engine via a separate button (part A), results in
+  a separate list — NOT yet merged with the mxcli data (= part B).
+- UI: everything in 6 ACR categories; per-rule grouping (collapsible); origin
+  badges + rule name; 3 count cards; origin filter; text filter; preview text;
+  severity literally from the source. Term "Improvements".
+- CLEVR-branded HTML report (Phase 2): same Violation[] + render functions as the
+  pane, to <project>\.clevr-acr\CLEVR-ACR-report-<timestamp>.html + auto-open.
+- Normalizer = pure, tested .NET 10 lib (25 tests green).
 
 ---
 
-## NIEUWE BEVINDINGEN DEZE SESSIE (belangrijk — sturen de routekaart)
+## NEW FINDINGS THIS SESSION (important — steering the roadmap)
 
-### 1. mxcli kan veel MEER dan we benutten (`lint --list-rules`)
-mxcli heeft een grote set bundled regels die al meedraaien: QUAL001 (McCabe
-complexity), CONV011 (commit-in-loop), CONV009/QUAL003 (microflow-grootte),
-ARCH001-003, SEC005-009, CONV013/014 (error handling), etc. De "flowgraaf"-
-regels die we als Rego-exclusief aannamen, doet mxcli dus deels AL.
+### 1. mxcli can do much MORE than we use (`lint --list-rules`)
+mxcli has a large set of bundled rules already running: QUAL001 (McCabe
+complexity), CONV011 (commit-in-loop), CONV009/QUAL003 (microflow size),
+ARCH001-003, SEC005-009, CONV013/014 (error handling), etc. The "flowgraph"
+rules we assumed were Rego-exclusive are thus partly already done by mxcli.
 
-### 2. De lege categorieen waren een MAPPING-BUG, geen ontbrekende engine
-De display-mapping mapt op letter-PREFIX (CONV/MPR/QUAL), maar mxcli's CONV
-bevat naming-, performance-, quality- en architectuur-regels door elkaar.
-Daardoor: Performance werd alleen door (niet-bestaande) prefix PERF gevoed ->
-altijd leeg; Reliability door niets gemapt -> altijd leeg.
-FIX (klein, bestaande data): map per-regel op de ECHTE mxcli-categorie uit
-`--list-rules` (die we al ophalen voor namen) i.p.v. de prefix. Gemeten op TRB
-vult dat beide categorieen: Reliability ~388, Performance ~11.
-Implementatie-noot: lint-JSON heeft geen categorie per violation -> joinen op
+### 2. The empty categories were a MAPPING BUG, not a missing engine
+The display mapping maps on letter PREFIX (CONV/MPR/QUAL), but mxcli's CONV
+contains naming, performance, quality and architecture rules mixed together.
+As a result: Performance was only fed by the (non-existent) prefix PERF ->
+always empty; Reliability mapped by nothing -> always empty.
+FIX (small, existing data): map per rule on the REAL mxcli category from
+`--list-rules` (which we already fetch for names) instead of the prefix. Measured on TRB
+that fills both categories: Reliability ~388, Performance ~11.
+Implementation note: lint JSON has no category per violation -> join on
 `--list-rules`.
 
-### 3. `mxcli report` bestaat al — bijna je hele export-fase
-`mxcli report -p <mpr> --format html|json|markdown` geeft een GESCOORD best-
-practices-rapport (overallScore, per-categorie scores, topActions/remediaties,
-alle findings). HTML is standalone met embedded CSS. Dit kan de geplande export
-grotendeels VERVANGEN of VOEDEN. Caveat: mxcli's eigen 7-categorie-taxonomie en
-styling, niet de 6 ACR-categorieen / CLEVR-look. trb-report.html = goed genoeg
-voor een product owner; de CSV-export van mxlint is dat NIET.
+### 3. `mxcli report` already exists — almost your entire export phase
+`mxcli report -p <mpr> --format html|json|markdown` gives a SCORED best-
+practices report (overallScore, per-category scores, topActions/remediations,
+all findings). HTML is standalone with embedded CSS. This can largely REPLACE
+or FEED the planned export. Caveat: mxcli's own 7-category taxonomy and
+styling, not the 6 ACR categories / CLEVR look. trb-report.html = good enough
+for a product owner; the CSV export of mxlint is NOT.
 
-### 4. mxlint.com BEWEZEN werkend in Studio Pro (eigen extensie geinstalleerd)
-mxlint-cli `export` (model -> YAML in modelsource/) + `lint` (Rego op de YAML)
-draait, lokaal, en is als Studio Pro-extensie geinstalleerd. Bewijs: 2363 checks,
-24 rules, 182 fails op TRB. Voegt regels toe die mxcli NIET heeft:
+### 4. mxlint.com PROVEN working in Studio Pro (own extension installed)
+mxlint-cli `export` (model -> YAML in modelsource/) + `lint` (Rego on the YAML)
+runs, locally, and is installed as a Studio Pro extension. Proof: 2363 checks,
+24 rules, 182 fails on TRB. Adds rules that mxcli does NOT have:
 - ComplexMicroflowsWithoutAnnotations (103), NumberOfElementsInMicroflow (44),
   InlineStylePropertyUsed (14), HeadingsInAscendingOrder (11, accessibility),
   NoDefaultValue (8), MxAdminNotUsed (1), OneH1TagPerPage (1).
-EERLIJKE NUANCE: AvoidCommitInLoop gaf 0 op TRB; de ECHT diepe ACR-Performance-
-regels (Non-indexed attr in XPath, CRUD too early in flow, XPath ordering — de
-~804 ACR-Performance-violations) zitten OOK in mxlint.com NIET. Die blijven het
-domein van ACR/SDK + de Studio Pro Best Practice Recommender.
-CONCLUSIE: mxcli + mxlint.com samen = een groot, waardevol deel van ACR — NIET
-"alles". Eerlijk communiceren: niet "ACR volledig vervangen".
+HONEST NUANCE: AvoidCommitInLoop gave 0 on TRB; the REALLY deep ACR-Performance
+rules (Non-indexed attr in XPath, CRUD too early in flow, XPath ordering — the
+~804 ACR-Performance violations) are also NOT in mxlint.com. Those remain the
+domain of ACR/SDK + the Studio Pro Best Practice Recommender.
+CONCLUSION: mxcli + mxlint.com together = a large, valuable part of ACR — NOT
+"everything". Communicate honestly: not "ACR fully replaced".
 
-### 5. De mxlint-bronnen zijn OPEN (wiel niet opnieuw uitvinden)
-- mxlint-cli (Go) — broncode binnengehaald (mxlint-cli-main.zip).
-- mxlint-extension (Studio Pro) — broncode binnengehaald (mxlint-extension-main.zip).
-- Rego-regels — mxlint-rego-inventaris.md (28 regels, metadata in # METADATA-blok).
-Claude Code kan hun aanpak hergebruiken i.p.v. from scratch. LET OP CRLF (\r) in
-de Rego-metadata bij parsen.
+### 5. The mxlint sources are OPEN (no need to reinvent the wheel)
+- mxlint-cli (Go) — source code obtained (mxlint-cli-main.zip).
+- mxlint-extension (Studio Pro) — source code obtained (mxlint-extension-main.zip).
+- Rego rules — mxlint-rego-inventaris.md (28 rules, metadata in # METADATA block).
+Claude Code can reuse their approach instead of starting from scratch. NOTE CRLF (\r) in
+the Rego metadata when parsing.
 
-### 6. VOLLEDIGE mxcli-inventarisatie — de gemiste diepte zit in `bson dump`
-Systematisch elk mxcli-commando + subhelp doorlopen (geen steekproef meer). Kern-
-correctie op een eerdere conclusie: we dachten dat alleen mxlint de getypeerde
-flow-AST kon geven (describe gaf alleen MDL-TEKST). FOUT — `mxcli bson dump
---type microflow --object <naam> --format json` geeft de VOLLEDIGE getypeerde
-model-AST: $Type-nodes met LoopedActivity, CommitAction, CreateChangeAction,
-ExclusiveSplit, expressies — dezelfde structuur als mxlint's YAML (beide lezen
-dezelfde BSON uit de .mpr v2).
-GEVOLG: een deterministische flow-regel (bv. commit-in-loop) is op mxcli ALLEEN
-te schrijven door die boom te doorlopen — zonder mxlint, zonder Rego, zonder
-MDL-tekst te parsen. Dit is de "derde weg" (zie hieronder).
-NUANCE: bson dump = RUWE BSON-als-JSON (verbose, {Key,Value}-vorm, alpha
-"inspection"-tool), per element (--object; --list om te enumereren). mxlint geeft
-een opgeschoonde boom + kant-en-klare Rego-engine. Dus: voor LOSSE eigen checks
-in C# is bson dump reeel; voor een BREED regelpakket blijft mxlint efficienter.
-ANDERE nuttige, nog niet benutte commando's (allemaal --json): impact, refs,
-callers/callees (call-graph), context (relaties), en de MDL CATALOG-query
+### 6. FULL mxcli inventory — the missed depth is in `bson dump`
+Systematically gone through every mxcli command + subhelp (no sampling anymore). Key
+correction on an earlier conclusion: we thought only mxlint could provide the typed
+flow AST (describe only gave MDL TEXT). WRONG — `mxcli bson dump
+--type microflow --object <name> --format json` gives the FULL typed
+model AST: $Type nodes with LoopedActivity, CommitAction, CreateChangeAction,
+ExclusiveSplit, expressions — the same structure as mxlint's YAML (both read
+the same BSON from the .mpr v2).
+CONSEQUENCE: a deterministic flow rule (e.g. commit-in-loop) is possible in mxcli ALONE
+by traversing that tree — without mxlint, without Rego, without
+parsing MDL text. This is the "third way" (see below).
+NUANCE: bson dump = RAW BSON-as-JSON (verbose, {Key,Value} form, alpha
+"inspection" tool), per element (--object; --list to enumerate). mxlint gives
+a cleaned-up tree + ready-made Rego engine. So: for INDIVIDUAL own checks
+in C# bson dump is realistic; for a BROAD rule package mxlint remains more efficient.
+OTHER useful, not yet used commands (all --json): impact, refs,
+callers/callees (call graph), context (relations), and the MDL CATALOG query
 (`SELECT ... FROM CATALOG.ENTITIES --json` → AttributeCount, AccessRuleCount,
-HasEventHandlers, Generalization, QualifiedName...). `eval` = vaste check-set
-(entity_exists, lint_passes, mx_check_passes...) — GEEN plek voor eigen flow-
-logica, alleen een acceptatie-/regressieharnas. structure/show/project-tree =
-naam-/signatuurniveau (geen flow-internals).
-DUS: we hebben nu de VOLLEDIGE oppervlakte in kaart; de diepte is toegankelijk
-via mxcli zelf (bson dump). Eerdere "alleen mxlint kan de boom"-conclusie =
-gecorrigeerd.
+HasEventHandlers, Generalization, QualifiedName...). `eval` = fixed check set
+(entity_exists, lint_passes, mx_check_passes...) — NO place for own flow
+logic, only an acceptance/regression harness. structure/show/project-tree =
+name/signature level (no flow internals).
+SO: we now have the FULL surface mapped; the depth is accessible
+via mxcli itself (bson dump). Earlier "only mxlint can give the tree" conclusion =
+corrected.
 
-### 7. Geleerde lessen uit de Fase 3 deel A debug (voor toekomstige engines)
-- PIPE-DEADLOCK: een proces met veel stdout/stderr (mxlint lint = honderden
-  regels) deadlockt als je de streams SEQUENTIEEL leest (eerst stdout helemaal,
-  dan stderr). Fix: beide streams PARALLEL async leegtrekken vóór WaitForExit,
-  + een timeout-vangnet. ProcessRunner doet dit nu voor alle aanroepen.
-- ASYNC/UI-THREAD: WebView2 PostMessage MOET op de UI-thread. De MessageReceived-
-  thread heeft een WPF DispatcherSynchronizationContext (geverifieerd: aanwezig);
-  zwaar werk via Task.Run, resultaat terug-marshallen via die context, en
-  GEGARANDEERD posten in elke uitkomst (anders blijft de pane stil op "Bezig...").
-- DIAGNOSTIEK: ILogService schrijft naar Studio Pro's interne log (Help -> Open
-  Log File Directory), NIET naar %LOCALAPPDATA%\Mendix. Daarom schrijft de
-  extensie nu ook naar <project>\.clevr-acr\mxlint-debug.log (vindbaar). LES: bij
-  een hang in een dichte doos eerst ZICHTBAAR maken wat er gebeurt, dan pas fixen
-  — dat hakte de knoop door na meerdere gok-rondes.
-- mxlint EXIT 1 = findings (geen fout): lees de jsonFile ongeacht exitcode.
-- mxlint BUNDELT per document meerdere violations van dezelfde regel in 1
-  failure.message, gescheiden door de [SEVERITY, CATEGORY, rulenummer]-marker.
-  Normalizer splitst nu op die marker: 182 "failures" -> 480 losse violations.
-- FINGERPRINT-beperking: gesplitste violations van dezelfde regel op hetzelfde
-  document delen nu 1 fingerprint (het attribuut staat alleen in de reason, en de
-  spec verbiedt reason in de fingerprint). Gevolg voor Fase 6: exclusion werkt op
-  rule+document-niveau, niet per attribuut. Per-attribuut zou reason-parsing in
-  elementName vereisen — bewust uitgesteld.
+### 7. Lessons learned from the Phase 3 part A debug (for future engines)
+- PIPE DEADLOCK: a process with lots of stdout/stderr (mxlint lint = hundreds
+  of lines) deadlocks if you read the streams SEQUENTIALLY (first all stdout,
+  then stderr). Fix: drain both streams PARALLEL async before WaitForExit,
+  + a timeout safety net. ProcessRunner now does this for all calls.
+- ASYNC/UI THREAD: WebView2 PostMessage MUST be on the UI thread. The MessageReceived
+  thread has a WPF DispatcherSynchronizationContext (verified: present);
+  heavy work via Task.Run, result marshalled back via that context, and
+  GUARANTEED to post in every outcome (otherwise the pane stays silent on "Busy...").
+- DIAGNOSTICS: ILogService writes to Studio Pro's internal log (Help -> Open
+  Log File Directory), NOT to %LOCALAPPDATA%\Mendix. Therefore the
+  extension now also writes to <project>\.clevr-acr\mxlint-debug.log (findable). LESSON: when
+  stuck in a closed box first MAKE VISIBLE what is happening, then fix
+  — that broke the deadlock after several guess-rounds.
+- mxlint EXIT 1 = findings (not an error): read the jsonFile regardless of exit code.
+- mxlint BUNDLES multiple violations of the same rule per document into 1
+  failure.message, separated by the [SEVERITY, CATEGORY, rulenumber] marker.
+  Normalizer now splits on that marker: 182 "failures" -> 480 individual violations.
+- FINGERPRINT LIMITATION: split violations of the same rule on the same
+  document now share 1 fingerprint (the attribute is only in the reason, and the
+  spec prohibits reason in the fingerprint). Consequence for Phase 6: exclusion works at
+  rule+document level, not per attribute. Per-attribute would require reason-parsing in
+  elementName — deliberately deferred.
 
 ---
 
-## OPENSTAANDE FASEN (HERZIENE volgorde na de bevindingen)
+## OPEN PHASES (REVISED order after the findings)
 
-### Fase 1 — Display-mapping per-regel  ✅ VOLTOOID (geverifieerd op TRB)
-Generieke regels mappen nu op de echte mxcli-categorie uit `--list-rules` i.p.v.
-de prefix. Geverifieerd in Studio Pro: Performance (CONV016/017) en Reliability
-niet langer leeg; CONV011→Performance en CONV001→Project hygiene (zelfde prefix,
-nu verschillende categorie = bug weg). Mapping-tabel in spec §5; "mxcli
-correctness → ACR Reliability" expliciet vastgelegd. Display-mapping in de render-
-laag; intern Violation.category ongewijzigd.
+### Phase 1 — Display mapping per rule  ✅ COMPLETED (verified on TRB)
+Generic rules now map on the real mxcli category from `--list-rules` instead of
+the prefix. Verified in Studio Pro: Performance (CONV016/017) and Reliability
+no longer empty; CONV011→Performance and CONV001→Project hygiene (same prefix,
+now different category = bug gone). Mapping table in spec §5; "mxcli
+correctness → ACR Reliability" explicitly recorded. Display mapping in the render
+layer; internal Violation.category unchanged.
 
-### Fase 2 — Rapport-export  ✅ VOLTOOID (geverifieerd: rapport ziet er goed uit)
-Optie B gekozen: eigen CLEVR-gebrand HTML uit dezelfde Violation[] + renderfuncties
-als de pane (consistent met wat de developer ziet), i.p.v. mxcli's eigen HTML.
-Opslag: <project>\.clevr-acr\CLEVR-ACR-report-<timestamp>.html + auto-open + pad
-in de statusregel (geen native save-dialoog in de Studio Pro API). mxcli report
-blijft een latere optie als databron voor scores/remediaties.
+### Phase 2 — Report export  ✅ COMPLETED (verified: report looks good)
+Option B chosen: own CLEVR-branded HTML from the same Violation[] + render functions
+as the pane (consistent with what the developer sees), instead of mxcli's own HTML.
+Storage: <project>\.clevr-acr\CLEVR-ACR-report-<timestamp>.html + auto-open + path
+in the status line (no native save dialog in the Studio Pro API). mxcli report
+remains a later option as a data source for scores/remediations.
 
-### Fase 3 deel A — mxlint.com als 2e engine (C#-keten)  ✅ VOLTOOID
-MxlintScanService (export+lint via Process.Start, async, parallel stream-drain,
-exit≠0=findings), MxlintNormalizer (split op marker → 480 violations, source=
-mxlint, CRLF-trim), aparte knop + aparte lijst. Geverifieerd op TRB: 480 losse
-violations. Zie bevinding 7 voor de geleerde lessen. Nog NIET samengevoegd met de
-mxcli-data (= deel B).
+### Phase 3 part A — mxlint.com as 2nd engine (C# chain)  ✅ COMPLETED
+MxlintScanService (export+lint via Process.Start, async, parallel stream drain,
+exit≠0=findings), MxlintNormalizer (split on marker → 480 violations, source=
+mxlint, CRLF trim), separate button + separate list. Verified on TRB: 480 individual
+violations. See finding 7 for lessons learned. NOT yet merged with the
+mxcli data (= part B).
 
-### Fase 3 deel B — mxlint samenvoegen in het hoofdpaneel  ✅ VOLTOOID
-mxlint-violations staan nu samengevoegd met de mxcli-data in de 6 ACR-categorieen
-(aparte lijst weg). Twee aparte knoppen, één overzicht; replaceOrigin() vervangt
-alleen de violations van de gescande herkomst (je kunt mxcli én mxlint draaien en
-samen zien). Herkomst-filter Mxlint.com nu gevuld; 3 telkaarten tellen de merged
-set. 26/26 tests. De 3 gemaakte keuzes:
-1. PRECEDENTIE = mxcli > ACR > mxlint (optie A; Mendix zet in op mxcli → voorop,
-   ook boven de gekalibreerde ACR-regels). De 6 ACR↔mxlint-overlappen
+### Phase 3 part B — merge mxlint into the main panel  ✅ COMPLETED
+mxlint violations are now merged with the mxcli data in the 6 ACR categories
+(separate list gone). Two separate buttons, one overview; replaceOrigin() only replaces
+the violations of the scanned origin (you can run mxcli and mxlint and
+see them together). Origin filter Mxlint.com now populated; 3 count cards count the merged
+set. 26/26 tests. The 3 choices made:
+1. PRECEDENCE = mxcli > ACR > mxlint (option A; Mendix is backing mxcli → front,
+   even above the calibrated ACR rules). The 6 ACR↔mxlint overlaps
    (AnonymousDisabled↔ACR_SEC_GUEST, DemoUsersDisabled↔ACR_SEC_DEMOUSERS,
    SecurityChecks↔ACR_SEC_CHECKED, StrongPasswordPolicy↔ACR_SEC_PWPOLICY,
    NumberOfAttributes↔ACR_ENT_ATTRS, AvoidUsingValidationRules↔ACR_ENT_VALRULES)
-   zijn onderdrukt aan de mxlint-kant (spec §4).
-2. ACCESSIBILITY → Maintainability via display-mapping (spec §5; intern ongewijzigd).
-3. TWEE knoppen, één scherm — functioneel: mxcli werkt op Mx11, mxlint ook op
-   Mx10, dus bruikbaar over beide versies. mxlint async, mxcli synchroon.
+   are suppressed on the mxlint side (spec §4).
+2. ACCESSIBILITY → Maintainability via display mapping (spec §5; internally unchanged).
+3. TWO buttons, one screen — functional: mxcli works on Mx11, mxlint also on
+   Mx10, so usable across both versions. mxlint async, mxcli synchronous.
 
->> NIEUW ONTDEKT, NOG NIET OPGELOST — ACR↔mxcli-overlap (eigen vervolgtaak):
-   er is óók overlap tussen jouw ACR .star-regels en mxcli's bundled regels — bv.
-   ACR_SEC_STRICT ↔ SEC005 StrictModeDisabled: beide melden "strict mode uit" op
-   hetzelfde document, net anders verwoord → dubbel in het rapport. Volgens
-   precedentie A wint mxcli (SEC005 heeft ook de CVE-2023-23835-verwijzing); 
-   ACR_SEC_STRICT moet onderdrukt. VERVOLGTAAK (frisse sessie): systematisch alle
-   11 ACR-regels langs de mxcli-bundled-regellijst leggen en per regel beslissen:
-   onderdrukken (mxcli wint) óf de ACR-regel helemaal LATEN VALLEN omdat mxcli 'm
-   al dekt. Vermoede kandidaten: de 4 ACR_SEC_* (vs mxcli SEC001-009). Opschoonslag,
-   geen quick fix — vergt de inventarisatie eerst.
+>> NEWLY DISCOVERED, NOT YET RESOLVED — ACR↔mxcli overlap (own follow-up task):
+   there is ALSO overlap between your ACR .star rules and mxcli's bundled rules — e.g.
+   ACR_SEC_STRICT ↔ SEC005 StrictModeDisabled: both report "strict mode off" on
+   the same document, slightly differently worded → duplicate in the report. According to
+   precedence A mxcli wins (SEC005 also has the CVE-2023-23835 reference);
+   ACR_SEC_STRICT should be suppressed. FOLLOW-UP TASK (fresh session): systematically go through all
+   11 ACR rules against the mxcli-bundled rule list and decide per rule:
+   suppress (mxcli wins) OR entirely DROP the ACR rule because mxcli already covers it.
+   Suspected candidates: the 4 ACR_SEC_* (vs mxcli SEC001-009). Cleanup pass,
+   not a quick fix — requires the inventory first.
 
-### Fase 4 — Klikbaar object: navigeren naar element + docs  [GEBOUWD]
-Bleek breder haalbaar dan alleen docs. Geverifieerd tegen de ECHTE 11.10-assembly
-(reflectie). GEBOUWD, compileert (0/0), tests 26/26:
-(a) DOCUMENT OPENEN IN STUDIO PRO — klik op de documentregel van een improvement
-    opent het document. C# resolt de unit: eerst via stabiele GUID
-    IModel.TryGetAbstractUnitById(documentId) (mxcli/ACR hebben documentId);
-    fallback naam-walk Root.GetModules()->module->DomainModel/folders/GetDocuments()
-    (mxlint heeft GEEN GUID). Navigatie op DOCUMENTNIVEAU via
-    IDockingWindowService.TryOpenEditor(unit, null) — net als de mxlint-extensie.
-(b) DOC-URL IN BROWSER — klik op "Documentatie" opent de URL via
-    Process.Start{UseShellExecute=true} (zelfde patroon als rapport openen).
-Injectie: SpikeDockablePaneExtension importeert nu IDockingWindowService en geeft
-() => CurrentApp (IModel) + de service door aan de VM. Handlers: "OpenDocument",
-"OpenUrl". Data/UI-scheiding intact: Violation ongewijzigd; JS post alleen
-bestaande velden; het HTML-rapport blijft statisch (interactive=false) met een
-gewone werkende doc-href.
-NAVIGATIE PER DOCUMENTTYPE (geverifieerd tegen 11.10 via net10-reflectie):
-- microflow/page/enumeratie: GUID-route (TryGetAbstractUnitById) → opent. ✓
-- entiteit: GEEN unit-GUID → naam-route → DOMEINMODEL openen ÉN de entiteit FOCUSSEN
-  (IEntity is een IElement; IDomainModel.GetEntities() → match op naam →
-  TryOpenEditor(domainModel, entity)). Fallback = domeinmodel zonder focus. ✓ [GEBOUWD]
-- subfolder-docs (microflow/page e.d.): naam-walk is RECURSIEF (module → folders →
-  documenten); werkt. Pages/microflows openen meestal al via de GUID-route. ✓
-- SNIPPETS = API-GRENS (definitief, via net10-reflectie): de 11.10 ExtensionsAPI kent
-  GEEN snippet-type. De volledige IDocument/IAbstractUnit-set is: IConstant, IEnumeration,
-  IJavaAction, IMicroflow(+Rule/ServerSide/Base), IPage, IDomainModel. Geen ISnippet.
-  Bovendien geeft mxcli snippets een LEGE documentId (terwijl pages/microflows/enums/
-  entiteiten wél een GUID krijgen) → ook de SDK kent snippets geen unit-identiteit toe;
-  en GetDocuments() levert ze niet op (recursieve walk mist ze, bevestigd in de log).
-  Conclusie: snippets zijn niet rechtstreeks te openen via deze API. Klik toont een
-  eerlijke melding i.p.v. "niet gevonden". (Eerdere dubbele-module-diagnose was NIET de
-  oorzaak — die was wél een echte aparte bug en is gefixt.)
-SYSTEM-MODULE FILTER (render-laag, main.js): violations uit de System-module worden VOLLEDIG
-verborgen in de weergave (lijst, 3 telkaarten, totaal, geëxporteerd rapport) — System is niet
-wijzigbaar door een developer → ruis. Bepaald op de qualified name (prefix "System." of exact
-"System"). Data blijft compleet (data/UI-scheiding); puur weergavefilter, bovenop de bestaande
-categorie/severity/herkomst/tekst-filters + reset. Op TRB: 78 van 2625 ruwe violations zijn System.
-- ENUMERATIONS = HOST-GRENS: IEnumeration is een unit, TryOpenEditor slaagt technisch,
-  maar Studio Pro toont enums als DIALOOG (niet altijd zichtbaar vanuit extensie). Geen
-  alternatieve toon-API. We openen nog wel, maar tonen een EERLIJKE melding.
-- PROJECT SECURITY = API-GRENS: project-niveau-artefact, GEEN module-document. 11.10 heeft
-  geen ISecurity-type/open-methode; IProjectDocument heeft geen Name om op te matchen;
-  INavigationManagerService doet alleen web-menu's. Klik toont eerlijke melding:
-  "Project security is niet direct te openen via de Extensibility API (11.10)."
-Alle routes loggen hun keuze + uitkomst in mxlint-debug.log.
+### Phase 4 — Clickable object: navigate to element + docs  [BUILT]
+Turned out to be more broadly feasible than just docs. Verified against the REAL 11.10 assembly
+(reflection). BUILT, compiles (0/0), tests 26/26:
+(a) OPEN DOCUMENT IN STUDIO PRO — click on the document line of an improvement
+    opens the document. C# resolves the unit: first via stable GUID
+    IModel.TryGetAbstractUnitById(documentId) (mxcli/ACR have documentId);
+    fallback name walk Root.GetModules()->module->DomainModel/folders/GetDocuments()
+    (mxlint has NO GUID). Navigation at DOCUMENT LEVEL via
+    IDockingWindowService.TryOpenEditor(unit, null) — just like the mxlint extension.
+(b) DOC URL IN BROWSER — click "Documentation" opens the URL via
+    Process.Start{UseShellExecute=true} (same pattern as opening report).
+Injection: SpikeDockablePaneExtension now imports IDockingWindowService and passes
+() => CurrentApp (IModel) + the service to the VM. Handlers: "OpenDocument",
+"OpenUrl". Data/UI separation intact: Violation unchanged; JS posts only
+existing fields; the HTML report remains static (interactive=false) with a
+normal working doc href.
+NAVIGATION PER DOCUMENT TYPE (verified against 11.10 via net10 reflection):
+- microflow/page/enumeration: GUID route (TryGetAbstractUnitById) → opens. ✓
+- entity: NO unit GUID → name route → OPEN DOMAIN MODEL AND FOCUS the entity
+  (IEntity is an IElement; IDomainModel.GetEntities() → match on name →
+  TryOpenEditor(domainModel, entity)). Fallback = domain model without focus. ✓ [BUILT]
+- subfolder docs (microflow/page etc.): name walk is RECURSIVE (module → folders →
+  documents); works. Pages/microflows usually already open via the GUID route. ✓
+- SNIPPETS = API BOUNDARY (definitive, via net10 reflection): the 11.10 ExtensionsAPI knows
+  NO snippet type. The complete IDocument/IAbstractUnit set is: IConstant, IEnumeration,
+  IJavaAction, IMicroflow(+Rule/ServerSide/Base), IPage, IDomainModel. No ISnippet.
+  Moreover mxcli gives snippets an EMPTY documentId (while pages/microflows/enums/
+  entities DO get a GUID) → the SDK also assigns no unit identity to snippets;
+  and GetDocuments() does not return them (recursive walk misses them, confirmed in the log).
+  Conclusion: snippets cannot be directly opened via this API. Click shows an
+  honest message instead of "not found". (Earlier double-module diagnosis was NOT the
+  cause — that was a real separate bug and has been fixed.)
+SYSTEM MODULE FILTER (render layer, main.js): violations from the System module are COMPLETELY
+hidden in the display (list, 3 count cards, total, exported report) — System is not
+modifiable by a developer → noise. Determined by the qualified name (prefix "System." or exact
+"System"). Data remains complete (data/UI separation); purely a display filter, on top of the existing
+category/severity/origin/text filters + reset. On TRB: 78 of 2625 raw violations are System.
+- ENUMERATIONS = HOST BOUNDARY: IEnumeration is a unit, TryOpenEditor technically succeeds,
+  but Studio Pro shows enums as a DIALOG (not always visible from extension). No
+  alternative show API. We still open, but show an HONEST message.
+- PROJECT SECURITY = API BOUNDARY: project-level artefact, NO module document. 11.10 has
+  no ISecurity type/open method; IProjectDocument has no Name to match on;
+  INavigationManagerService only handles web menus. Click shows honest message:
+  "Project security cannot be opened directly via the Extensibility API (11.10)."
+All routes log their choice + outcome in mxlint-debug.log.
 
-MXLINT REGELNAMEN: mxlint-regels tonen nu een beschrijvende naam naast hun nummer
-(002_0009 → NoDefaultValue), net als mxcli. Bron: de # METADATA `rulename` van de .rego's
-→ vaste map MxlintRuleNames (25 regels). De lint-results.json zelf heeft GEEN naam, alleen
-het .rego/.js-bestandspad. MxlintNormalizer.BuildRuleNames(json) bouwt rulenumber→naam per
-testsuite: vaste map, anders PascalCase van de bestandsnaam-slug — zo krijgen óók regels die
-(nog) niet in de map staan een naam (bv. de .js-accessibility-regels 004_0003 one_h1 → OneH1,
-004_0004 headings → Headings; de reference-ruleset is ouder dan wat in TRB draait). De service
-zet dit in payload.ruleNames (zelfde vorm als mxcli); main.js merget beide engines in
-lastRuleNames → render-laag toont 'm via ruleName() (geen render-wijziging).
+MXLINT RULE NAMES: mxlint rules now show a descriptive name next to their number
+(002_0009 → NoDefaultValue), just like mxcli. Source: the # METADATA `rulename` from the .rego files
+→ fixed map MxlintRuleNames (25 rules). The lint-results.json itself has NO name, only
+the .rego/.js file path. MxlintNormalizer.BuildRuleNames(json) builds rulenumber→name per
+testsuite: fixed map, otherwise PascalCase of the filename slug — so even rules not
+(yet) in the map get a name (e.g. the .js accessibility rules 004_0003 one_h1 → OneH1,
+004_0004 headings → Headings; the reference ruleset is older than what runs in TRB). The service
+puts this in payload.ruleNames (same form as mxcli); main.js merges both engines in
+lastRuleNames → render layer shows it via ruleName() (no render change).
 
-UI-TAAL: de volledige extensie-UI is nu consistent ENGELS (knoppen, telkaart-koppen,
-status-/foutmeldingen, tooltips, placeholder, rapport-kop). De ACR-categorienamen
-(Project hygiene/Maintainability/Performance/Architecture/Reliability/Security) zijn
-onveranderd — die horen bij het datacontract. Debug-log-teksten blijven bewust NL (intern).
+UI LANGUAGE: the full extension UI is now consistently ENGLISH (buttons, count card headers,
+status/error messages, tooltips, placeholder, report header). The ACR category names
+(Project hygiene/Maintainability/Performance/Architecture/Reliability/Security) are
+unchanged — they belong to the data contract. Debug log texts deliberately remain in Dutch (internal).
 
-### Fase 5 — "Ask Maia"-prompt (PLAK-variant)  [GEBOUWD — plak-variant]
-Render-laag (main.js): "Copy Maia prompt"-knop op TWEE niveaus:
-- REGEL-kop: prompt voor de hele regel met al z'n punten (gecapt op 50, "... and N more"
-  zodat grote regels als de 283-punts default-value-regel niet exploderen).
-- INDIVIDUEEL punt: prompt gericht op dat ene geval.
-Prompt is ENGELS en bevat ruleId+naam, categorie (displayCategory), severity, herkomst-
-engine, document(en), reason(s) en suggestion(s). Kopiëren via navigator.clipboard met
-fallback op textarea+execCommand (WebView2 blokkeert clipboard soms). Bevestiging:
-"Maia prompt copied — paste it into Maia". Niet in het geëxporteerde rapport (interactive=false).
-Data/UI-scheiding intact. DIRECTE injectie in Maia blijft onbewezen → niet gebouwd.
+### Phase 5 — "Ask Maia" prompt (PASTE variant)  [BUILT — paste variant]
+Render layer (main.js): "Copy Maia prompt" button at TWO levels:
+- RULE header: prompt for the entire rule with all its points (capped at 50, "... and N more"
+  so large rules like the 283-point default-value rule don't explode).
+- INDIVIDUAL point: prompt focused on that one case.
+Prompt is ENGLISH and contains ruleId+name, category (displayCategory), severity, origin
+engine, document(s), reason(s) and suggestion(s). Copy via navigator.clipboard with
+fallback on textarea+execCommand (WebView2 sometimes blocks clipboard). Confirmation:
+"Maia prompt copied — paste it into Maia". Not in the exported report (interactive=false).
+Data/UI separation intact. DIRECT injection into Maia remains unproven → not built.
 
-### EERSTE EIGEN REGEL op de project-security-export — ACR #12  [GEBOUWD]
-"Project role should have at most one module role per module" (CLEVR-MAINT-005). Géén
-mxcli/mxlint — eigen pure parser ProjectSecurityParser (csharp-normalizer, spiegel van
-BsonMicroflowParser; 6 tests). Bron: modelsource/Security$ProjectSecurity.yaml (UserRoles[]
-→ {Name, ModuleRoles:["Module.Role"]}); groepeer per user-role op het module-deel; >1 =
-overtreding. Identiteit: ruleId CLEVR-MAINT-005, acrCode ProjectRoleMaxOneModuleRolePerModule,
-engineRuleKey CLEVR_SEC_ONE_MODULEROLE_PER_MODULE (zelf-geproduceerd, NIET mxcli-geclaimd →
-bewust niet in rules.sample.json). Categorie Maintainability (ACR: Performance — bewuste keuze,
-één constante om bij te stellen), severity Critical. Herkomst: kind=acr/source=clevr-acr →
-ACR-badge. Integratie: hangt aan de mxcli "Scan for improvements" (AcrScanService leest de YAML
-uit de projectmap → Violations in de AcrViolations-payload). Geverifieerd tegen TRB-grondwaarheid:
-exact 5 violations / 2 rollen (Administrator op Accesslog/Administration/SupportModule/UserCommons
-+ Behandelaar op TRB), 7 rollen clean — geen false positives/negatives. NB: MDL CATALOG legt deze
-mapping NIET bloot → de YAML-export is de bron.
+### FIRST OWN RULE on the project security export — ACR #12  [BUILT]
+"Project role should have at most one module role per module" (CLEVR-MAINT-005). No
+mxcli/mxlint — own pure parser ProjectSecurityParser (csharp-normalizer, mirror of
+BsonMicroflowParser; 6 tests). Source: modelsource/Security$ProjectSecurity.yaml (UserRoles[]
+→ {Name, ModuleRoles:["Module.Role"]}); group per user role on the module part; >1 =
+violation. Identity: ruleId CLEVR-MAINT-005, acrCode ProjectRoleMaxOneModuleRolePerModule,
+engineRuleKey CLEVR_SEC_ONE_MODULEROLE_PER_MODULE (self-produced, NOT claimed by mxcli →
+deliberately not in rules.sample.json). Category Maintainability (ACR: Performance — deliberate choice,
+one constant to adjust), severity Critical. Origin: kind=acr/source=clevr-acr →
+ACR badge. Integration: attached to the mxcli "Scan for improvements" (AcrScanService reads the YAML
+from the project directory → Violations in the AcrViolations payload). Verified against TRB ground truth:
+exactly 5 violations / 2 roles (Administrator on Accesslog/Administration/SupportModule/UserCommons
++ Behandelaar on TRB), 7 roles clean — no false positives/negatives. NB: MDL CATALOG does not expose this
+mapping → the YAML export is the source.
 
-### TWEE SECURITY-REGELS op de export — ACR #7 + #10  [GEBOUWD]
-Beide kind=acr/source=clevr-acr (ACR-badge), Security/Blocker (zoals ACR), geïntegreerd in de
-mxcli "Scan for improvements" (AcrScanService), pure geteste parser-uitbreidingen op
-ProjectSecurityParser. Anonieme rol-set = ModuleRoles van GuestUserRole MITS EnableGuestAccess
-true (anders 0). Op TRB nu guest AAN met GuestUserRole=WebserviceUser (set: System.User,
-Administration.User, Integratie.Admin, Accesslog.Admin). LET OP: de modelsource-export kan stale
-zijn — eerst `mxlint export` draaien voor verse YAML (TRB modelsource was 4 dagen oud).
-- ACR #7 (CLEVR-SEC-005, AnonymousCreatePersistentEntity): persistente entiteit met AccessRule
-  AllowCreate:true + een anonieme AllowedModuleRole. Persistable uit CATALOG.entities.EntityType
-  (betrouwbaarste bron — YAML zet Persistable genest onder MaybeGeneralization + ÉRFT via
-  generalization). Access-rules uit de domain-model-YAML. TRB-grondwaarheid (geverifieerd, FP/FN-vrij):
+### TWO SECURITY RULES on the export — ACR #7 + #10  [BUILT]
+Both kind=acr/source=clevr-acr (ACR badge), Security/Blocker (like ACR), integrated in the
+mxcli "Scan for improvements" (AcrScanService), pure tested parser extensions on
+ProjectSecurityParser. Anonymous role set = ModuleRoles of GuestUserRole IF EnableGuestAccess
+is true (otherwise 0). On TRB now guest ON with GuestUserRole=WebserviceUser (set: System.User,
+Administration.User, Integratie.Admin, Accesslog.Admin). NOTE: the modelsource export can be stale
+— run `mxlint export` first for fresh YAML (TRB modelsource was 4 days old).
+- ACR #7 (CLEVR-SEC-005, AnonymousCreatePersistentEntity): persistent entity with AccessRule
+  AllowCreate:true + an anonymous AllowedModuleRole. Persistable from CATALOG.entities.EntityType
+  (most reliable source — YAML puts Persistable nested under MaybeGeneralization + INHERITS via
+  generalization). Access rules from the domain model YAML. TRB ground truth (verified, FP/FN-free):
   1 violation = Accesslog.AccesslogBankenportaal (via Accesslog.Admin). Integratie.Melder/Melding
-  hebben anon-create maar zijn NON_PERSISTENT → terecht niet geflagd.
-- ACR #10 (CLEVR-SEC-006, AnonymousEditableUnlimitedString): unlimited string-attribuut (Length 0)
-  dat ReadWrite is voor de anonieme rol (MemberAccess onder een anonieme AllowedModuleRole).
-  Length uit de YAML (StringAttributeType.Length); CATALOG.attributes.Length is ONBETROUWBAAR
-  (0 voor alle 748 strings). Geen persistable-filter. TRB-grondwaarheid (geverifieerd, FP/FN-vrij):
+  have anon-create but are NON_PERSISTENT → correctly not flagged.
+- ACR #10 (CLEVR-SEC-006, AnonymousEditableUnlimitedString): unlimited string attribute (Length 0)
+  that is ReadWrite for the anonymous role (MemberAccess under an anonymous AllowedModuleRole).
+  Length from the YAML (StringAttributeType.Length); CATALOG.attributes.Length is UNRELIABLE
+  (0 for all 748 strings). No persistable filter. TRB ground truth (verified, FP/FN-free):
   4 violations = Accesslog.AccesslogBankenportaal.Message, Integratie.Melder.Overige_Gegevens,
   Integratie.Melding.BeschrijvingGedrag + .Overige_Gegevens.
-Bevinding: modelsource bevat maar 67/283 entiteiten (alleen app-eigen modules, net als mxlint);
-System/marketplace niet geëxporteerd → deze regels dekken de app-scope (consistent met mxlint).
+Finding: modelsource contains only 67/283 entities (only app-own modules, just like mxlint);
+System/marketplace not exported → these rules cover the app scope (consistent with mxlint).
 
-### EERSTE EXPRESSIE-ROUTE-REGEL — redundante empty-string-check (CLEVR-REL-001)  [GEBOUWD]
-Nieuwe route: Mendix-expressie-STRINGS parsen uit de bson-AST (expressies staan plat, niet als
-sub-AST). Bron: ExpressionSplitCondition.Expression (split-condities) + ChangeActionItem.Value
-(toekenningen). Pure ExpressionAnalysis.RedundantEmptyStringPaths (regex) + bson-extractie
-(BsonMicroflowParser.DetectRedundantEmptyStringChecks + generieke VisitNodes-walker). CONSERVATIEF:
-flag alleen als OP HETZELFDE pad ($x/Attr) zowel een empty-check (=/!= empty) ALS een lege-string-
-check (=/!= ''/"") staat in dezelfde expressie; losse != empty (396 idiomatisch) en losse != ''
-worden NIET geflagd. Categorie Reliability (leunt tegen correctness; één const, bij te stellen naar
-Maintainability), severity Major (voorstel), kind=acr/clevr-acr, engineRuleKey
-CLEVR_REL_REDUNDANT_EMPTY_STRING. TRB-grondwaarheid (geverifieerd, FP/FN-vrij): 19 distinct
-(microflow,pad) over 8 microflows; FP-check op een microflow zonder lege-string-literal = 0. NB:
-méér dan de verkenning's grove 15 — die miste de "= empty or = ''"-vorm (IVK_SaveDossier) +
-YAML-quoting; de conservatieve bson-detectie is accurater. 13 tests. NIET in de live-scan gehangen:
-dat vergt per-microflow bson-dump (~1592×, te traag synchroon) — gedeelde orchestratie, te beslissen
-bij het batchen van meer expressie-regels (de extractie is dan herbruikbaar; 2e regel ~regel-logica + tests).
+### FIRST EXPRESSION ROUTE RULE — redundant empty string check (CLEVR-REL-001)  [BUILT]
+New route: parse Mendix expression STRINGS from the bson AST (expressions are flat, not as
+sub-AST). Source: ExpressionSplitCondition.Expression (split conditions) + ChangeActionItem.Value
+(assignments). Pure ExpressionAnalysis.RedundantEmptyStringPaths (regex) + bson extraction
+(BsonMicroflowParser.DetectRedundantEmptyStringChecks + generic VisitNodes walker). CONSERVATIVE:
+flag only if ON THE SAME path ($x/Attr) both an empty check (=/!= empty) AND an empty-string
+check (=/!= ''/"") are present in the same expression; standalone != empty (396 idiomatic) and standalone != ''
+are NOT flagged. Category Reliability (leans toward correctness; one const, adjustable to
+Maintainability), severity Major (proposal), kind=acr/clevr-acr, engineRuleKey
+CLEVR_REL_REDUNDANT_EMPTY_STRING. TRB ground truth (verified, FP/FN-free): 19 distinct
+(microflow,path) over 8 microflows; FP check on a microflow without empty-string literal = 0. NB:
+more than the exploration's rough 15 — that missed the "= empty or = ''" form (IVK_SaveDossier) +
+YAML quoting; the conservative bson detection is more accurate. 13 tests. NOT hung in the live scan:
+that requires per-microflow bson-dump (~1592×, too slow synchronously) — shared orchestration, to be decided
+when batching more expression rules (the extraction is then reusable; 2nd rule ~rule-logic + tests).
 
-### EXPRESSIE-ROUTE LIVE — orchestratie + REL-001 + regel D (CLEVR-MAINT-006)  [GEBOUWD]
-BRON-BESLISSING (met cijfers): YAML wint van bson. Snelheid: YAML één-pass over 471 microflow-
-YAML's = 0,89s (2891 expressies); bson = ~2s/dump × 471 ≈ 16 min. Betrouwbaarheid: 110 expressies
-zijn block-scalars (multi-line) + quoting → daarom een ECHTE YAML-parser (YamlDotNet, in de spike;
-normalizer blijft dependency-vrij). Bewezen: YAML reproduceert de bson-expressies exact (cross-check
-tegen bson op de nieuwe microflows, incl. block-scalar $ZoekObject/Voornaam). Gedeelde infra:
-AcrScanService.DetectExpressionRules → MicroflowYamlExpressions.Extract (YamlDotNet) → (mf,expr)-paren
-→ ExpressionRules. Pure regel-laag in de normalizer: ExpressionAnalysis (string-predicaten) +
-ExpressionRules (Violation-bouw uit paren); bson- én YAML-route delen dezelfde regel-laag.
-- CLEVR-REL-001 (redundante empty-string): nu LIVE in "Scan for improvements". GEVERIFIEERDE
-  grondwaarheid = 31 distinct (microflow,pad) over 14 microflows — NIET 19. De eerdere 19 kwam uit
-  een incomplete grep-kandidaatselectie die block-scalar-microflows miste; de volledige YAML-scan
-  is accurater (bson-cross-check bevestigt de extra's).
-- CLEVR-MAINT-006 (redundante boolean-vergelijking $x = true/false): categorie Maintainability,
-  severity Major (beide bij te stellen), kind=acr/clevr-acr. Conservatief: operand moet een $pad
-  zijn; alleen de true/false-literal (word-boundary, geen enum/identifier). GEVERIFIEERDE
-  grondwaarheid = 94 distinct (microflow,operand) — NIET ~40 (zelfde block-scalar-reden). 13 tests.
-SCAN-DUUR: de expressie-pass = 0,89s (verwaarloosbaar naast de mxcli-lint). Schaalt: een 3e
-expressie-regel hergebruikt dezelfde pass (paren in geheugen) → ~ms. Caveat: leest modelsource
-(ververst door mxlint-export) — draai die vóór de scan voor verse expressies.
+### EXPRESSION ROUTE LIVE — orchestration + REL-001 + rule D (CLEVR-MAINT-006)  [BUILT]
+SOURCE DECISION (with numbers): YAML beats bson. Speed: YAML one-pass over 471 microflow
+YAMLs = 0.89s (2891 expressions); bson = ~2s/dump × 471 ≈ 16 min. Reliability: 110 expressions
+are block scalars (multi-line) + quoting → therefore a REAL YAML parser (YamlDotNet, in the spike;
+normalizer remains dependency-free). Proven: YAML reproduces the bson expressions exactly (cross-check
+against bson on the new microflows, incl. block scalar $ZoekObject/Voornaam). Shared infra:
+AcrScanService.DetectExpressionRules → MicroflowYamlExpressions.Extract (YamlDotNet) → (mf,expr) pairs
+→ ExpressionRules. Pure rule layer in the normalizer: ExpressionAnalysis (string predicates) +
+ExpressionRules (Violation build from pairs); bson and YAML route share the same rule layer.
+- CLEVR-REL-001 (redundant empty string): now LIVE in "Scan for improvements". VERIFIED
+  ground truth = 31 distinct (microflow,path) over 14 microflows — NOT 19. The earlier 19 came from
+  an incomplete grep candidate selection that missed block-scalar microflows; the full YAML scan
+  is more accurate (bson cross-check confirms the extras).
+- CLEVR-MAINT-006 (redundant boolean comparison $x = true/false): category Maintainability,
+  severity Major (both adjustable), kind=acr/clevr-acr. Conservative: operand must be a $path;
+  only the true/false literal (word boundary, no enum/identifier). VERIFIED
+  ground truth = 94 distinct (microflow,operand) — NOT ~40 (same block-scalar reason). 13 tests.
+SCAN DURATION: the expression pass = 0.89s (negligible next to the mxcli-lint). Scales: a 3rd
+expression rule reuses the same pass (pairs in memory) → ~ms. Caveat: reads modelsource
+(refreshed by mxlint export) — run that before the scan for fresh expressions.
 
-DEPLOY-BUG (gevonden + gefixt): YamlDotNet.dll werd NIET mee-gedeployed → in Studio Pro faalde
-MicroflowYamlExpressions.Extract op de assembly-load → de try/catch in DetectExpressionRules slikte
-'m (naar ILogService, niet vindbaar) → 0 expressie-violations (de andere regels werkten want die
-raken YamlDotNet niet). OORZAAK: een class-library kopieert NuGet-runtime-deps niet naar de output.
+DEPLOY BUG (found + fixed): YamlDotNet.dll was NOT deployed → in Studio Pro
+MicroflowYamlExpressions.Extract failed on assembly load → the try/catch in DetectExpressionRules swallowed
+it (to ILogService, not findable) → 0 expression violations (the other rules worked because they
+don't touch YamlDotNet). CAUSE: a class library does not copy NuGet runtime deps to the output.
 FIX in Clevr.AcrSpike.csproj: <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies> +
-ExtensionsAPI met ExcludeAssets="runtime" (Studio Pro levert die zelf — niet meekopiëren). Geverifieerd:
-YamlDotNet.dll staat nu in bin/Debug/net10.0, ExtensionsAPI.dll niet. DEPLOY de HELE output-map
-(incl. YamlDotNet.dll), niet losse DLL's. DIAGNOSE-LOGGING (DebugLog → mxlint-debug.log) staat nu in
-DetectExpressionRules: projectDir + modelsource-pad + #YAML's + #expressies + #violations + volledige
-exception; plus de pad-vergelijking (mxcli/regels-projectDir vs _getProjectDir van de open app) om
-een eventuele tweede oorzaak (export ververst pad B, scan leest pad A) zichtbaar te maken.
+ExtensionsAPI with ExcludeAssets="runtime" (Studio Pro provides those itself — do not copy along). Verified:
+YamlDotNet.dll is now in bin/Debug/net10.0, ExtensionsAPI.dll not. DEPLOY the ENTIRE output directory
+(incl. YamlDotNet.dll), not individual DLLs. DIAGNOSTIC LOGGING (DebugLog → mxlint-debug.log) is now in
+DetectExpressionRules: projectDir + modelsource path + #YAMLs + #expressions + #violations + full
+exception; plus the path comparison (mxcli/rules projectDir vs _getProjectDir of the open app) to
+make a possible second cause (export refreshes path B, scan reads path A) visible.
 
-### Fase 6 — Exclusions met verplichte reden  [GEBOUWD]
-Een improvement uitsluiten kan ALLEEN met een reden (geen stille uitsluiting). Opslag in
-$project/.clevr-acr/exclusions.json (mee in version control → team deelt). Match op de
-fingerprint sha1(ruleId|documentQualifiedName|elementName), al op elke Violation.
-- C# (pure, getest): Exclusion-record + ExclusionsJson (parse/serialize/upsert/remove,
-  4 tests). IO in ExclusionStore (csharp-spike); ViewModel-handlers RequestExclusions/
-  AddExclusion/RemoveExclusion → schrijft het bestand, post "Exclusions" terug. excludedBy=
-  Environment.UserName, date=vandaag. Server-side vangnet: lege reason → ExclusionError.
-  Exclusions landen in DEZELFDE projectmap als de scan (settings.projectPath, anders CurrentApp).
-- Render-laag (main.js): "Exclude"-knop per punt → modale dialoog die een reden VERPLICHT
-  (Exclude-knop disabled tot er tekst staat). Uitgesloten improvements verdwijnen uit lijst +
-  alle telkaarten + totaal + rapport (activeViolations() = niet-System én niet-excluded),
-  bovenop de bestaande categorie/severity/herkomst/tekst-filters. "Show excluded (N)"-toggle
-  toont de Excluded-sectie met reden + excludedBy/date + "Remove exclusion".
-- FINGERPRINT-BEPERKING (bevinding 7) EERLIJK afgehandeld: gebundelde mxlint-violations delen
-  één fingerprint → de dialoog WAARSCHUWT vooraf ("shares one fingerprint with N findings ...
-  will hide all N") en de Excluded-card toont "applies to N findings". Niet omgebouwd.
-- STALE exclusions (fingerprint matcht geen huidige violation) zichtbaar gemarkeerd
-  ("stale — no longer matches"), met Remove. RAPPORT: aparte "Excluded improvements"-sectie
-  (matched + stale, met reden), statisch (geen knoppen). Toast-feedback bij exclude/remove.
-- EXCLUDE RULE (uitbreiding): knop "Exclude rule" op de regel-kop (naast Copy Maia prompt)
-  sluit ALLE punten onder de regel uit met DEZELFDE reden. Hergebruikt de verplichte-reden-
-  dialoog (openReasonDialog). Schrijft één exclusion per UNIEKE fingerprint via een batch
-  ("AddExclusions" → ExclusionStore.AddMany, één bestand-write, upsert=dedup) — gebundelde
-  mxlint-punten met gedeelde fingerprint dus NIET dubbel. De dialoog-telling = aantal unieke
-  fingerprints; bij bundeling licht een note het verschil toe ("N findings map to M entries").
-  Per-punt Remove blijft werken.
-- EXCLUDED-SECTIE PER REGEL (uitbreiding): de "Show excluded"-sectie is gegroepeerd PER REGEL
-  (regel-kop = ruleId + naam + aantal, zoals de hoofdlijst) met de uitgesloten punten eronder;
-  stale entries staan in hun regel-groep met "stale"-markering. Knop "Remove rule exclusion"
-  op de regel-kop zet ALLE entries van die regel (incl. stale) in één keer terug via een
-  lichte bevestigingsdialoog ("This will restore all N excluded findings for this rule.") →
-  batch "RemoveExclusions" → ExclusionStore.RemoveMany (één bestand-write). Per-punt Remove
-  blijft beschikbaar. Rapport: zelfde groepering, statisch (geen knoppen).
+### Phase 6 — Exclusions with mandatory reason  [BUILT]
+An improvement can ONLY be excluded with a reason (no silent exclusion). Stored in
+$project/.clevr-acr/exclusions.json (included in version control → team shares). Match on the
+fingerprint sha1(ruleId|documentQualifiedName|elementName), already on every Violation.
+- C# (pure, tested): Exclusion record + ExclusionsJson (parse/serialize/upsert/remove,
+  4 tests). IO in ExclusionStore (csharp-spike); ViewModel handlers RequestExclusions/
+  AddExclusion/RemoveExclusion → writes the file, posts "Exclusions" back. excludedBy=
+  Environment.UserName, date=today. Server-side safeguard: empty reason → ExclusionError.
+  Exclusions land in the SAME project directory as the scan (settings.projectPath, otherwise CurrentApp).
+- Render layer (main.js): "Exclude" button per point → modal dialog that REQUIRES a reason
+  (Exclude button disabled until text is entered). Excluded improvements disappear from list +
+  all count cards + total + report (activeViolations() = not-System and not-excluded),
+  on top of the existing category/severity/origin/text filters. "Show excluded (N)" toggle
+  shows the Excluded section with reason + excludedBy/date + "Remove exclusion".
+- FINGERPRINT LIMITATION (finding 7) HONESTLY handled: bundled mxlint violations share
+  one fingerprint → the dialog WARNS in advance ("shares one fingerprint with N findings ...
+  will hide all N") and the Excluded card shows "applies to N findings". Not rebuilt.
+- STALE exclusions (fingerprint matches no current violation) visibly marked
+  ("stale — no longer matches"), with Remove. REPORT: separate "Excluded improvements" section
+  (matched + stale, with reason), static (no buttons). Toast feedback on exclude/remove.
+- EXCLUDE RULE (extension): "Exclude rule" button on the rule header (next to Copy Maia prompt)
+  excludes ALL points under the rule with the SAME reason. Reuses the mandatory-reason
+  dialog (openReasonDialog). Writes one exclusion per UNIQUE fingerprint via a batch
+  ("AddExclusions" → ExclusionStore.AddMany, one file write, upsert=dedup) — bundled
+  mxlint points with shared fingerprint therefore NOT duplicated. Dialog count = number of unique
+  fingerprints; with bundling a note explains the difference ("N findings map to M entries").
+  Per-point Remove keeps working.
+- EXCLUDED SECTION PER RULE (extension): the "Show excluded" section is grouped PER RULE
+  (rule header = ruleId + name + count, like the main list) with the excluded points below;
+  stale entries are in their rule group with "stale" marking. "Remove rule exclusion" button
+  on the rule header restores ALL entries of that rule (incl. stale) at once via a
+  light confirmation dialog ("This will restore all N excluded findings for this rule.") →
+  batch "RemoveExclusions" → ExclusionStore.RemoveMany (one file write). Per-point Remove
+  remains available. Report: same grouping, static (no buttons).
 
-### Manual checks — controlevragen die de developer zelf beantwoordt  [GEBOUWD]
-Generiek + uitbreidbaar mechanisme (eerste vraag: Performance/Major over de Best Practice
-Recommender). Een manual check is geen model-violation maar een vaste vraag die als normale
-improvement verschijnt tot 'ie geldig beantwoord is, en na 30 dagen opnieuw moet (recheck).
-- DEFINITIES + verloop-logica in de render-laag (main.js: MANUAL_CHECKS, MANUAL_CHECK_EXPIRY_DAYS).
-  C# is GENERIEK: bewaart alleen het antwoord per id (ManualCheckStore → $project/.clevr-acr/
-  manual-checks.json, mee in version control, NIET gitignored). Pure model+json in de normalizer
-  (ManualChecksJson, getest). Handlers: RequestManualChecks/AnswerManualCheck/ClearManualCheck.
-- STATE: unanswered / "no" (+reden) / "yes" (+toelichting). Verplichte note via de HERGEBRUIKTE
-  reden-dialoog (uitgebreid met Ja/Nee-knoppen). Gestempeld met Environment.UserName + datum
-  (server-side vangnet op lege note). Geldig "yes" (<30d) → VERDWIJNT uit open-lijst/-telling →
-  "Answered manual checks"-sectie (toggle, analoog aan Show excluded) + in het rapport, met
-  antwoord/datum/wie/recheck-datum. Verlopen "yes" (≥30d) of "no"/unanswered → telt als open.
-- INTEGRATIE: open checks worden synthetische violations (kind="manual", origin "manual" — 4e
-  herkomst in de filter + telkaart + status + rapport-kop) en lopen zo door de bestaande
-  pipeline: categorie (Performance), tellingen, filters, System-filter, Exclude + Ask-Maia.
-  Data/UI-scheiding intact; exclusions-infra hergebruikt (store/handlers/dialoog/secties).
+### Manual checks — control questions the developer answers themselves  [BUILT]
+Generic + extensible mechanism (first question: Performance/Major about the Best Practice
+Recommender). A manual check is not a model violation but a fixed question that appears as a normal
+improvement until validly answered, and must be rechecked after 30 days.
+- DEFINITIONS + expiry logic in the render layer (main.js: MANUAL_CHECKS, MANUAL_CHECK_EXPIRY_DAYS).
+  C# is GENERIC: only stores the answer per id (ManualCheckStore → $project/.clevr-acr/
+  manual-checks.json, included in version control, NOT gitignored). Pure model+json in the normalizer
+  (ManualChecksJson, tested). Handlers: RequestManualChecks/AnswerManualCheck/ClearManualCheck.
+- STATE: unanswered / "no" (+reason) / "yes" (+note). Mandatory note via the REUSED
+  reason dialog (extended with Yes/No buttons). Stamped with Environment.UserName + date
+  (server-side safeguard on empty note). Valid "yes" (<30d) → DISAPPEARS from open list/count →
+  "Answered manual checks" section (toggle, analogous to Show excluded) + in the report, with
+  answer/date/who/recheck date. Expired "yes" (≥30d) or "no"/unanswered → counts as open.
+- INTEGRATION: open checks become synthetic violations (kind="manual", origin "manual" — 4th
+  origin in the filter + count card + status + report header) and flow through the existing
+  pipeline: category (Performance), counts, filters, System filter, Exclude + Ask-Maia.
+  Data/UI separation intact; exclusions infra reused (store/handlers/dialog/sections).
 
-### Fase 5 (oud ontwerp) — "Ask Maia"-prompt (PLAK-variant)  [haalbaar; injectie NIET]
-Splits het idee in twee:
-- HAALBAAR: een "Ask Maia"-knop op een improvement die een context-rijke PROMPT
-  GENEREERT (improvement + regel + document + remediatie) die de developer zelf
-  in Maia plakt. Dit is puur tekst samenstellen in je eigen paneel -> kan zeker.
-- ONBEWEZEN: de prompt RECHTSTREEKS in Maia injecteren. Vereist een Maia-API
-  voor extensies waarvan NIET bekend is dat 'ie bestaat. Niet op bouwen tot
-  bewezen. Begin met de plak-variant; die levert bijna alle waarde.
+### Phase 5 (old design) — "Ask Maia" prompt (PASTE variant)  [feasible; injection NOT]
+Split the idea in two:
+- FEASIBLE: an "Ask Maia" button on an improvement that GENERATES a context-rich PROMPT
+  (improvement + rule + document + remediation) that the developer pastes into Maia
+  themselves. This is purely assembling text in your own panel -> certainly possible.
+- UNPROVEN: inject the prompt DIRECTLY into Maia. Requires a Maia API
+  for extensions whose existence is NOT known. Do not build on this until
+  proven. Start with the paste variant; that delivers almost all the value.
 
-### Fase 6 — Exclusions-UI  [waardevol zodra in gebruik]
-Improvements onderdrukken met reden. Spec sectie 3 ligt klaar (fingerprint,
-$project/.clevr-acr/exclusions.json, stale exclusions zichtbaar tonen). LET OP de
-mxlint fingerprint-beperking uit bevinding 7 (rule+document-niveau, niet per
-attribuut, tenzij je reason-parsing toevoegt).
-ONTWERP-AANSCHERPING (Michel): een gebruiker MOET een reden opgeven om een
-improvement uit te sluiten (geen stille uitsluiting — altijd verantwoording). De
-exclusion + reden wordt vastgelegd in $project/.clevr-acr/exclusions.json (staat
-IN de projectmap → gaat mee in version control). Bij commit + volgende pull ziet
-de volgende developer de uitsluiting + reden. De uitgesloten improvements + reden
-moeten ZICHTBAAR zijn in het CLEVR-rapport (transparant naar product owner /
-volgende developer: "bewust niet opgelost, want ..."). NB: per-punt-exclusion
-voor mxlint botst op de fingerprint-beperking (bevinding 7) — bewust afwegen.
+### Phase 6 — Exclusions UI  [valuable once in use]
+Suppress improvements with reason. Spec section 3 is ready (fingerprint,
+$project/.clevr-acr/exclusions.json, show stale exclusions visibly). NOTE the
+mxlint fingerprint limitation from finding 7 (rule+document level, not per
+attribute, unless you add reason-parsing).
+DESIGN REFINEMENT (Michel): a user MUST give a reason to exclude an
+improvement (no silent exclusion — always accountability). The
+exclusion + reason is recorded in $project/.clevr-acr/exclusions.json (sits
+IN the project directory → goes with version control). On commit + next pull the
+next developer sees the exclusion + reason. The excluded improvements + reason
+must be VISIBLE in the CLEVR report (transparent to product owner /
+next developer: "deliberately not resolved, because ..."). NB: per-point exclusion
+for mxlint collides with the fingerprint limitation (finding 7) — weigh deliberately.
 
-### Fase 7 (OPTIONEEL/VERKENNING) — "derde weg": eigen diepe regels op `bson dump`
-Nu bewezen dat `mxcli bson dump --format json` de getypeerde flow-AST geeft, kun
-je eigen deterministische Orange-tier-regels (flow/expressie) in C# bouwen op
-mxcli ALLEEN — zonder mxlint. Afweging: ruwe/verbose BSON + per-element
-enumereren vs. mxlint's nette boom + Rego. NIET nu bouwen; relevant als je single-
-engine wilt blijven óf als Mendix de BSON-output ooit opschoont tot nette JSON
-(aannemelijk gezien hun AI-richting). Veel flow-checks bestaan al in mxcli lint
-(CONV011/QUAL001/CONV009) — die hoef je sowieso niet zelf te bouwen.
-
----
-
-## OPRUIM- / BESLISPUNTEN (niet urgent, wel bewust maken)
-- SPIKE -> PRODUCT: de "spike"-codebase is feitelijk de productbasis. Beslis
-  bewust: definitief maken (hernoemen/opschonen) of schoon herbouwen.
-- Oude echo/RunCommand-handler = dode code -> opruimen.
-- 4 security-severities (ACR_SEC_*) op "TODO-confirm" -> uit ACR Java-bron.
-- DISTRIBUTIE: collega's mogen GEEN npm/build nodig hebben. Mendix extensie-
-  packaging uitzoeken (Marketplace / zip / installer). Tip: bekijk hoe de
-  mxlint-extension (open bron) z'n distributie doet.
-- STRATEGISCH (met CLEVR-collega's bespreken): Mendix bouwt mxcli uit als
-  AI-toegang tot Mendix. Positioneer de extensie als de CLEVR-AGGREGATOR +
-  CLEVR-context (categorieen, kalibratie, rapport-voor-klant, Ask-Maia) bovenop
-  de engines — NIET als "ACR herbouwd". Feitelijke stand na de inventarisatie:
-  * mxcli + mxlint dekken de BREDE Blue-tier (structuur, naming, security,
-    accessibility, complexiteit-als-telling) goed.
-  * De DIEPE flow/XPath-regels (ACR's ~804 Performance-set) zitten kant-en-klaar
-    in GEEN van beide. MAAR: de getypeerde structuur om ze zelf te bouwen is
-    toegankelijk via mxcli bson dump (Fase 7) — dus de extensie is NIET
-    vastgepind op de Blue-tier; je hebt opties en groeit mee met mxcli.
-  * SDK-route (ACR's Java/SDK in de extensie draaien) = afgeraden: ordegrootte
-    zwaarder, reproduceert ACR, roeit tegen Mendix' richting in.
+### Phase 7 (OPTIONAL/EXPLORATION) — "third way": own deep rules on `bson dump`
+Now that it is proven that `mxcli bson dump --format json` gives the typed flow AST, you can
+build own deterministic Orange-tier rules (flow/expression) in C# on
+mxcli ALONE — without mxlint. Trade-off: raw/verbose BSON + enumerate per element
+vs. mxlint's clean tree + Rego. DO NOT build now; relevant if you want to stay single-
+engine OR if Mendix ever cleans up the BSON output to clean JSON
+(plausible given their AI direction). Many flow checks already exist in mxcli lint
+(CONV011/QUAL001/CONV009) — those you definitely don't need to build yourself.
 
 ---
 
-## DOCUMENTEN (de "geheugens" van dit project)
-- clevr-acr-shell-spec.md ......... datacontract + architectuur (autoritatief)
-- clevr-acr-shell-status.md ....... dit document (kompas)
-- acr-mxlint-voortgang.md ......... de 11 geverifieerde regels + API-feiten
-- acr-mxlint-indeling.md .......... feasibility-map (Green/Blue/Orange/Red)
-- mxlint-rego-inventaris.md ....... de 28 Rego-regels voor Fase 3
-- acr-rule-counts-groundtruth.json  de ACR-grondwaarheid (autoritatieve bron)
+## CLEANUP / DECISION POINTS (not urgent, but be aware)
+- SPIKE -> PRODUCT: the "spike" codebase is effectively the product basis. Decide
+  deliberately: finalise (rename/clean up) or rebuild cleanly.
+- Old echo/RunCommand handler = dead code -> clean up.
+- 4 security severities (ACR_SEC_*) on "TODO-confirm" -> from ACR Java source.
+- DISTRIBUTION: colleagues must NOT need npm/build. Look into Mendix extension
+  packaging (Marketplace / zip / installer). Tip: see how the
+  mxlint-extension (open source) does its distribution.
+- STRATEGIC (discuss with CLEVR colleagues): Mendix is developing mxcli as
+  AI access to Mendix. Position the extension as the CLEVR AGGREGATOR +
+  CLEVR context (categories, calibration, report-for-client, Ask-Maia) on top of
+  the engines — NOT as "ACR rebuilt". Actual state after the inventory:
+  * mxcli + mxlint cover the BROAD Blue tier (structure, naming, security,
+    accessibility, complexity-as-count) well.
+  * The DEEP flow/XPath rules (ACR's ~804 Performance set) are ready-made in
+    NEITHER. BUT: the typed structure to build them yourself is
+    accessible via mxcli bson dump (Phase 7) — so the extension is NOT
+    pinned to the Blue tier; you have options and grow with mxcli.
+  * SDK route (running ACR's Java/SDK in the extension) = discouraged: order of magnitude
+    heavier, reproduces ACR, rows against Mendix's direction.
 
-## REFERENTIE-BRONNEN (open source, uitgepakt in _reference/ — NIET je eigen code)
-Pas relevant vanaf FASE 3 (mxlint.com-integratie) en FASE 4 (klikbare docs).
-Voor Fase 1/2 niet nodig. Verwijs Claude Code GERICHT naar het relevante stuk,
-laat het niet de hele repo doorploegen.
-- _reference/mxlint-cli ........... hoe `export` (model->YAML) en `lint` werken
-- _reference/mxlint-extension ..... hoe zij het in Studio Pro doen (o.a. klikbare docs)
-- _reference/mxlint-rules ......... de Rego-regels + metadata (# METADATA-blok; LET OP CRLF)
+---
 
-## IDEEEN-PARKEERPLAATS (later wegen, niet vergeten)
-- Ask-Maia DIRECTE injectie (als ooit een Maia-extensie-API blijkt te bestaan).
-- (Voeg nieuwe ideeen hier toe zodat ze de lopende fase niet onderbreken maar
-  ook niet verloren gaan.)
+## DOCUMENTS (the "memories" of this project)
+- clevr-acr-shell-spec.md ......... data contract + architecture (authoritative)
+- clevr-acr-shell-status.md ....... this document (compass)
+- acr-mxlint-voortgang.md ......... the 11 verified rules + API facts
+- acr-mxlint-indeling.md .......... feasibility map (Green/Blue/Orange/Red)
+- mxlint-rego-inventaris.md ....... the 28 Rego rules for Phase 3
+- acr-rule-counts-groundtruth.json  the ACR ground truth (authoritative source)
+
+## REFERENCE SOURCES (open source, unpacked in _reference/ — NOT your own code)
+Relevant from PHASE 3 (mxlint.com integration) and PHASE 4 (clickable docs) onward.
+Not needed for Phase 1/2. Point Claude Code SPECIFICALLY to the relevant part,
+do not let it plough through the entire repo.
+- _reference/mxlint-cli ........... how `export` (model->YAML) and `lint` work
+- _reference/mxlint-extension ..... how they do it in Studio Pro (incl. clickable docs)
+- _reference/mxlint-rules ......... the Rego rules + metadata (# METADATA block; NOTE CRLF)
+
+## IDEAS PARKING LOT (weigh later, don't forget)
+- Ask-Maia DIRECT injection (if a Maia extension API ever turns out to exist).
+- (Add new ideas here so they don't interrupt the current phase but are
+  also not lost.)
