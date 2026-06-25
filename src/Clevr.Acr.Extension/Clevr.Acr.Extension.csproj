@@ -48,7 +48,7 @@
     <ItemGroup>
       <BuildOutput Include="$(TargetDir)\**\*" />
     </ItemGroup>
-    <!--<Copy SourceFiles="@(BuildOutput)" DestinationFolder="C:\TestApps\MijnApp\extensions\clevracrspike\%(RecursiveDir)" SkipUnchangedFiles="true" />-->
+    <Copy SourceFiles="@(BuildOutput)" DestinationFolder="C:\Mendix\AcrToLintTest-main\extensions\clevracr\%(RecursiveDir)" SkipUnchangedFiles="true" />
   </Target>
 
 </Project>

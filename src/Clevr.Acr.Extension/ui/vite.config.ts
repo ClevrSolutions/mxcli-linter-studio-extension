@@ -1,4 +1,4 @@
-import { defineConfig } from "vite";
+﻿import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import cssInjectedByJsPlugin from "vite-plugin-css-injected-by-js";
 import { resolve } from "path";
@@ -13,9 +13,9 @@ export default defineConfig({
     emptyOutDir: true,
     rollupOptions: {
       output: {
-        entryFileNames: "assets/main.js",
-        chunkFileNames: "assets/[name].js",
-        assetFileNames: "assets/[name].[ext]",
+        entryFileNames: "main.js",
+        chunkFileNames: "[name].js",
+        assetFileNames: "[name].[ext]",
       },
     },
   },
@@ -25,3 +25,4 @@ export default defineConfig({
     },
   },
 });
+
