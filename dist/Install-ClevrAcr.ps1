@@ -215,7 +215,7 @@ $json = ($settingsObj | ConvertTo-Json)
 Write-Host ("Wrote settings: {0}" -f $settingsFile) -ForegroundColor Green
 
 # --- Verify the critical files landed (incl. YamlDotNet.dll) ----------------------------------
-$required = @('Clevr.AcrSpike.dll', 'Clevr.Acr.Normalizer.dll', 'YamlDotNet.dll', 'manifest.json', 'rules.json', 'acr-scan-settings.json', 'wwwroot\index.html', 'wwwroot\main.js', 'wwwroot\clevr-logo.png')
+$required = @('Clevr.Acr.Extension.dll', 'Clevr.Acr.Normalizer.dll', 'YamlDotNet.dll', 'manifest.json', 'rules.json', 'acr-scan-settings.json', 'wwwroot\index.html', 'wwwroot\main.js', 'wwwroot\clevr-logo.png')
 $missing = @()
 foreach ($f in $required) { if (-not (Test-Path (Join-Path $targetDir $f))) { $missing += $f } }
 if ($missing.Count -gt 0) {

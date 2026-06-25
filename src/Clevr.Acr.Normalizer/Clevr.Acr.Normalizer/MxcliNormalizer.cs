@@ -52,7 +52,6 @@ public sealed class MxcliNormalizer
         foreach (var raw in rawViolations)
         {
             var documentQualifiedName = BuildDocumentQualifiedName(raw);
-            const string elementName = ""; // mxcli schema has no sub-element
             var documentType = DocumentTypeCanonicalizer.Canonicalize(raw.DocumentType); // → canonical PascalCase (section 2)
             var documentId = NullIfBlank(raw.DocumentId);
             var suggestion = NullIfBlank(raw.Suggestion);
@@ -63,53 +62,60 @@ public sealed class MxcliNormalizer
             if (acrEntry is null && ClaimedGenerics.Contains(raw.RuleId))
                 continue;
 
-            if (acrEntry is not null)
-            {
-                // (a) ACR match. Metadata FROM the registry; severity NOT from mxcli.
-                var ruleId = acrEntry.RuleId;
-                result.Add(new Violation
-                {
-                    RuleId = ruleId,
-                    Kind = ViolationKind.Acr,
-                    Source = AcrSource,
-                    AcrCode = acrEntry.AcrCode,
-                    Engine = acrEntry.Engine,
-                    Category = acrEntry.Category,
-                    Severity = acrEntry.Severity,
-                    DocumentType = documentType,
-                    DocumentQualifiedName = documentQualifiedName,
-                    ElementName = elementName,
-                    Reason = raw.Message,
-                    Suggestion = suggestion,
-                    DocumentId = documentId,
-                    Fingerprint = Fingerprint.Compute(ruleId, documentQualifiedName, elementName),
-                });
-            }
-            else
-            {
-                // (b) No match → generic. Own category/severity retained.
-                var ruleId = raw.RuleId;
-                result.Add(new Violation
-                {
-                    RuleId = ruleId,
-                    Kind = ViolationKind.Generic,
-                    Source = GenericSource,
-                    AcrCode = null,
-                    Engine = MxcliEngine,
-                    Category = DeriveGenericCategory(raw.RuleId),
-                    Severity = raw.Severity,
-                    DocumentType = documentType,
-                    DocumentQualifiedName = documentQualifiedName,
-                    ElementName = elementName,
-                    Reason = raw.Message,
-                    Suggestion = suggestion,
-                    DocumentId = documentId,
-                    Fingerprint = Fingerprint.Compute(ruleId, documentQualifiedName, elementName),
-                });
-            }
+            result.Add(acrEntry is not null
+                ? BuildAcrViolation(raw, acrEntry, documentType, documentQualifiedName, documentId, suggestion)
+                : BuildGenericViolation(raw, documentType, documentQualifiedName, documentId, suggestion));
         }
 
         return result;
+    }
+
+    /// <summary>(a) ACR match. Metadata FROM the registry; severity NOT from mxcli.</summary>
+    private static Violation BuildAcrViolation(
+        MxcliViolation raw, AcrRuleEntry acrEntry,
+        string documentType, string documentQualifiedName, string? documentId, string? suggestion)
+    {
+        var ruleId = acrEntry.RuleId;
+        return new Violation
+        {
+            RuleId = ruleId,
+            Kind = ViolationKind.Acr,
+            Source = AcrSource,
+            AcrCode = acrEntry.AcrCode,
+            Engine = acrEntry.Engine,
+            Category = acrEntry.Category,
+            Severity = acrEntry.Severity,
+            DocumentType = documentType,
+            DocumentQualifiedName = documentQualifiedName,
+            Reason = raw.Message,
+            Suggestion = suggestion,
+            DocumentId = documentId,
+            Fingerprint = Fingerprint.Compute(ruleId, documentQualifiedName, ""),
+        };
+    }
+
+    /// <summary>(b) No registry match → generic. Own category/severity retained.</summary>
+    private static Violation BuildGenericViolation(
+        MxcliViolation raw,
+        string documentType, string documentQualifiedName, string? documentId, string? suggestion)
+    {
+        var ruleId = raw.RuleId;
+        return new Violation
+        {
+            RuleId = ruleId,
+            Kind = ViolationKind.Generic,
+            Source = GenericSource,
+            AcrCode = null,
+            Engine = MxcliEngine,
+            Category = DeriveGenericCategory(raw.RuleId),
+            Severity = raw.Severity,
+            DocumentType = documentType,
+            DocumentQualifiedName = documentQualifiedName,
+            Reason = raw.Message,
+            Suggestion = suggestion,
+            DocumentId = documentId,
+            Fingerprint = Fingerprint.Compute(ruleId, documentQualifiedName, ""),
+        };
     }
 
     /// <summary>

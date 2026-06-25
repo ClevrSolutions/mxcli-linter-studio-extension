@@ -32,4 +32,4 @@ jobs:
           path: '**/TestResults/*.trx'
 
       - name: Build extension
-        run: dotnet build src/Clevr.AcrSpike/Clevr.AcrSpike.csproj --configuration Release
+        run: dotnet build src/Clevr.Acr.Extension/Clevr.Acr.Extension.csproj --configuration Release
