@@ -157,6 +157,18 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
             {
                 ClearManualCheck(webView, args.Data);
             }
+            else if (args.Message == "RequestLinterConfig")
+            {
+                PostLinterConfig(webView);
+            }
+            else if (args.Message == "SaveLinterConfig")
+            {
+                SaveLinterConfig(webView, args.Data);
+            }
+            else if (args.Message == "RequestModules")
+            {
+                PostModules(webView);
+            }
         };
     }
 
@@ -653,6 +665,9 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
             {
                 Post("ScanProgress", "Analyzing with mxcli…");
 
+                // Start git in parallel — finishes well before mxcli does on any real project.
+                var gitTask = Task.Run(() => GitChangedDocumentsService.GetChangedDocumentIds(projectDir));
+
                 // STREAMED: the FAST batch comes first (catalog/lint/security, ~seconds), then — only on
                 // deepscan — the describe findings PER CHUNK (~20-30s each). Each batch goes as "LintViolations"
                 // to the UI; it distinguishes on 'phase' (fast = replace/clean-slate, describe = append) and
@@ -667,6 +682,12 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
                     DebugLog.Write(projectDir, $"full scan: mxcli step ERROR: {ex}");
                     Post("LintViolations", LintScanService.ErrorJson($"Unexpected error during mxcli scan: {ex.Message}"));
                 }
+
+                var changedIds = gitTask.GetAwaiter().GetResult();
+                var gitPayload = JsonSerializer.Serialize(
+                    new { documentIds = changedIds.ToArray(), available = changedIds.Count > 0 },
+                    LintScanService.JsonOut);
+                Post("UncommittedDocuments", gitPayload);
 
                 DebugLog.Write(projectDir, "=== Full scan DONE ===");
             }
@@ -703,6 +724,91 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
         catch (Exception ex)
         {
             _logService.Warn($"[CLEVR Lint] could not load rules catalog on open: {ex.Message}");
+        }
+    }
+
+    private readonly LinterConfigStore _linterConfig = new();
+
+    private void PostLinterConfig(IWebView webView)
+    {
+        try
+        {
+            var projectDir = ExclusionsProjectDir();
+            var config = _linterConfig.Load(projectDir ?? "");
+            var payload = JsonSerializer.Serialize(new
+            {
+                rules = config.Rules.ToDictionary(
+                    kv => kv.Key,
+                    kv => new { enabled = kv.Value.Enabled, severity = kv.Value.Severity }),
+                excludedModules = config.ExcludedModules,
+            }, LintScanService.JsonOut);
+            webView.PostMessage("LinterConfig", payload);
+        }
+        catch (Exception ex)
+        {
+            _logService.Error("[CLEVR Lint] loading linter config failed", ex);
+            webView.PostMessage("LinterConfigError", ex.Message);
+        }
+    }
+
+    private void SaveLinterConfig(IWebView webView, JsonObject? data)
+    {
+        try
+        {
+            var projectDir = ExclusionsProjectDir() ?? "";
+            var rulesNode = data?["rules"]?.AsObject();
+            var rules = new Dictionary<string, LinterConfigRule>();
+            if (rulesNode is not null)
+            {
+                foreach (var kv in rulesNode)
+                {
+                    var obj = kv.Value?.AsObject();
+                    bool? enabled = null;
+                    string? severity = null;
+                    if (obj?["enabled"] is { } en) enabled = en.GetValue<bool?>();
+                    if (obj?["severity"] is { } sv) severity = sv.GetValue<string?>();
+                    rules[kv.Key] = new LinterConfigRule { Enabled = enabled, Severity = severity };
+                }
+            }
+            var excludedModules = new List<string>();
+            if (data?["excludedModules"]?.AsArray() is { } modsArray)
+            {
+                foreach (var item in modsArray)
+                {
+                    var name = item?.GetValue<string>();
+                    if (!string.IsNullOrWhiteSpace(name)) excludedModules.Add(name);
+                }
+            }
+            var config = new LinterConfig { Rules = rules, ExcludedModules = excludedModules };
+            _linterConfig.Save(projectDir, config);
+            webView.PostMessage("LinterConfigSaved", "{}");
+        }
+        catch (Exception ex)
+        {
+            _logService.Error("[CLEVR Lint] saving linter config failed", ex);
+            webView.PostMessage("LinterConfigError", ex.Message);
+        }
+    }
+
+    private void PostModules(IWebView webView)
+    {
+        try
+        {
+            var model = _getModel();
+            var modules = model is null
+                ? new List<string>()
+                : model.Root.GetModules()
+                    .Select(m => m.Name)
+                    .Where(n => n != "System")
+                    .OrderBy(n => n)
+                    .ToList();
+            var payload = JsonSerializer.Serialize(new { modules }, LintScanService.JsonOut);
+            webView.PostMessage("Modules", payload);
+        }
+        catch (Exception ex)
+        {
+            _logService.Error("[CLEVR Lint] loading modules failed", ex);
+            webView.PostMessage("ModulesError", ex.Message);
         }
     }
 

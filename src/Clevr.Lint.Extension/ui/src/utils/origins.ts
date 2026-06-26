@@ -2,20 +2,16 @@
 
 export function originLabel(v: Violation): string {
   if (v.kind === "manual") return "Manual checks";
-  if (v.kind === "lint") return "Lint (calibrated)";
   return "MxCLI";
 }
 
 export function originBadge(v: Violation): string {
   if (v.kind === "manual") return "Manual";
-  if (v.kind === "lint") return "Lint";
   return "MxCLI";
 }
 
-export function originOf(v: Violation): "lint" | "mxcli" | "manual" {
-  if (v.kind === "manual") return "manual";
-  if (v.kind === "lint") return "lint";
-  return "mxcli";
+export function originOf(v: Violation): "mxcli" | "manual" {
+  return v.kind === "manual" ? "manual" : "mxcli";
 }
 
 export function moduleOf(v: Violation): string {

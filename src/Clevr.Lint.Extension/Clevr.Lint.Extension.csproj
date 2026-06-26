@@ -6,38 +6,31 @@
     <Nullable>enable</Nullable>
     <AssemblyName>Clevr.Lint.Extension</AssemblyName>
     <RootNamespace>Clevr.Lint.Extension</RootNamespace>
+    <!-- Required so NuGet package DLLs (e.g. YamlDotNet) are copied to the output
+         directory. Class libraries default to false; the Mendix extension host needs
+         all dependency DLLs present next to the extension assembly. -->
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- Kies de versie die NIET hoger is dan je Studio Pro-versie.
-         Voor Studio Pro 11.10 → 11.10.0. (11.9.0 / 11.11.0 bestaan ook.)
-         ExcludeAssets=runtime: Studio Pro LEVERT deze API zelf — NIET mee-deployen (anders
-         dubbele/conflicterende load). Compile blijft, runtime-copy uit. -->
+    <!-- ExcludeAssets=runtime: Studio Pro provides this API itself — do NOT deploy (avoids
+         duplicate/conflicting load). Compile reference stays, runtime copy is excluded. -->
     <PackageReference Include="Mendix.StudioPro.ExtensionsAPI" Version="11.10.0" ExcludeAssets="runtime" />
+    <PackageReference Include="YamlDotNet" Version="16.3.0" />
   </ItemGroup>
 
-  <!-- De bestaande, geteste normalizer + registry (ongewijzigd hergebruikt). De
-       gebouwde Clevr.Lint.Normalizer.dll wordt naast deze extensie-dll gekopieerd. -->
   <ItemGroup>
     <ProjectReference Include="..\Clevr.Lint.Normalizer\Clevr.Lint.Normalizer\Clevr.Lint.Normalizer.csproj" />
   </ItemGroup>
 
-  <!-- manifest.json en de web-assets (wwwroot) moeten mee naar de build-output, zodat ze
-       in de extensiemap belanden. -->
+  <!-- manifest.json and web assets (wwwroot) must be copied to build output. -->
   <ItemGroup>
     <None Update="manifest.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <!-- lint-scan-settings.json wordt BEWUST NIET mee-gekopieerd: het lokale bestand bevat
-         machine-/klant-specifieke paden. De installer (Install-ClevrLint.ps1) schrijft een
-         schone settings op de leeslocatie van de extensie. Ontbreekt het bestand, dan valt
-         LintScanSettings.Load terug op de defaults (mxcli via PATH + de geopende app). -->
+    <!-- lint-scan-settings.json is deliberately NOT copied: it contains machine-specific paths.
+         LintScanSettings.Load falls back to defaults (mxcli on PATH + open app) when absent. -->
     <None Update="wwwroot\**\*">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <!-- Canonieke rule registry uit csharp-normalizer, gedeployed als rules.json
-         (één bron van waarheid; geen kopie die kan verlopen). -->
-    <None Include="..\Clevr.Lint.Normalizer\rules.sample.json" Link="rules.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
   </ItemGroup>

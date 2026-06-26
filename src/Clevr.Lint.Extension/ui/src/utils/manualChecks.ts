@@ -52,7 +52,6 @@ export function manualCheckViolation(s: ManualCheckState): Violation {
   return {
     ruleId: s.def.id,
     kind: "manual",
-    source: "clevr-manual",
     category: s.def.category,
     severity: s.def.severity,
     documentType: "Manual check",

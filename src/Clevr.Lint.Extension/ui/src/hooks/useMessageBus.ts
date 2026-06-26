@@ -1,6 +1,6 @@
 ﻿import { Dispatch, useEffect } from "react";
 import type { AppAction, ScanDescribePayload, ScanFastPayload } from "../context/AppReducer";
-import type { Exclusion, ManualAnswer } from "../types";
+import type { Exclusion, LinterConfigRule, ManualAnswer } from "../types";
 
 export function post(message: string, data?: unknown): void {
   window.chrome.webview.postMessage({ message, data });
@@ -38,6 +38,37 @@ function handleExclusions(data: unknown, dispatch: Dispatch<AppAction>): void {
     ? (payload as Exclusion[])
     : ((payload as { exclusions?: Exclusion[] })?.exclusions ?? []);
   dispatch({ type: "SET_EXCLUSIONS", exclusions });
+}
+
+function handleLinterConfig(data: unknown, dispatch: Dispatch<AppAction>): void {
+  let payload: { rules?: Record<string, LinterConfigRule>; excludedModules?: string[] } | null;
+  try {
+    payload = typeof data === "string" ? JSON.parse(data) : (data as typeof payload);
+  } catch { return; }
+  if (!payload) return;
+  dispatch({ type: "SET_LINTER_CONFIG", config: payload.rules ?? {}, excludedModules: payload.excludedModules ?? [] });
+}
+
+function handleUncommittedDocuments(data: unknown, dispatch: Dispatch<AppAction>): void {
+  let payload: { documentIds?: string[]; available?: boolean } | null;
+  try {
+    payload = typeof data === "string" ? JSON.parse(data) : (data as typeof payload);
+  } catch { return; }
+  if (!payload) return;
+  dispatch({
+    type: "SET_UNCOMMITTED_DOCUMENTS",
+    documentIds: payload.documentIds ?? [],
+    available: payload.available ?? false,
+  });
+}
+
+function handleModules(data: unknown, dispatch: Dispatch<AppAction>): void {
+  let payload: { modules?: string[] } | null;
+  try {
+    payload = typeof data === "string" ? JSON.parse(data) : (data as typeof payload);
+  } catch { return; }
+  if (!payload) return;
+  dispatch({ type: "SET_MODULES", modules: payload.modules ?? [] });
 }
 
 function handleRulesCatalog(data: unknown, dispatch: Dispatch<AppAction>): void {
@@ -87,6 +118,12 @@ export function useMessageBus(dispatch: Dispatch<AppAction>): void {
         case "ManualCheckAnswers":  return handleManualChecks(data, dispatch);
         case "RulesCatalog":        return handleRulesCatalog(data, dispatch);
         case "ManualCheckError":    return dispatch({ type: "SHOW_TOAST", text: "Manual check failed: " + String(data), isError: true });
+        case "LinterConfig":        return handleLinterConfig(data, dispatch);
+        case "LinterConfigSaved":   return dispatch({ type: "SHOW_TOAST", text: "Settings saved", isError: false });
+        case "LinterConfigError":   return dispatch({ type: "SHOW_TOAST", text: "Settings error: " + String(data), isError: true });
+        case "Modules":             return handleModules(data, dispatch);
+        case "UncommittedDocuments": return handleUncommittedDocuments(data, dispatch);
+        case "ModulesError":        return dispatch({ type: "SHOW_TOAST", text: "Could not load modules: " + String(data), isError: true });
       }
     }
 
@@ -95,6 +132,7 @@ export function useMessageBus(dispatch: Dispatch<AppAction>): void {
     post("RequestExclusions");
     post("RequestManualChecks");
     post("RequestRulesCatalog");
+    post("RequestLinterConfig");
 
     return () => window.chrome.webview.removeEventListener("message", handleMessage);
   }, [dispatch]);

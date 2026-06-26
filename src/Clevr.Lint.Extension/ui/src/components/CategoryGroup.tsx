@@ -9,11 +9,9 @@ interface Props {
 }
 
 export function CategoryGroup({ category, items, interactive = true }: Props) {
-  const rules = groupByRule(items).sort((a, b) => {
-    const ak = a.rule.kind === "lint" ? 0 : 1;
-    const bk = b.rule.kind === "lint" ? 0 : 1;
-    return ak - bk || a.rule.ruleId.localeCompare(b.rule.ruleId);
-  });
+  const rules = groupByRule(items).sort((a, b) =>
+    a.rule.ruleId.localeCompare(b.rule.ruleId)
+  );
 
   return (
     <div className="lint-group">

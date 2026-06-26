@@ -1,4 +1,4 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 using Clevr.Lint.Normalizer;
 using Xunit;
 
@@ -8,33 +8,13 @@ public class MxcliNormalizerTests
 {
     private readonly MxcliNormalizer _normalizer = new();
 
-    // Registry with REAL verified Lint rules (engineRuleKey = own .star rule-id,
-    // metadata from the Lint ground truth; see rules.sample.json). A ruleId not present
-    // here → generic. ACR_ENT_ATTRS is set to Minor (ground truth, not Major).
-    // The Security rule has severity "TODO-confirm" (0 violations on TRB, no baseline).
-    private static RuleRegistry KnownLintRegistry() => new(new[]
-    {
-        new LintRuleEntry { RuleId = "CLEVR-MAINT-001", LintCode = "EntityAmountAttributes",
-            Engine = "star", EngineRuleKey = "ACR_ENT_ATTRS",
-            Category = "Maintainability", Severity = "Minor", Status = RuleStatus.Verified },
-        new LintRuleEntry { RuleId = "CLEVR-MAINT-002", LintCode = "EntityAmountAccessRules",
-            Engine = "star", EngineRuleKey = "ACR_ENT_ACCESS",
-            Category = "Maintainability", Severity = "Major", Status = RuleStatus.Verified },
-        new LintRuleEntry { RuleId = "CLEVR-HYG-001", LintCode = "DuplicateEntityNames",
-            Engine = "star", EngineRuleKey = "ACR_UNIQ_ENT",
-            Category = "Project hygiene", Severity = "Minor", Status = RuleStatus.Verified },
-        new LintRuleEntry { RuleId = "CLEVR-SEC-004", LintCode = "ProjectSecurityNoAnonymousUsers",
-            Engine = "star", EngineRuleKey = "ACR_SEC_GUEST",
-            Category = "Security", Severity = "TODO-confirm", Status = RuleStatus.Verified },
-    });
-
     [Fact]
-    public void AcrMatch_TakesMetadataFromRegistry_NotFromMxcli()
+    public void AcrRuleId_PassesThrough_WithMxcliSeverityAndDerivedCategory()
     {
         var raw = new MxcliViolation
         {
-            RuleId = "ACR_ENT_ATTRS",          // real Lint .star rule-id
-            Severity = "error",                 // engine-severity — must NOT become the Lint-severity
+            RuleId = "ACR_ENT_ATTRS",
+            Severity = "error",
             Message = "Entity has too many attributes.",
             Module = "Sales",
             Document = "Customer",
@@ -43,52 +23,48 @@ public class MxcliNormalizerTests
             Suggestion = "Split related attributes into a separate entity.",
         };
 
-        var result = _normalizer.Normalize(new[] { raw }, KnownLintRegistry());
+        var result = _normalizer.Normalize(new[] { raw });
 
         var v = Assert.Single(result);
-        Assert.Equal(ViolationKind.Lint, v.Kind);
-        Assert.Equal("clevr-lint", v.Source);
-        Assert.Equal("CLEVR-MAINT-001", v.RuleId);          // CLEVR-id, not the engine-key
-        Assert.Equal("EntityAmountAttributes", v.LintCode);
-        Assert.Equal("Maintainability", v.Category);        // from registry
-        Assert.Equal("Minor", v.Severity);                  // ground truth: Minor, not Major...
-        Assert.NotEqual("error", v.Severity);               // ...and NOT the mxcli-severity
+        Assert.Equal(ViolationKind.Mxcli, v.Kind);
+        Assert.Equal("ACR_ENT_ATTRS", v.RuleId);
+        Assert.Equal("error", v.Severity);
+        Assert.Equal("ACR", v.Category);         // derived from rule id prefix
         Assert.Equal("Sales.Customer", v.DocumentQualifiedName);
-        Assert.Equal("Entity", v.DocumentType);             // canonicalized from "entity"
+        Assert.Equal("Entity", v.DocumentType);  // canonicalized from "entity"
         Assert.Equal("Entity has too many attributes.", v.Reason);
         Assert.Equal("Split related attributes into a separate entity.", v.Suggestion);
         Assert.Equal("11111111-1111-1111-1111-111111111111", v.DocumentId);
-        Assert.Equal("star", v.Engine);
     }
 
     [Fact]
-    public void ClaimTable_SuppressesClaimedMxcliGenerics_KeepsWinnerAndUnrelated()
+    public void SuppressedRules_AreFiltered_OtherRulesPassThrough()
     {
         var raws = new[]
         {
-            new MxcliViolation { RuleId = "QUAL003",   Severity = "warning", Message = "mf >25 activities", Module = "M", Document = "MF1", DocumentType = "microflow" },
-            new MxcliViolation { RuleId = "CONV009",   Severity = "info",    Message = "mf >15 activities", Module = "M", Document = "MF1", DocumentType = "microflow" },
-            new MxcliViolation { RuleId = "DESIGN001", Severity = "warning", Message = ">10 attributes",    Module = "M", Document = "E1",  DocumentType = "entity" },
-            new MxcliViolation { RuleId = "ACR_ENT_ATTRS", Severity = "warning", Message = ">25 attributes", Module = "M", Document = "E1", DocumentType = "entity" }, // winner (claimed)
-            new MxcliViolation { RuleId = "MPR001",    Severity = "warning", Message = "naming",            Module = "M", Document = "E2",  DocumentType = "entity" },  // unrelated generic
+            new MxcliViolation { RuleId = "QUAL003",      Severity = "warning", Message = "mf >25 activities", Module = "M", Document = "MF1", DocumentType = "microflow" },
+            new MxcliViolation { RuleId = "CONV009",      Severity = "info",    Message = "mf >15 activities", Module = "M", Document = "MF1", DocumentType = "microflow" },
+            new MxcliViolation { RuleId = "DESIGN001",    Severity = "warning", Message = ">10 attributes",    Module = "M", Document = "E1",  DocumentType = "entity" },
+            new MxcliViolation { RuleId = "ACR_ENT_ATTRS",Severity = "warning", Message = ">25 attributes",    Module = "M", Document = "E1",  DocumentType = "entity" },
+            new MxcliViolation { RuleId = "MPR001",       Severity = "warning", Message = "naming",            Module = "M", Document = "E2",  DocumentType = "entity" },
         };
 
-        var result = _normalizer.Normalize(raws, KnownLintRegistry());
+        var result = _normalizer.Normalize(raws);
 
-        Assert.DoesNotContain(result, v => v.RuleId == "QUAL003");      // claimed by CLEVR-MAINT-007 → suppressed
-        Assert.DoesNotContain(result, v => v.RuleId == "CONV009");      // claimed by CLEVR-MAINT-007 → suppressed
-        Assert.DoesNotContain(result, v => v.RuleId == "DESIGN001");    // claimed by ACR_ENT_ATTRS → suppressed
-        Assert.Contains(result, v => v.RuleId == "CLEVR-MAINT-001");    // winner (ACR_ENT_ATTRS) kept
-        Assert.Contains(result, v => v.RuleId == "MPR001");             // unrelated generic kept
+        Assert.DoesNotContain(result, v => v.RuleId == "QUAL003");
+        Assert.DoesNotContain(result, v => v.RuleId == "CONV009");
+        Assert.DoesNotContain(result, v => v.RuleId == "DESIGN001");
+        Assert.Contains(result, v => v.RuleId == "ACR_ENT_ATTRS");
+        Assert.Contains(result, v => v.RuleId == "MPR001");
         Assert.Equal(2, result.Count);
     }
 
     [Fact]
-    public void UnknownRule_BecomesGeneric_WithEngineCategoryAndMxcliSeverity()
+    public void Rule_ProducesViolation_WithCategoryFromPrefix()
     {
         var raw = new MxcliViolation
         {
-            RuleId = "MPR001", // bundled mxcli rule, not in registry
+            RuleId = "MPR001",
             Severity = "warning",
             Message = "Microflow does not follow the naming convention.",
             Module = "Sales",
@@ -97,26 +73,20 @@ public class MxcliNormalizerTests
             DocumentId = "22222222-2222-2222-2222-222222222222",
         };
 
-        var result = _normalizer.Normalize(new[] { raw }, KnownLintRegistry());
+        var result = _normalizer.Normalize(new[] { raw });
 
         var v = Assert.Single(result);
-        Assert.Equal(ViolationKind.Generic, v.Kind);
-        Assert.Equal("mxcli", v.Source);
-        Assert.Equal("MPR001", v.RuleId);          // engine rule-id preserved
-        Assert.Null(v.LintCode);                    // generic has no lintCode
-        Assert.Equal("MPR", v.Category);           // category from ruleId prefix
-        Assert.Equal("warning", v.Severity);       // mxcli-severity preserved
+        Assert.Equal(ViolationKind.Mxcli, v.Kind);
+        Assert.Equal("MPR001", v.RuleId);
+        Assert.Equal("MPR", v.Category);
+        Assert.Equal("warning", v.Severity);
         Assert.Equal("Sales.ACT_DoThing", v.DocumentQualifiedName);
-        Assert.Equal("Microflow", v.DocumentType); // canonicalized from "microflow"
-        Assert.Equal("star", v.Engine);
+        Assert.Equal("Microflow", v.DocumentType);
     }
 
     [Fact]
-    public void RealAcrId_MapsToAcr_AndBundledId_MapsToGeneric()
+    public void MultipleRules_EachProduceOneViolation_NoRegistry()
     {
-        // The core case: a REAL Lint .star rule-id becomes Lint; a bundled mxcli-id
-        // (MPR001) — which we deliberately do NOT claim — remains generic. One output per
-        // raw violation, so no duplicates.
         var raw = new[]
         {
             new MxcliViolation { RuleId = "ACR_ENT_ATTRS", Severity = "error",
@@ -127,90 +97,44 @@ public class MxcliNormalizerTests
                 DocumentType = "microflow" },
         };
 
-        var result = _normalizer.Normalize(raw, KnownLintRegistry());
+        var result = _normalizer.Normalize(raw);
 
         Assert.Equal(2, result.Count);
+        Assert.All(result, v => Assert.Equal(ViolationKind.Mxcli, v.Kind));
 
-        var lint = Assert.Single(result, v => v.RuleId == "CLEVR-MAINT-001");
-        Assert.Equal(ViolationKind.Lint, lint.Kind);
-        Assert.Equal("clevr-lint", lint.Source);
-        Assert.Equal("EntityAmountAttributes", lint.LintCode);
+        var acr = Assert.Single(result, v => v.RuleId == "ACR_ENT_ATTRS");
+        Assert.Equal("ACR", acr.Category);
 
-        var generic = Assert.Single(result, v => v.RuleId == "MPR001");
-        Assert.Equal(ViolationKind.Generic, generic.Kind);
-        Assert.Equal("mxcli", generic.Source);
-        Assert.Null(generic.LintCode);
-
-        // MPR001 is never claimed as Lint.
-        Assert.DoesNotContain(result, v => v.RuleId == "MPR001" && v.Kind == ViolationKind.Lint);
-    }
-
-    [Fact]
-    public void MultipleRealAcrRules_MapWithCorrectCategoryAndSeverity()
-    {
-        // A Maintainability-Major, a Project-hygiene-Minor, and a Security rule.
-        var raw = new[]
-        {
-            new MxcliViolation { RuleId = "ACR_ENT_ACCESS", Severity = "error",
-                Message = "Entity access.", Module = "Sales", Document = "Order",
-                DocumentType = "entity" },
-            new MxcliViolation { RuleId = "ACR_UNIQ_ENT", Severity = "hint",
-                Message = "Non-unique entity name.", Module = "Sales", Document = "Account",
-                DocumentType = "entity" },
-            new MxcliViolation { RuleId = "ACR_SEC_GUEST", Severity = "warning",
-                Message = "Guest access enabled.", Module = "Project", Document = "Security",
-                DocumentType = "projectsecurity" },
-        };
-
-        var result = _normalizer.Normalize(raw, KnownLintRegistry());
-
-        Assert.All(result, v => Assert.Equal(ViolationKind.Lint, v.Kind));
-        Assert.All(result, v => Assert.Equal("clevr-lint", v.Source));
-
-        var maint = Assert.Single(result, v => v.RuleId == "CLEVR-MAINT-002");
-        Assert.Equal("Maintainability", maint.Category);
-        Assert.Equal("Major", maint.Severity);
-        Assert.Equal("EntityAmountAccessRules", maint.LintCode); // real Lint Java class name
-
-        var hyg = Assert.Single(result, v => v.RuleId == "CLEVR-HYG-001");
-        Assert.Equal("Project hygiene", hyg.Category);
-        Assert.Equal("Minor", hyg.Severity);
-        Assert.Equal("DuplicateEntityNames", hyg.LintCode);
-
-        var sec = Assert.Single(result, v => v.RuleId == "CLEVR-SEC-004");
-        Assert.Equal("Security", sec.Category);
-        Assert.Equal("TODO-confirm", sec.Severity);  // severity still to be confirmed, not made up
-        Assert.Equal("ProjectSecurity", sec.DocumentType); // canonicalized
+        var mpr = Assert.Single(result, v => v.RuleId == "MPR001");
+        Assert.Equal("MPR", mpr.Category);
     }
 
     [Fact]
     public void QualifiedDocument_IsNotDoublePrefixedWithModule()
     {
-        // Some mxcli/Lint rules (ACR_UNIQ_ENT, CONV001) deliver 'document' ALREADY
-        // qualified ("Module.Entity"). In that case the module must NOT be prefixed again
-        // → otherwise "Accesslog.Accesslog.AccesslogBankenportaal".
+        // Some mxcli rules (e.g. ACR_UNIQ_ENT, CONV001) deliver 'document' ALREADY
+        // qualified ("Module.Entity"). In that case the module must NOT be prefixed again.
         var raw = new[]
         {
             new MxcliViolation { RuleId = "ACR_UNIQ_ENT", Severity = "hint",
                 Message = "Non-unique.", Module = "Accesslog",
                 Document = "Accesslog.AccesslogBankenportaal", DocumentType = "Entity" },
-            // bare document → do prefix (the other mxcli form).
             new MxcliViolation { RuleId = "MPR001", Severity = "warning",
                 Message = "Naming.", Module = "GoogleAuthenticatorCustom",
                 Document = "Credential", DocumentType = "entity" },
         };
 
-        var result = _normalizer.Normalize(raw, KnownLintRegistry());
+        var result = _normalizer.Normalize(raw);
 
-        var qualified = Assert.Single(result, v => v.RuleId == "CLEVR-HYG-001");
-        Assert.Equal("Accesslog.AccesslogBankenportaal", qualified.DocumentQualifiedName); // not doubled
+        var qualified = Assert.Single(result, v => v.RuleId == "ACR_UNIQ_ENT");
+        Assert.Equal("Accesslog.AccesslogBankenportaal", qualified.DocumentQualifiedName);
 
         var bare = Assert.Single(result, v => v.RuleId == "MPR001");
-        Assert.Equal("GoogleAuthenticatorCustom.Credential", bare.DocumentQualifiedName); // prefixed
+        Assert.Equal("GoogleAuthenticatorCustom.Credential", bare.DocumentQualifiedName);
     }
 
     [Fact]
-    public void Fingerprint_UsesOutputRuleId_AndSpecFormula()
+    public void Fingerprint_UsesNativeRuleId_AndSpecFormula()
     {
         var raw = new MxcliViolation
         {
@@ -219,21 +143,20 @@ public class MxcliNormalizerTests
             DocumentType = "entity",
         };
 
-        var v = Assert.Single(_normalizer.Normalize(new[] { raw }, KnownLintRegistry()));
+        var v = Assert.Single(_normalizer.Normalize(new[] { raw }));
 
-        // sha1(ruleId|documentQualifiedName|elementName) with the OUTPUT-ruleId (CLEVR-id).
-        var expected = Fingerprint.Compute("CLEVR-MAINT-001", "Sales.Customer", "");
+        var expected = Fingerprint.Compute("ACR_ENT_ATTRS", "Sales.Customer", "");
         Assert.Equal(expected, v.Fingerprint);
         Assert.StartsWith("sha1:", v.Fingerprint);
-        Assert.Equal(5 + 40, v.Fingerprint.Length); // "sha1:" + 40 hex chars
+        Assert.Equal(5 + 40, v.Fingerprint.Length);
     }
 
     [Theory]
     [InlineData("entity", "Entity")]
     [InlineData("microflow", "Microflow")]
-    [InlineData("ENTITY", "Entity")]            // case-insensitive
+    [InlineData("ENTITY", "Entity")]
     [InlineData("projectsecurity", "ProjectSecurity")]
-    [InlineData("widget", "Widget")]            // unknown → capitalize first letter
+    [InlineData("widget", "Widget")]
     [InlineData("", "")]
     public void DocumentType_IsCanonicalized(string engineValue, string expected)
     {
@@ -243,14 +166,13 @@ public class MxcliNormalizerTests
             Module = "M", Document = "D", DocumentType = engineValue,
         };
 
-        var v = Assert.Single(_normalizer.Normalize(new[] { raw }, KnownLintRegistry()));
+        var v = Assert.Single(_normalizer.Normalize(new[] { raw }));
         Assert.Equal(expected, v.DocumentType);
     }
 
     [Fact]
     public void DeserializesRawMxcliJson_IntoDto()
     {
-        // Proves that the raw mxcli schema deserializes correctly into the DTO.
         const string json = """
         [
           { "ruleId": "MPR001", "severity": "warning", "message": "msg",
@@ -261,10 +183,10 @@ public class MxcliNormalizerTests
         """;
 
         var dtos = JsonSerializer.Deserialize<List<MxcliViolation>>(json)!;
-        var result = _normalizer.Normalize(dtos, KnownLintRegistry());
+        var result = _normalizer.Normalize(dtos);
 
         var v = Assert.Single(result);
-        Assert.Equal(ViolationKind.Generic, v.Kind);
+        Assert.Equal(ViolationKind.Mxcli, v.Kind);
         Assert.Equal("MPR001", v.RuleId);
         Assert.Equal("do this", v.Suggestion);
         Assert.Equal("33333333-3333-3333-3333-333333333333", v.DocumentId);

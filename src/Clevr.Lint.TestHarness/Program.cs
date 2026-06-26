@@ -340,6 +340,7 @@ static void DispatchMessage(
         {
             bool deep = message == "RunDeepScan";
             push("ScanProgress", "Analyzing with mxcli…");
+            var gitTask = Task.Run(() => GitChangedDocumentsService.GetChangedDocumentIds(projectDir));
             try
             {
                 new LintScanService(fileService, logService)
@@ -349,6 +350,10 @@ static void DispatchMessage(
             {
                 push("LintViolations", LintScanService.ErrorJson($"Unexpected error: {ex.Message}"));
             }
+            var changedIds = gitTask.GetAwaiter().GetResult();
+            push("UncommittedDocuments", JsonSerializer.Serialize(
+                new { documentIds = changedIds.ToArray(), available = changedIds.Count > 0 },
+                new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }));
             push("ScanFinished", "");
             break;
         }
@@ -521,6 +526,70 @@ static void DispatchMessage(
             }
             try { Process.Start(new ProcessStartInfo { FileName = url, UseShellExecute = true }); push("UrlOpened", url); }
             catch (Exception ex) { push("UrlError", ex.Message); }
+            break;
+        }
+
+        case "RequestModules":
+        {
+            // Simulate a Studio Pro model with these modules.
+            var modules = new[] { "Administration", "System" };
+            push("Modules", JsonSerializer.Serialize(new { modules }));
+            break;
+        }
+
+        case "RequestLinterConfig":
+        {
+            try
+            {
+                var store  = new LinterConfigStore();
+                var config = store.Load(projectDir ?? "");
+                var payload = JsonSerializer.Serialize(new
+                {
+                    rules = config.Rules.ToDictionary(
+                        kv => kv.Key,
+                        kv => new { enabled = kv.Value.Enabled, severity = kv.Value.Severity }),
+                    excludedModules = config.ExcludedModules,
+                }, new JsonSerializerOptions
+                {
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                    DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
+                });
+                push("LinterConfig", payload);
+            }
+            catch (Exception ex) { push("LinterConfigError", ex.Message); }
+            break;
+        }
+
+        case "SaveLinterConfig":
+        {
+            try
+            {
+                var store     = new LinterConfigStore();
+                var rulesNode = data?["rules"]?.AsObject();
+                var rules     = new Dictionary<string, LinterConfigRule>();
+                if (rulesNode is not null)
+                {
+                    foreach (var kv in rulesNode)
+                    {
+                        var obj = kv.Value?.AsObject();
+                        bool? enabled = null;
+                        string? severity = null;
+                        if (obj?["enabled"] is { } en) enabled = en.GetValue<bool?>();
+                        if (obj?["severity"] is { } sv) severity = sv.GetValue<string?>();
+                        rules[kv.Key] = new LinterConfigRule { Enabled = enabled, Severity = severity };
+                    }
+                }
+                var excludedModules = new List<string>();
+                if (data?["excludedModules"]?.AsArray() is { } modsArr)
+                    foreach (var item in modsArr)
+                    {
+                        var name = item?.GetValue<string>();
+                        if (!string.IsNullOrWhiteSpace(name)) excludedModules.Add(name);
+                    }
+                store.Save(projectDir ?? "", new LinterConfig { Rules = rules, ExcludedModules = excludedModules });
+                push("LinterConfigSaved", "{}");
+            }
+            catch (Exception ex) { push("LinterConfigError", ex.Message); }
             break;
         }
 

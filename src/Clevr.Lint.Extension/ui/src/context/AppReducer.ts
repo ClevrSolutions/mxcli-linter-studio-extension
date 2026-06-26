@@ -1,5 +1,6 @@
 ﻿import { ORIGINS } from "../constants";
-import type { Exclusion, ManualAnswer, ScanMeta, ScanProgress, Violation } from "../types";
+import type { Exclusion, LinterConfigRule, ManualAnswer, ScanMeta, ScanProgress, Violation } from "../types";
+
 
 export interface AppState {
   violations: Violation[];
@@ -17,12 +18,21 @@ export interface AppState {
   severityEnabled: Set<string>;
   originEnabled: Set<string>;
   appStoreVisible: boolean;
+  uncommittedDocumentIds: Set<string>;
+  uncommittedAvailable: boolean;
+  uncommittedFilterActive: boolean;
   showExcluded: boolean;
   showAnswered: boolean;
   lastDeepScan: boolean;
   filterQuery: string;
   toast: { text: string; isError: boolean; id: number } | null;
   logoDataUri: string;
+  settingsVisible: boolean;
+  linterConfig: Record<string, LinterConfigRule>;
+  pendingConfig: Record<string, LinterConfigRule>;
+  modules: string[];
+  savedExcludedModules: string[];
+  pendingExcludedModules: string[];
 }
 
 export type AppAction =
@@ -37,6 +47,8 @@ export type AppAction =
   | { type: "TOGGLE_ORIGIN"; origin: string }
   | { type: "SET_ORIGIN_ENABLED"; origin: string; enabled: boolean }
   | { type: "TOGGLE_APPSTORE" }
+  | { type: "SET_UNCOMMITTED_DOCUMENTS"; documentIds: string[]; available: boolean }
+  | { type: "TOGGLE_UNCOMMITTED_FILTER" }
   | { type: "TOGGLE_SHOW_EXCLUDED" }
   | { type: "TOGGLE_SHOW_ANSWERED" }
   | { type: "SET_FILTER_QUERY"; query: string }
@@ -44,7 +56,15 @@ export type AppAction =
   | { type: "SHOW_TOAST"; text: string; isError: boolean }
   | { type: "CLEAR_TOAST" }
   | { type: "SET_LOGO"; dataUri: string }
-  | { type: "SET_RULES_CATALOG"; ruleNames: Record<string, string>; ruleCategories: Record<string, string> };
+  | { type: "SET_RULES_CATALOG"; ruleNames: Record<string, string>; ruleCategories: Record<string, string> }
+  | { type: "SHOW_SETTINGS" }
+  | { type: "HIDE_SETTINGS" }
+  | { type: "SET_LINTER_CONFIG"; config: Record<string, LinterConfigRule>; excludedModules?: string[] }
+  | { type: "UPDATE_RULE_SETTING"; ruleId: string; patch: Partial<LinterConfigRule> }
+  | { type: "SET_MODULES"; modules: string[] }
+  | { type: "TOGGLE_MODULE_EXCLUSION"; moduleName: string }
+  | { type: "SET_EXCLUDED_MODULES"; modules: string[] }
+  | { type: "BULK_SET_RULES_ENABLED"; ruleIds: string[]; enabled: boolean | undefined };
 
 export interface ScanFastPayload {
   violations?: Violation[];
@@ -83,12 +103,21 @@ export const initialState: AppState = {
   severityEnabled: new Set(),
   originEnabled: new Set(ORIGINS.map((o) => o.key)),
   appStoreVisible: true,
+  uncommittedDocumentIds: new Set<string>(),
+  uncommittedAvailable: false,
+  uncommittedFilterActive: false,
   showExcluded: false,
   showAnswered: false,
   lastDeepScan: true,
   filterQuery: "",
   toast: null,
   logoDataUri: "",
+  settingsVisible: false,
+  linterConfig: {},
+  pendingConfig: {},
+  modules: [],
+  savedExcludedModules: [],
+  pendingExcludedModules: [],
 };
 
 function toggleSet(set: Set<string>, key: string): Set<string> {
@@ -104,7 +133,7 @@ export function appReducer(state: AppState, action: AppAction): AppState {
     case "SCAN_FAST_BATCH": {
       const p = action.payload;
       const newViolations = state.violations
-        .filter((v) => v.kind !== "lint" && v.kind !== "mxcli")
+        .filter((v) => v.kind !== "mxcli")
         .concat(p.violations ?? []);
       const progress = p.progress
         ? { processed: p.progress.processed, total: p.progress.total, label: p.progress.label, requested: p.progress.requested, returned: p.progress.returned }
@@ -158,6 +187,15 @@ export function appReducer(state: AppState, action: AppAction): AppState {
     }
     case "TOGGLE_APPSTORE":
       return { ...state, appStoreVisible: !state.appStoreVisible };
+    case "SET_UNCOMMITTED_DOCUMENTS":
+      return {
+        ...state,
+        uncommittedDocumentIds: new Set(action.documentIds),
+        uncommittedAvailable: action.available,
+        uncommittedFilterActive: action.available ? state.uncommittedFilterActive : false,
+      };
+    case "TOGGLE_UNCOMMITTED_FILTER":
+      return { ...state, uncommittedFilterActive: !state.uncommittedFilterActive };
     case "TOGGLE_SHOW_EXCLUDED":
       return { ...state, showExcluded: !state.showExcluded };
     case "TOGGLE_SHOW_ANSWERED":
@@ -171,6 +209,7 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         severityEnabled: new Set(),
         originEnabled: new Set(ORIGINS.map((o) => o.key)),
         filterQuery: "",
+        uncommittedFilterActive: false,
       };
     case "SHOW_TOAST":
       return { ...state, toast: { text: action.text, isError: action.isError, id: ++toastId } };
@@ -184,6 +223,61 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         ruleNames: { ...state.ruleNames, ...action.ruleNames },
         ruleCategories: { ...state.ruleCategories, ...action.ruleCategories },
       };
+    case "SHOW_SETTINGS":
+      return {
+        ...state,
+        settingsVisible: true,
+        pendingConfig: { ...state.linterConfig },
+        pendingExcludedModules: [...state.savedExcludedModules],
+      };
+    case "HIDE_SETTINGS":
+      return { ...state, settingsVisible: false, pendingConfig: {}, pendingExcludedModules: [] };
+    case "SET_LINTER_CONFIG":
+      return {
+        ...state,
+        linterConfig: action.config,
+        pendingConfig: { ...action.config },
+        savedExcludedModules: action.excludedModules ?? [],
+        pendingExcludedModules: action.excludedModules ?? [],
+      };
+    case "UPDATE_RULE_SETTING":
+      return {
+        ...state,
+        pendingConfig: {
+          ...state.pendingConfig,
+          [action.ruleId]: { ...state.pendingConfig[action.ruleId], ...action.patch },
+        },
+      };
+    case "SET_MODULES":
+      return { ...state, modules: action.modules };
+    case "TOGGLE_MODULE_EXCLUSION": {
+      const next = state.pendingExcludedModules.includes(action.moduleName)
+        ? state.pendingExcludedModules.filter((m) => m !== action.moduleName)
+        : [...state.pendingExcludedModules, action.moduleName];
+      return { ...state, pendingExcludedModules: next };
+    }
+    case "SET_EXCLUDED_MODULES":
+      return { ...state, pendingExcludedModules: action.modules };
+    case "BULK_SET_RULES_ENABLED": {
+      const next: Record<string, LinterConfigRule> = { ...state.pendingConfig };
+      for (const ruleId of action.ruleIds) {
+        if (action.enabled === undefined) {
+          // Enabling: remove the key if it would be all-defaults to avoid phantom changes
+          const existing = next[ruleId];
+          if (!existing) continue;
+          const { enabled: _e, ...rest } = existing;
+          const effectiveSeverity = rest.severity;
+          if (!effectiveSeverity || effectiveSeverity === "inherit") {
+            delete next[ruleId];
+          } else {
+            next[ruleId] = rest;
+          }
+        } else {
+          next[ruleId] = { ...next[ruleId], enabled: action.enabled };
+        }
+      }
+      return { ...state, pendingConfig: next };
+    }
     default:
       return state;
   }

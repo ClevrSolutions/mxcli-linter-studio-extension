@@ -29,7 +29,6 @@ export function previewText(text: string | undefined, max = 60): string {
 
 export function ruleName(rule: Violation, ruleNames: Record<string, string>): string {
   if (rule.kind === "manual") return "Manual check";
-  if (rule.kind === "lint") return rule.lintCode ?? "";
   return ruleNames[rule.ruleId] ?? "";
 }
 

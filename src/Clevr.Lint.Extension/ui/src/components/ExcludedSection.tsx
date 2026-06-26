@@ -46,7 +46,7 @@ function ExcludedRuleGroup({ g }: { g: ExclusionRuleGroup }) {
   const state = useAppState();
   const dispatch = useAppDispatch();
   const [showConfirm, setShowConfirm] = useState(false);
-  const name = ruleName({ ruleId: g.ruleId, kind: "mxcli", source: "", category: "", severity: "", documentType: "", documentQualifiedName: "", reason: "", fingerprint: "" }, state.ruleNames);
+  const name = ruleName({ ruleId: g.ruleId, kind: "mxcli", category: "", severity: "", documentType: "", documentQualifiedName: "", reason: "", fingerprint: "" }, state.ruleNames);
   const staleNote = g.staleEntries ? ` · ${g.staleEntries} stale` : "";
 
   function handleRemoveAll() {

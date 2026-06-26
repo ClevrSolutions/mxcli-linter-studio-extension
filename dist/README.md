@@ -6,7 +6,7 @@ Performance, Architecture, Reliability, Security*. Everything reads through **mx
 `describe`, and own lint rules) — **no mxlint, no model-source export step** to install or run. A
 **Scan** button (quick) and a **Deepscan** button (adds the deep microflow/expression analysis) do
 everything; results merge into a single overview you can filter, navigate, export to HTML, exclude
-(with a reason), and turn into Maia prompts.
+(with a reason), and turn into AI prompts.
 
 This guide walks through the full chain in order. Do the steps top to bottom the first time.
 
@@ -130,7 +130,7 @@ path into `lint-scan-settings.json`. No PATH setup needed. (A previously downloa
    seconds). For the deep microflow/expression analysis (complexity, nested ifs, empty-string checks),
    click **Deepscan** — it scans every microflow/entity and can take a few minutes (a warning is shown).
 3. Review the merged improvements (filter by category/severity/source, toggle marketplace modules,
-   navigate to documents, exclude with a reason, copy Maia prompts). A quick scan shows a footnote
+   navigate to documents, exclude with a reason, copy AI prompts). A quick scan shows a footnote
    noting the deep analysis isn't included.
 4. **Export report to HTML** produces a standalone, CLEVR-branded report that opens in your browser.
 

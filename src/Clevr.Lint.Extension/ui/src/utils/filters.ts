@@ -7,7 +7,6 @@ import type { AppState } from "../context/AppReducer";
 
 export function displayCategory(v: Violation, ruleCategories: Record<string, string>): string {
   if (v.kind === "manual") return v.category;
-  if (v.kind === "lint") return v.category;
   const mxcliCat = (ruleCategories[v.ruleId] ?? "").toLowerCase();
   if (mxcliCat && MXCLI_CATEGORY_TO_LINT[mxcliCat]) return MXCLI_CATEGORY_TO_LINT[mxcliCat]!;
   return GENERIC_PREFIX_FALLBACK[v.category] ?? GENERIC_CATEGORY_FALLBACK;
@@ -16,9 +15,9 @@ export function displayCategory(v: Violation, ruleCategories: Record<string, str
 export function matches(v: Violation, q: string, ruleNames: Record<string, string>, ruleCategories: Record<string, string>): boolean {
   if (!q) return true;
   return [
-    v.ruleId, v.lintCode, ruleNames[v.ruleId], v.category,
+    v.ruleId, ruleNames[v.ruleId], v.category,
     displayCategory(v, ruleCategories), v.severity, originBadge(v),
-    v.documentType, v.documentQualifiedName, v.elementName, v.reason, v.suggestion, v.source,
+    v.documentType, v.documentQualifiedName, v.elementName, v.reason, v.suggestion,
   ]
     .filter(Boolean)
     .join(" ")
@@ -53,5 +52,9 @@ export function baseViolations(state: AppState): Violation[] {
 
 export function activeViolations(state: AppState): Violation[] {
   const ex = excludedFingerprintSet(state.exclusions);
-  return baseViolations(state).filter((v) => !ex.has(v.fingerprint));
+  let vs = baseViolations(state).filter((v) => !ex.has(v.fingerprint));
+  if (state.uncommittedFilterActive && state.uncommittedAvailable) {
+    vs = vs.filter((v) => !v.documentId || state.uncommittedDocumentIds.has(v.documentId));
+  }
+  return vs;
 }

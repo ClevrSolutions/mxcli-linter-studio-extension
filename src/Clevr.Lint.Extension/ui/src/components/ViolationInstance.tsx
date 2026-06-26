@@ -3,7 +3,7 @@ import { useAppDispatch, useAppState } from "../context/AppContext";
 import type { Violation } from "../types";
 import { post } from "../hooks/useMessageBus";
 import { copyToClipboard } from "../hooks/useClipboard";
-import { maiaPromptForFinding } from "../utils/maia";
+import { aiPromptForFinding } from "../utils/ai";
 import { manualStateLabel } from "../utils/manualChecks";
 import { ExcludeDialog } from "./dialogs/ExcludeDialog";
 import { ManualCheckDialog } from "./dialogs/ManualCheckDialog";
@@ -20,12 +20,12 @@ export function ViolationInstance({ rule, v, interactive = true }: Props) {
   const [showExclude, setShowExclude] = useState(false);
   const [showManual, setShowManual] = useState(false);
 
-  async function copyMaia() {
-    const prompt = maiaPromptForFinding(rule, v, state.ruleNames, state.ruleCategories);
+  async function copyAiPrompt() {
+    const prompt = aiPromptForFinding(rule, v, state.ruleNames, state.ruleCategories);
     const ok = await copyToClipboard(prompt);
     dispatch({
       type: "SHOW_TOAST",
-      text: ok ? "Maia prompt copied — paste it into Maia" : "Could not copy the Maia prompt to the clipboard.",
+      text: ok ? "AI prompt copied — paste it into your AI chat" : "Could not copy the AI prompt to the clipboard.",
       isError: !ok,
     });
   }
@@ -68,8 +68,8 @@ export function ViolationInstance({ rule, v, interactive = true }: Props) {
               {v.manual.status === "unanswered" ? "Answer" : "Re-answer"}
             </button>
           )}
-          <button type="button" className="lint-maia-btn" title="Generate an English prompt for Maia and copy it to the clipboard" onClick={copyMaia}>
-            Copy Maia prompt
+          <button type="button" className="lint-ai-btn" title="Generate an English prompt for AI and copy it to the clipboard" onClick={copyAiPrompt}>
+            Copy AI prompt
           </button>
           <button type="button" className="lint-exclude-btn" title="Exclude this improvement (a reason is required)" onClick={() => setShowExclude(true)}>
             Exclude

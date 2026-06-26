@@ -868,16 +868,16 @@ status/error messages, tooltips, placeholder, report header). The Lint category 
 (Project hygiene/Maintainability/Performance/Architecture/Reliability/Security) are
 unchanged — they belong to the data contract. Debug log texts deliberately remain in Dutch (internal).
 
-### Phase 5 — "Ask Maia" prompt (PASTE variant)  [BUILT — paste variant]
-Render layer (main.js): "Copy Maia prompt" button at TWO levels:
+### Phase 5 — "Ask AI" prompt (PASTE variant)  [BUILT — paste variant]
+Render layer (main.js): "Copy AI prompt" button at TWO levels:
 - RULE header: prompt for the entire rule with all its points (capped at 50, "... and N more"
   so large rules like the 283-point default-value rule don't explode).
 - INDIVIDUAL point: prompt focused on that one case.
 Prompt is ENGLISH and contains ruleId+name, category (displayCategory), severity, origin
 engine, document(s), reason(s) and suggestion(s). Copy via navigator.clipboard with
 fallback on textarea+execCommand (WebView2 sometimes blocks clipboard). Confirmation:
-"Maia prompt copied — paste it into Maia". Not in the exported report (interactive=false).
-Data/UI separation intact. DIRECT injection into Maia remains unproven → not built.
+"AI prompt copied — paste it into your AI chat". Not in the exported report (interactive=false).
+Data/UI separation intact. DIRECT injection into AI chat remains unproven → not built.
 
 ### FIRST OWN RULE on the project security export — Lint #12  [BUILT]
 "Project role should have at most one module role per module" (CLEVR-MAINT-005). No
@@ -985,7 +985,7 @@ fingerprint sha1(ruleId|documentQualifiedName|elementName), already on every Vio
 - STALE exclusions (fingerprint matches no current violation) visibly marked
   ("stale — no longer matches"), with Remove. REPORT: separate "Excluded improvements" section
   (matched + stale, with reason), static (no buttons). Toast feedback on exclude/remove.
-- EXCLUDE RULE (extension): "Exclude rule" button on the rule header (next to Copy Maia prompt)
+- EXCLUDE RULE (extension): "Exclude rule" button on the rule header (next to Copy AI prompt)
   excludes ALL points under the rule with the SAME reason. Reuses the mandatory-reason
   dialog (openReasonDialog). Writes one exclusion per UNIQUE fingerprint via a batch
   ("AddExclusions" → ExclusionStore.AddMany, one file write, upsert=dedup) — bundled
@@ -1015,15 +1015,15 @@ improvement until validly answered, and must be rechecked after 30 days.
   answer/date/who/recheck date. Expired "yes" (≥30d) or "no"/unanswered → counts as open.
 - INTEGRATION: open checks become synthetic violations (kind="manual", origin "manual" — 4th
   origin in the filter + count card + status + report header) and flow through the existing
-  pipeline: category (Performance), counts, filters, System filter, Exclude + Ask-Maia.
+  pipeline: category (Performance), counts, filters, System filter, Exclude + Ask AI.
   Data/UI separation intact; exclusions infra reused (store/handlers/dialog/sections).
 
-### Phase 5 (old design) — "Ask Maia" prompt (PASTE variant)  [feasible; injection NOT]
+### Phase 5 (old design) — "Ask AI" prompt (PASTE variant)  [feasible; injection NOT]
 Split the idea in two:
-- FEASIBLE: an "Ask Maia" button on an improvement that GENERATES a context-rich PROMPT
-  (improvement + rule + document + remediation) that the developer pastes into Maia
+- FEASIBLE: an "Ask AI" button on an improvement that GENERATES a context-rich PROMPT
+  (improvement + rule + document + remediation) that the developer pastes into their AI chat
   themselves. This is purely assembling text in your own panel -> certainly possible.
-- UNPROVEN: inject the prompt DIRECTLY into Maia. Requires a Maia API
+- UNPROVEN: inject the prompt DIRECTLY into AI chat. Requires an AI chat API
   for extensions whose existence is NOT known. Do not build on this until
   proven. Start with the paste variant; that delivers almost all the value.
 
@@ -1062,7 +1062,7 @@ engine OR if Mendix ever cleans up the BSON output to clean JSON
   mxlint-extension (open source) does its distribution.
 - STRATEGIC (discuss with CLEVR colleagues): Mendix is developing mxcli as
   AI access to Mendix. Position the extension as the CLEVR AGGREGATOR +
-  CLEVR context (categories, calibration, report-for-client, Ask-Maia) on top of
+  CLEVR context (categories, calibration, report-for-client, Ask AI) on top of
   the engines — NOT as "Lint rebuilt". Actual state after the inventory:
   * mxcli + mxlint cover the BROAD Blue tier (structure, naming, security,
     accessibility, complexity-as-count) well.
@@ -1092,6 +1092,6 @@ do not let it plough through the entire repo.
 - _reference/mxlint-rules ......... the Rego rules + metadata (# METADATA block; NOTE CRLF)
 
 ## IDEAS PARKING LOT (weigh later, don't forget)
-- Ask-Maia DIRECT injection (if a Maia extension API ever turns out to exist).
+- Ask AI DIRECT injection (if an AI chat extension API ever turns out to exist).
 - (Add new ideas here so they don't interrupt the current phase but are
   also not lost.)

@@ -76,15 +76,13 @@ function buildCategoryHtml(category: string, items: Violation[], state: AppState
     if (!byRule.has(v.ruleId)) byRule.set(v.ruleId, { rule: v, vs: [] });
     byRule.get(v.ruleId)!.vs.push(v);
   }
-  const rules = [...byRule.values()].sort((a, b) => {
-    const ak = a.rule.kind === "lint" ? 0 : 1;
-    const bk = b.rule.kind === "lint" ? 0 : 1;
-    return ak - bk || a.rule.ruleId.localeCompare(b.rule.ruleId);
-  });
+  const rules = [...byRule.values()].sort((a, b) =>
+    a.rule.ruleId.localeCompare(b.rule.ruleId)
+  );
 
   const rulesHtml = rules.map(({ rule, vs }) => {
     const sev = rule.severity ?? "";
-    const name = rule.kind === "lint" ? (rule.lintCode ?? "") : (state.ruleNames[rule.ruleId] ?? "");
+    const name = state.ruleNames[rule.ruleId] ?? "";
 const instancesHtml = vs.map((v) => {
       const where = v.elementName
         ? `${esc(v.documentType)}: <span class="qname">${esc(v.documentQualifiedName)}</span> › <span class="elem">${esc(v.elementName)}</span>`

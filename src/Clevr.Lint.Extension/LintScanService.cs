@@ -7,8 +7,8 @@ namespace Clevr.Lint.Extension;
 
 /// <summary>
 /// Connects the mxcli engine to the normalizer.
-/// Chain: load settings + rules.json → run mxcli → parse JSON (MxcliOutputParser)
-/// → normalize (MxcliNormalizer + RuleRegistry) → JSON for the webview.
+/// Chain: load settings → run mxcli → parse JSON (MxcliOutputParser)
+/// → normalize (MxcliNormalizer) → JSON for the webview.
 ///
 /// Contains ONLY IO and wiring; no normalization logic.
 /// </summary>
@@ -59,9 +59,11 @@ public sealed class LintScanService
         {
             var settings = LoadSettings(fallbackProjectDir);
             var (projectDir, mprFileName, error) = ResolveProject(settings.ProjectPath);
-            if (error != null) return null;
 
-            var catalog = LoadRuleCatalog(settings.MxcliPath, mprFileName, projectDir);
+            var catalog = error != null
+                ? LoadRuleCatalogGlobal(settings.MxcliPath)
+                : LoadRuleCatalog(settings.MxcliPath, mprFileName, projectDir);
+
             if (catalog.Count == 0) return null;
 
             return (
@@ -118,8 +120,6 @@ public sealed class LintScanService
 
         DebugLog.Write(projectDir, $"=== Scan for improvements === projectDir='{projectDir}' | settings.ProjectPath='{settings.ProjectPath}' | fallback='{fallbackProjectDir}'");
 
-        var registry = LoadRegistry();
-
         var arguments = $"lint -p \"{mprFileName}\" --format json";
         var commandLine = $"\"{settings.MxcliPath}\" {arguments}";
         _log.Info($"[CLEVR Lint] {commandLine}  (cwd: {projectDir})");
@@ -136,7 +136,20 @@ public sealed class LintScanService
         try { raw = MxcliOutputParser.Parse(proc.StdOut); }
         catch (Exception parseEx) { return (null, Diagnostic($"Could not parse mxcli JSON: {parseEx.Message}", commandLine, projectDir, proc)); }
 
-        var violations = new MxcliNormalizer().Normalize(raw, registry).ToList();
+        var violations = new MxcliNormalizer().Normalize(raw).ToList();
+
+        var linterConfig = new LinterConfigStore().Load(projectDir);
+        if (linterConfig.ExcludedModules.Count > 0)
+        {
+            var excluded = new HashSet<string>(linterConfig.ExcludedModules, StringComparer.Ordinal);
+            violations = violations.Where(v =>
+            {
+                var qn = v.DocumentQualifiedName;
+                var dot = qn.IndexOf('.');
+                var moduleName = dot > 0 ? qn[..dot] : qn;
+                return !excluded.Contains(moduleName);
+            }).ToList();
+        }
 
         var catalog = LoadRuleCatalog(settings.MxcliPath, mprFileName, projectDir);
         var ruleNames = catalog.ToDictionary(kv => kv.Key, kv => kv.Value.Name, StringComparer.Ordinal);
@@ -168,8 +181,6 @@ public sealed class LintScanService
             exitCode = fast.ExitCode,
             rawCount = fast.RawCount,
             violationCount = violations.Count,
-            lintCount = violations.Count(v => v.Kind == ViolationKind.Lint),
-            genericCount = violations.Count(v => v.Kind == ViolationKind.Generic),
             stderr = fast.StdErr,
             deepScan,
             ruleNames = fast.RuleNames,
@@ -177,8 +188,7 @@ public sealed class LintScanService
             appStoreModules = fast.AppStoreModules,
             violations,
         };
-        _log.Info($"[CLEVR Lint] {fast.RawCount} raw → {violations.Count} normalized " +
-                  $"({payload.lintCount} lint / {payload.genericCount} generic), exit={fast.ExitCode}");
+        _log.Info($"[CLEVR Lint] {fast.RawCount} raw → {violations.Count} normalized, exit={fast.ExitCode}");
         return JsonSerializer.Serialize(payload, JsonOut);
     }
 
@@ -244,12 +254,6 @@ public sealed class LintScanService
         return LintScanSettings.Load(json, fallbackProjectDir);
     }
 
-    private RuleRegistry LoadRegistry()
-    {
-        var path = _files.ResolvePath("rules.json");
-        return RuleRegistryJson.Parse(File.ReadAllText(path));
-    }
-
     /// <summary>
     /// Retrieves ruleId → (name, mxcli category) via `mxcli lint --list-rules`. Best-effort.
     /// </summary>
@@ -265,6 +269,22 @@ public sealed class LintScanService
         catch (Exception ex)
         {
             _log.Warn($"[CLEVR Lint] could not load rule catalog: {ex.Message}");
+            return new Dictionary<string, MxcliRuleInfo>();
+        }
+    }
+
+    private IReadOnlyDictionary<string, MxcliRuleInfo> LoadRuleCatalogGlobal(string mxcliPath)
+    {
+        try
+        {
+            var proc = ProcessRunner.Run(mxcliPath, "lint --list-rules");
+            var catalog = MxcliRulesCatalogParser.Parse(proc.StdOut);
+            _log.Info($"[CLEVR Lint] {catalog.Count} rules (name+category) from --list-rules (no project)");
+            return catalog;
+        }
+        catch (Exception ex)
+        {
+            _log.Warn($"[CLEVR Lint] could not load global rule catalog: {ex.Message}");
             return new Dictionary<string, MxcliRuleInfo>();
         }
     }

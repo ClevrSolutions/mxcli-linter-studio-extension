@@ -34,6 +34,8 @@ export function Toolbar() {
     post("ExportHtml", { html });
   }
 
+  if (state.settingsVisible) return null;
+
   return (
     <div className="lint-toolbar">
       <button
@@ -58,6 +60,15 @@ export function Toolbar() {
           Export
         </button>
       )}
+      <button
+        type="button"
+        disabled={state.scanStreaming}
+        title="Rule settings — enable/disable rules and override severity"
+        className="lint-toolbar-settings"
+        onClick={() => dispatch({ type: "SHOW_SETTINGS" })}
+      >
+        ⚙ Settings
+      </button>
     </div>
   );
 }

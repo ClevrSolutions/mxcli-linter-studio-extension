@@ -53,9 +53,8 @@ export const GENERIC_PREFIX_FALLBACK: Record<string, string> = {
 };
 
 export const ORIGINS = [
-  { key: "lint" as const, label: "Lint" },
   { key: "mxcli" as const, label: "MxCLI" },
   { key: "manual" as const, label: "Manual checks" },
 ];
 
-export const MAIA_RULE_CAP = 50;
+export const AI_RULE_CAP = 50;

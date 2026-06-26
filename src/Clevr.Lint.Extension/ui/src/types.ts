@@ -1,4 +1,4 @@
-﻿export type ViolationKind = "lint" | "mxcli" | "manual";
+﻿export type ViolationKind = "mxcli" | "manual";
 
 export interface ManualCheckDef {
   id: string;
@@ -30,8 +30,6 @@ export interface ManualCheckState {
 export interface Violation {
   ruleId: string;
   kind: ViolationKind;
-  source: string;
-  lintCode?: string;
   category: string;
   severity: string;
   documentType: string;
@@ -91,4 +89,14 @@ export interface ExcludedView {
 export interface RuleGroup {
   rule: Violation;
   items: Violation[];
+}
+
+export interface LinterConfigRule {
+  enabled?: boolean;
+  severity?: string;
+}
+
+export interface LinterConfig {
+  rules: Record<string, LinterConfigRule>;
+  excludedModules: string[];
 }

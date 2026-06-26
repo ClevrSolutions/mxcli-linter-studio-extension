@@ -2,7 +2,7 @@
 import { useAppDispatch, useAppState } from "../context/AppContext";
 import type { Violation } from "../types";
 import { copyToClipboard } from "../hooks/useClipboard";
-import { maiaPromptForRule } from "../utils/maia";
+import { aiPromptForRule } from "../utils/ai";
 import { previewText, ruleName } from "../utils/grouping";
 import { ExcludeRuleDialog } from "./dialogs/ExcludeRuleDialog";
 import { ViolationInstance } from "./ViolationInstance";
@@ -21,14 +21,14 @@ export function RuleCard({ rule, items, interactive = true }: Props) {
 const name = ruleName(rule, state.ruleNames);
   const preview = previewText(items[0]?.reason);
 
-  async function copyMaia(e: React.MouseEvent) {
+  async function copyAiPrompt(e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
-    const prompt = maiaPromptForRule(rule, items, state.ruleNames, state.ruleCategories);
+    const prompt = aiPromptForRule(rule, items, state.ruleNames, state.ruleCategories);
     const ok = await copyToClipboard(prompt);
     dispatch({
       type: "SHOW_TOAST",
-      text: ok ? "Maia prompt copied — paste it into Maia" : "Could not copy the Maia prompt to the clipboard.",
+      text: ok ? "AI prompt copied — paste it into AI chat" : "Could not copy the AI prompt to the clipboard.",
       isError: !ok,
     });
   }
@@ -50,8 +50,8 @@ const name = ruleName(rule, state.ruleNames);
           <span className="lint-rule-count">{items.length} improvements</span>
           {interactive && (
             <>
-              <button type="button" className="lint-maia-btn" title="Generate an English prompt for Maia and copy it to the clipboard" onClick={copyMaia}>
-                Copy Maia prompt
+              <button type="button" className="lint-ai-btn" title="Generate an English prompt for AI and copy it to the clipboard" onClick={copyAiPrompt}>
+                Copy AI prompt
               </button>
               <button type="button" className="lint-exclude-rule-btn" title="Exclude all findings for this rule with one reason" onClick={openExcludeRule}>
                 Exclude rule

@@ -5,6 +5,7 @@ import { useMessageBus } from "./hooks/useMessageBus";
 import { Toolbar } from "./components/Toolbar";
 import { FilterBar } from "./components/FilterBar";
 import { Report } from "./components/Report";
+import { Settings } from "./components/Settings";
 import { Toast } from "./components/Toast";
 import { activeViolations } from "./utils/filters";
 import { answeredManualChecks } from "./utils/manualChecks";
@@ -57,30 +58,35 @@ export function App() {
 
           <Toolbar />
 
-          {hasAnything && (
+          {state.settingsVisible ? (
+            <Settings />
+          ) : (
             <>
-              <input
-                id="filter"
-                className="lint-search"
-                type="search"
-                placeholder="Filter by rule, document, category, severity, reason…"
-                value={state.filterQuery}
-                onChange={(e) => dispatch({ type: "SET_FILTER_QUERY", query: e.target.value })}
-                style={{ display: "block", width: "100%", marginBottom: 8 }}
-              />
-              <button
-                type="button"
-                title="Clear all filters (category, severity, source, text)"
-                onClick={() => dispatch({ type: "RESET_FILTERS" })}
-                style={{ marginBottom: 8 }}
-              >
-                Reset filters
-              </button>
-              <FilterBar />
+              {hasAnything && (
+                <>
+                  <input
+                    id="filter"
+                    className="lint-search"
+                    type="search"
+                    placeholder="Filter by rule, document, category, severity, reason…"
+                    value={state.filterQuery}
+                    onChange={(e) => dispatch({ type: "SET_FILTER_QUERY", query: e.target.value })}
+                    style={{ display: "block", width: "100%", marginBottom: 8 }}
+                  />
+                  <button
+                    type="button"
+                    title="Clear all filters (category, severity, source, text)"
+                    onClick={() => dispatch({ type: "RESET_FILTERS" })}
+                    style={{ marginBottom: 8 }}
+                  >
+                    Reset filters
+                  </button>
+                  <FilterBar />
+                </>
+              )}
+              <Report />
             </>
           )}
-
-          <Report />
 
           <div className="lint-footer">
             Requires Mendix Studio Pro 11 or higher (Extensibility API 11.10, .NET 10, mxcli). · CLEVR Lint

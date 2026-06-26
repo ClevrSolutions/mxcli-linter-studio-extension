@@ -18,11 +18,5 @@
     <ProjectReference Include="..\Clevr.Lint.Normalizer\Clevr.Lint.Normalizer.csproj" />
   </ItemGroup>
 
-  <!-- De echte rule registry meekopiëren zodat de data-keten-test 'm kan laden. -->
-  <ItemGroup>
-    <None Include="..\rules.sample.json" Link="rules.sample.json">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
 
 </Project>

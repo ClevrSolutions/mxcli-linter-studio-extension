@@ -104,11 +104,11 @@ details.lint-rule > summary { cursor: pointer; list-style: revert; padding: 8px 
 .lint-ruleid { font-weight: 600; font-family: "Cascadia Code", Consolas, monospace; }
 .lint-acrcode { color: var(--clevr-muted); font-size: 12px; }
 .lint-rule-count { margin-left: auto; color: var(--clevr-muted); font-size: 12px; font-variant-numeric: tabular-nums; }
-.lint-maia-btn { padding: 2px 10px; font-size: 11px; font-weight: 600; cursor: pointer;
+.lint-ai-btn { padding: 2px 10px; font-size: 11px; font-weight: 600; cursor: pointer;
                 border: 1px solid var(--clevr-accent); color: var(--clevr-accent);
                 background: #eef3f8; border-radius: 12px; white-space: nowrap; }
-.lint-maia-btn:hover { background: var(--clevr-accent); color: #fff; }
-details.lint-rule > summary .lint-maia-btn { margin-left: 8px; }
+.lint-ai-btn:hover { background: var(--clevr-accent); color: #fff; }
+details.lint-rule > summary .lint-ai-btn { margin-left: 8px; }
 .lint-instance-actions { margin: 4px 0 2px; display: flex; gap: 8px; flex-wrap: wrap; }
 
 .lint-exclude-btn { padding: 2px 10px; font-size: 11px; font-weight: 600; cursor: pointer;
@@ -192,3 +192,42 @@ details.lint-rule > summary .lint-maia-btn { margin-left: 8px; }
 .lint-docslink a { color: var(--clevr-accent); text-decoration: none; }
 .lint-docslink a:hover { text-decoration: underline; }
 .lint-empty { color: var(--clevr-muted); font-style: italic; padding: 16px 0; }
+
+/* Settings */
+.lint-toolbar-settings { margin-left: auto; }
+.lint-settings { padding: 0; }
+.lint-settings-header { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid var(--clevr-border); }
+.lint-settings-header h2 { margin: 0; font-size: 14px; font-weight: 600; flex: 1; }
+.lint-settings-back { padding: 4px 10px; font-size: 12px; }
+.lint-settings-header-actions { display: flex; align-items: center; gap: 8px; }
+.lint-settings-unsaved { font-size: 12px; color: var(--clevr-muted); font-style: italic; }
+.lint-settings-save { padding: 4px 12px; }
+.lint-settings-tabs { display: flex; gap: 0; margin-bottom: 12px; border-bottom: 1px solid var(--clevr-border); }
+.lint-settings-tab { background: none; border: none; border-bottom: 2px solid transparent; padding: 6px 14px; font-size: 12px; font-weight: 500; color: var(--clevr-muted); cursor: pointer; margin-bottom: -1px; }
+.lint-settings-tab:hover:not(:disabled) { color: var(--clevr-fg); }
+.lint-settings-tab.active { color: var(--clevr-fg); border-bottom-color: var(--clevr-accent); }
+.lint-settings-tab:disabled { opacity: .4; cursor: default; }
+.lint-settings-desc { color: var(--clevr-muted); font-size: 12px; margin: 0 0 12px; }
+.lint-settings-empty { color: var(--clevr-muted); font-style: italic; }
+.lint-settings-section { margin-bottom: 20px; }
+.lint-settings-category { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--clevr-muted); margin: 0 0 6px; }
+.lint-settings-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.lint-settings-table th { text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--clevr-border); color: var(--clevr-muted); font-weight: 500; }
+.lint-settings-table td { padding: 4px 8px; border-bottom: 1px solid var(--clevr-border); vertical-align: middle; }
+.lint-settings-table tr:last-child td { border-bottom: none; }
+.lint-settings-disabled-row td { opacity: .45; }
+.lint-settings-rule-cell { display: flex; flex-direction: column; gap: 2px; }
+.lint-settings-module-cell { font-size: 12px; }
+.lint-settings-rule-id { font-family: monospace; font-size: 11px; color: var(--clevr-muted); }
+.lint-settings-rule-name { font-size: 12px; }
+.lint-settings-enabled-cell { width: 60px; text-align: center; }
+.lint-settings-severity-cell { width: 120px; }
+.lint-settings-severity-cell select { font-size: 12px; padding: 2px 4px; width: 100%; }
+.lint-settings-rules-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.lint-settings-category-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.lint-settings-category-header .lint-settings-category { margin: 0; }
+.lint-settings-col-header { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.lint-settings-bulk-actions { display: flex; align-items: center; gap: 4px; white-space: nowrap; }
+.lint-settings-bulk-btn { background: none; border: none; color: var(--clevr-accent); font-size: 11px; cursor: pointer; padding: 0; text-decoration: underline; opacity: .85; }
+.lint-settings-bulk-btn:hover { opacity: 1; }
+.lint-settings-bulk-sep { color: var(--clevr-muted); font-size: 11px; }
