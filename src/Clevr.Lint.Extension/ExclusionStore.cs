@@ -28,7 +28,12 @@ public sealed class ExclusionStore
     {
         if (string.IsNullOrWhiteSpace(projectDir)) return new List<Exclusion>();
         var path = PathFor(projectDir);
-        return File.Exists(path) ? ExclusionsJson.Parse(File.ReadAllText(path)) : new List<Exclusion>();
+        if (!File.Exists(path)) return new List<Exclusion>();
+        var json = File.ReadAllText(path);
+        var list = ExclusionsJson.Parse(json);
+        if (list.Count == 0 && json.Trim().Length > 10)
+            DebugLog.Write(projectDir, $"exclusions.json exists but parsed to empty list — possibly corrupt: {path}");
+        return list;
     }
 
     /// <summary>Adds an exclusion (or replaces the one with the same fingerprint) and writes it out.</summary>
@@ -74,6 +79,9 @@ public sealed class ExclusionStore
     {
         var dir = Path.Combine(projectDir, Dir);
         Directory.CreateDirectory(dir);
-        File.WriteAllText(Path.Combine(dir, File_), ExclusionsJson.Serialize(list));
+        var filePath = Path.Combine(dir, File_);
+        var tmpPath = filePath + ".tmp";
+        File.WriteAllText(tmpPath, ExclusionsJson.Serialize(list));
+        File.Move(tmpPath, filePath, overwrite: true);
     }
 }

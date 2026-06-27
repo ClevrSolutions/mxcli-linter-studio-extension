@@ -27,4 +27,7 @@ public sealed class MxcliViolation
     [JsonPropertyName("documentId")] public string? DocumentId { get; set; }
 
     [JsonPropertyName("suggestion")] public string? Suggestion { get; set; }
+
+    /// <summary>Optional sub-element name (e.g. widget or attribute); null when not applicable.</summary>
+    [JsonPropertyName("element")] public string? Element { get; set; }
 }

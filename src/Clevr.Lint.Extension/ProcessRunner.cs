@@ -26,7 +26,7 @@ public static class ProcessRunner
     /// Synchronous from the outside (suitable to run inside Task.Run); blocks the calling
     /// thread until the process finishes — but without pipe deadlock.
     /// </summary>
-    public static Result Run(string fileName, string arguments, string? workingDirectory = null, int timeoutMs = 0)
+    public static Result Run(string fileName, string arguments, string? workingDirectory = null, int timeoutMs = 0, CancellationToken ct = default)
     {
         try
         {
@@ -52,9 +52,27 @@ public static class ProcessRunner
             var stdoutTask = process.StandardOutput.ReadToEndAsync();
             var stderrTask = process.StandardError.ReadToEndAsync();
 
-            bool exited = timeoutMs > 0 ? process.WaitForExit(timeoutMs) : WaitForExitInfinite(process);
-            if (!exited)
+            try
             {
+                if (timeoutMs > 0)
+                {
+                    using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                    linkedCts.CancelAfter(timeoutMs);
+                    process.WaitForExitAsync(linkedCts.Token).GetAwaiter().GetResult();
+                }
+                else
+                {
+                    process.WaitForExitAsync(ct).GetAwaiter().GetResult();
+                }
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                try { process.Kill(entireProcessTree: true); } catch { /* best-effort */ }
+                return new Result(GetPartial(stdoutTask), GetPartial(stderrTask), -1, false, "cancelled");
+            }
+            catch (OperationCanceledException)
+            {
+                // timeout (inner CTS fired, not the user-passed ct)
                 try { process.Kill(entireProcessTree: true); } catch { /* best-effort */ }
                 return new Result(
                     GetPartial(stdoutTask), GetPartial(stderrTask), -1, false,
@@ -71,12 +89,6 @@ public static class ProcessRunner
             // E.g. file not found (binary not on PATH) — show the error in the UI.
             return new Result(string.Empty, string.Empty, -1, false, ex.Message);
         }
-    }
-
-    private static bool WaitForExitInfinite(Process process)
-    {
-        process.WaitForExit();
-        return true;
     }
 
     /// <summary>Best-effort partial output after a timeout/kill — do not block forever.</summary>

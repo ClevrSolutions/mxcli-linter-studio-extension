@@ -35,6 +35,8 @@ public sealed class MxcliNormalizer
             var documentId = NullIfBlank(raw.DocumentId);
             var suggestion = NullIfBlank(raw.Suggestion);
 
+            var elementName = NullIfBlank(raw.Element) ?? "";
+
             result.Add(new Violation
             {
                 RuleId = raw.RuleId,
@@ -43,10 +45,11 @@ public sealed class MxcliNormalizer
                 Severity = raw.Severity,
                 DocumentType = documentType,
                 DocumentQualifiedName = documentQualifiedName,
+                ElementName = elementName,
                 Reason = raw.Message,
                 Suggestion = suggestion,
                 DocumentId = documentId,
-                Fingerprint = Fingerprint.Compute(raw.RuleId, documentQualifiedName, ""),
+                Fingerprint = Fingerprint.Compute(raw.RuleId, documentQualifiedName, elementName),
             });
         }
 

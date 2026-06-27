@@ -4,9 +4,7 @@ import type { Violation } from "../types";
 import { post } from "../hooks/useMessageBus";
 import { copyToClipboard } from "../hooks/useClipboard";
 import { aiPromptForFinding } from "../utils/ai";
-import { manualStateLabel } from "../utils/manualChecks";
 import { ExcludeDialog } from "./dialogs/ExcludeDialog";
-import { ManualCheckDialog } from "./dialogs/ManualCheckDialog";
 
 interface Props {
   rule: Violation;
@@ -18,7 +16,6 @@ export function ViolationInstance({ rule, v, interactive = true }: Props) {
   const state = useAppState();
   const dispatch = useAppDispatch();
   const [showExclude, setShowExclude] = useState(false);
-  const [showManual, setShowManual] = useState(false);
 
   async function copyAiPrompt() {
     const prompt = aiPromptForFinding(rule, v, state.ruleNames, state.ruleCategories);
@@ -45,29 +42,20 @@ export function ViolationInstance({ rule, v, interactive = true }: Props) {
 
   return (
     <div className="lint-instance">
-      {v.kind === "manual" && v.manual ? (
-        <div className="lint-manual-state">{manualStateLabel(v.manual)}</div>
-      ) : (
-        <div
-          className={"lint-doc" + (interactive ? " lint-doc-clickable" : "")}
-          title={interactive ? "Open this document in Studio Pro" : undefined}
-          onClick={interactive ? openDoc : undefined}
-        >
-          <span className="doctype">{v.documentType}: </span>
-          <span className="qname">{v.documentQualifiedName}</span>
-          {v.elementName && <><span> › </span><span className="elem">{v.elementName}</span></>}
-          {interactive && <span className="lint-open-hint"> ↗ open</span>}
-        </div>
-      )}
+      <div
+        className={"lint-doc" + (interactive ? " lint-doc-clickable" : "")}
+        title={interactive ? "Open this document in Studio Pro" : undefined}
+        onClick={interactive ? openDoc : undefined}
+      >
+        <span className="doctype">{v.documentType}: </span>
+        <span className="qname">{v.documentQualifiedName}</span>
+        {v.elementName && <><span> › </span><span className="elem">{v.elementName}</span></>}
+        {interactive && <span className="lint-open-hint"> ↗ open</span>}
+      </div>
       <div className="lint-reason">{v.reason}</div>
       {v.suggestion && <div className="lint-suggestion">{v.suggestion}</div>}
       {interactive && (
         <div className="lint-instance-actions">
-          {v.kind === "manual" && v.manual && (
-            <button type="button" className="lint-answer-btn" onClick={() => setShowManual(true)}>
-              {v.manual.status === "unanswered" ? "Answer" : "Re-answer"}
-            </button>
-          )}
           <button type="button" className="lint-ai-btn" title="Generate an English prompt for AI and copy it to the clipboard" onClick={copyAiPrompt}>
             Copy AI prompt
           </button>
@@ -89,7 +77,6 @@ export function ViolationInstance({ rule, v, interactive = true }: Props) {
         </div>
       )}
       {showExclude && <ExcludeDialog v={v} onClose={() => setShowExclude(false)} />}
-      {showManual && v.manual && <ManualCheckDialog state={v.manual} onClose={() => setShowManual(false)} />}
     </div>
   );
 }

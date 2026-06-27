@@ -28,7 +28,6 @@ export function previewText(text: string | undefined, max = 60): string {
 }
 
 export function ruleName(rule: Violation, ruleNames: Record<string, string>): string {
-  if (rule.kind === "manual") return "Manual check";
   return ruleNames[rule.ruleId] ?? "";
 }
 

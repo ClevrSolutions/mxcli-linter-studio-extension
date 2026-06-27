@@ -33,13 +33,13 @@ public sealed class LintScanService
     /// <summary>
     /// Runs the mxcli scan and returns one merged JSON end result.
     /// </summary>
-    public string RunScanAsJson(string? fallbackProjectDir, bool deepScan = false)
+    public string RunScanAsJson(string? fallbackProjectDir)
     {
         try
         {
             var (fast, error) = RunFastPhase(fallbackProjectDir);
             if (error is not null) return error;
-            return SerializeScan(fast!, fast!.Violations, deepScan);
+            return SerializeScan(fast!, fast!.Violations);
         }
         catch (Exception ex)
         {
@@ -71,21 +71,22 @@ public sealed class LintScanService
                 catalog.ToDictionary(kv => kv.Key, kv => kv.Value.Category, StringComparer.Ordinal)
             );
         }
-        catch { return null; }
+        catch (Exception ex) { _log.Warn($"[CLEVR Lint] TryLoadRulesCatalog failed: {ex.Message}"); return null; }
     }
 
     /// <summary>
     /// Streamed scan: emit findings as one JSON batch via <paramref name="emit"/>.
     /// </summary>
-    public void RunScanStreaming(string? fallbackProjectDir, bool deepScan, Action<string> emit)
+    public void RunScanStreaming(string? fallbackProjectDir, Action<string> emit, CancellationToken ct = default)
     {
         try
         {
-            var (fast, error) = RunFastPhase(fallbackProjectDir);
+            var (fast, error) = RunFastPhase(fallbackProjectDir, ct);
+            if (fast == null && error == null) return; // cancelled
             if (error is not null) { emit(error); return; }
+            if (ct.IsCancellationRequested) return;
 
-            emit(SerializeBatch(fast!, fast!.Violations, deepScan, phase: "fast",
-                final: true, processed: 0, total: 0, label: null, requested: 0, returned: 0));
+            emit(SerializeBatch(fast!, fast!.Violations));
         }
         catch (Exception ex)
         {
@@ -110,7 +111,7 @@ public sealed class LintScanService
         public required string? StdErr;
     }
 
-    private (FastPhase?, string?) RunFastPhase(string? fallbackProjectDir)
+    private (FastPhase?, string?) RunFastPhase(string? fallbackProjectDir, CancellationToken ct = default)
     {
         var settings = LoadSettings(fallbackProjectDir);
 
@@ -124,7 +125,10 @@ public sealed class LintScanService
         var commandLine = $"\"{settings.MxcliPath}\" {arguments}";
         _log.Info($"[CLEVR Lint] {commandLine}  (cwd: {projectDir})");
 
-        var proc = ProcessRunner.Run(settings.MxcliPath, arguments, projectDir);
+        var proc = ProcessRunner.Run(settings.MxcliPath, arguments, projectDir, timeoutMs: 300_000, ct);
+
+        if (ct.IsCancellationRequested)
+            return (null, null);
 
         if (proc.Error is not null)
             return (null, Diagnostic($"mxcli could not start: {proc.Error}", commandLine, projectDir, proc));
@@ -151,7 +155,7 @@ public sealed class LintScanService
             }).ToList();
         }
 
-        var catalog = LoadRuleCatalog(settings.MxcliPath, mprFileName, projectDir);
+        var catalog = LoadRuleCatalog(settings.MxcliPath, mprFileName, projectDir, ct);
         var ruleNames = catalog.ToDictionary(kv => kv.Key, kv => kv.Value.Name, StringComparer.Ordinal);
         var ruleCategories = catalog.ToDictionary(kv => kv.Key, kv => kv.Value.Category, StringComparer.Ordinal);
 
@@ -171,7 +175,7 @@ public sealed class LintScanService
         }, null);
     }
 
-    private string SerializeScan(FastPhase fast, List<Violation> violations, bool deepScan)
+    private string SerializeScan(FastPhase fast, List<Violation> violations)
     {
         var payload = new
         {
@@ -182,7 +186,6 @@ public sealed class LintScanService
             rawCount = fast.RawCount,
             violationCount = violations.Count,
             stderr = fast.StdErr,
-            deepScan,
             ruleNames = fast.RuleNames,
             ruleCategories = fast.RuleCategories,
             appStoreModules = fast.AppStoreModules,
@@ -192,26 +195,22 @@ public sealed class LintScanService
         return JsonSerializer.Serialize(payload, JsonOut);
     }
 
-    private string SerializeBatch(FastPhase fast, List<Violation> violations, bool deepScan, string phase,
-        bool final, int processed, int total, string? label, int requested, int returned)
+    private string SerializeBatch(FastPhase fast, List<Violation> violations)
     {
-        var isFast = phase == "fast";
         var payload = new
         {
             ok = true,
             streaming = true,
-            phase,
-            final,
-            progress = isFast ? null : new { processed, total, label, requested, returned },
-            command = isFast ? fast.Command : null,
-            workingDirectory = isFast ? fast.ProjectDir : null,
-            exitCode = isFast ? fast.ExitCode : (int?)null,
-            rawCount = isFast ? fast.RawCount : (int?)null,
-            stderr = isFast ? fast.StdErr : null,
-            deepScan = isFast ? deepScan : (bool?)null,
-            ruleNames = isFast ? fast.RuleNames : null,
-            ruleCategories = isFast ? fast.RuleCategories : null,
-            appStoreModules = isFast ? fast.AppStoreModules : null,
+            phase = "fast",
+            final = true,
+            command = fast.Command,
+            workingDirectory = fast.ProjectDir,
+            exitCode = fast.ExitCode,
+            rawCount = fast.RawCount,
+            stderr = fast.StdErr,
+            ruleNames = fast.RuleNames,
+            ruleCategories = fast.RuleCategories,
+            appStoreModules = fast.AppStoreModules,
             violationCount = violations.Count,
             violations,
         };
@@ -257,13 +256,14 @@ public sealed class LintScanService
     /// <summary>
     /// Retrieves ruleId → (name, mxcli category) via `mxcli lint --list-rules`. Best-effort.
     /// </summary>
-    private IReadOnlyDictionary<string, MxcliRuleInfo> LoadRuleCatalog(string mxcliPath, string mprFileName, string projectDir)
+    private IReadOnlyDictionary<string, MxcliRuleInfo> LoadRuleCatalog(string mxcliPath, string mprFileName, string projectDir, CancellationToken ct = default)
     {
         try
         {
-            var proc = ProcessRunner.Run(mxcliPath, $"lint -p \"{mprFileName}\" --list-rules", projectDir);
+            var proc = ProcessRunner.Run(mxcliPath, $"lint -p \"{mprFileName}\" --list-rules", projectDir, timeoutMs: 30_000, ct);
             var catalog = MxcliRulesCatalogParser.Parse(proc.StdOut);
             _log.Info($"[CLEVR Lint] {catalog.Count} rules (name+category) from --list-rules");
+            DebugLog.Write(projectDir, $"[catalog] {catalog.Count} rules loaded; PH001 present={catalog.ContainsKey("PH001")}; stdout-len={proc.StdOut?.Length}");
             return catalog;
         }
         catch (Exception ex)
@@ -273,11 +273,11 @@ public sealed class LintScanService
         }
     }
 
-    private IReadOnlyDictionary<string, MxcliRuleInfo> LoadRuleCatalogGlobal(string mxcliPath)
+    private IReadOnlyDictionary<string, MxcliRuleInfo> LoadRuleCatalogGlobal(string mxcliPath, CancellationToken ct = default)
     {
         try
         {
-            var proc = ProcessRunner.Run(mxcliPath, "lint --list-rules");
+            var proc = ProcessRunner.Run(mxcliPath, "lint --list-rules", timeoutMs: 30_000, ct: ct);
             var catalog = MxcliRulesCatalogParser.Parse(proc.StdOut);
             _log.Info($"[CLEVR Lint] {catalog.Count} rules (name+category) from --list-rules (no project)");
             return catalog;

@@ -25,3 +25,6 @@ dist/clevrlint/*.deps.json
 # OS
 .DS_Store
 Thumbs.db
+
+# Claude Code worktrees (ephemeral planning artifacts)
+.claude/worktrees/

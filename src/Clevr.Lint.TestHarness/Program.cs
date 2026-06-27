@@ -336,15 +336,13 @@ static void DispatchMessage(
             break;
 
         case "RunFullScan":
-        case "RunDeepScan":
         {
-            bool deep = message == "RunDeepScan";
             push("ScanProgress", "Analyzing with mxcli…");
             var gitTask = Task.Run(() => GitChangedDocumentsService.GetChangedDocumentIds(projectDir));
             try
             {
                 new LintScanService(fileService, logService)
-                    .RunScanStreaming(projectDir, deep, batchJson => push("LintViolations", batchJson));
+                    .RunScanStreaming(projectDir, batchJson => push("LintViolations", batchJson));
             }
             catch (Exception ex)
             {

@@ -231,3 +231,18 @@ details.lint-rule > summary .lint-ai-btn { margin-left: 8px; }
 .lint-settings-bulk-btn { background: none; border: none; color: var(--clevr-accent); font-size: 11px; cursor: pointer; padding: 0; text-decoration: underline; opacity: .85; }
 .lint-settings-bulk-btn:hover { opacity: 1; }
 .lint-settings-bulk-sep { color: var(--clevr-muted); font-size: 11px; }
+.lint-settings-marketplace-cell { width: 90px; text-align: center; }
+.lint-settings-marketplace-badge { display: inline-block; padding: 1px 7px; border-radius: 10px; font-size: 10px; font-weight: 700; letter-spacing: .03em; background: #e7eef6; color: var(--clevr-accent); cursor: default; user-select: none; white-space: nowrap; }
+
+/* Scan status in toolbar */
+.lint-scan-status { font-size: 0.82em; color: var(--text-secondary, #666); margin-right: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
+
+/* Cancel button */
+.lint-cancel-btn { background: transparent; border: 1px solid #c00; color: #c00; border-radius: 4px; padding: 2px 10px; cursor: pointer; font-size: 0.85em; }
+.lint-cancel-btn:hover { background: #fff0f0; }
+
+/* Inline search row */
+.lint-search-row { display: flex; align-items: center; gap: 4px; margin-bottom: 8px; }
+.lint-search-row .lint-search { flex: 1; margin-bottom: 0; }
+.lint-search-reset { flex-shrink: 0; background: transparent; border: 1px solid #ccc; border-radius: 4px; padding: 3px 8px; cursor: pointer; color: #666; font-size: 0.9em; line-height: 1; }
+.lint-search-reset:hover { background: #f0f0f0; color: #333; }

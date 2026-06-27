@@ -33,7 +33,8 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
     private readonly Func<IModel?> _getModel;
     private readonly IDockingWindowService _dockingWindowService;
     private readonly ExclusionStore _exclusions = new();
-    private readonly ManualCheckStore _manualChecks = new();
+    private CancellationTokenSource? _scanCts;
+    private SynchronizationContext? _uiContext;
 
     public DockablePaneViewModel(
         Uri baseUri,
@@ -53,6 +54,7 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
 
     public override void InitWebView(IWebView webView)
     {
+        _uiContext = SynchronizationContext.Current;
         webView.Address = new Uri(_baseUri, "index");
 
         webView.MessageReceived += (_, args) =>
@@ -77,15 +79,18 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
             }
             else if (args.Message == "RunFullScan")
             {
-                // FAST scan (default "Scan" button): export + catalog route + mxcli native + YAML route
-                // rules + manual checks. Skips the slow describe route (~seconds vs ~minutes).
-                RunFullScan(webView, SynchronizationContext.Current, deepScan: false);
+                var ctx = SynchronizationContext.Current;
+                _uiContext ??= ctx; // Capture the known-good UI context for background→UI marshaling
+                if (ctx == null)
+                    DebugLog.Write(_getProjectDir(), "[CLEVR Lint] WARNING: SynchronizationContext.Current is null at scan start — UI posts will run on background thread");
+                _scanCts?.Dispose();
+                _scanCts = new CancellationTokenSource();
+                RunFullScan(webView, ctx, _scanCts.Token);
             }
-            else if (args.Message == "RunDeepScan")
+            else if (args.Message == "CancelScan")
             {
-                // DEEPSCAN button: everything from the fast scan PLUS the describe route (5 microflow/expression/
-                // access rules) — the full analysis, ~minutes.
-                RunFullScan(webView, SynchronizationContext.Current, deepScan: true);
+                _scanCts?.Cancel();
+                DebugLog.Write(_getProjectDir(), "[CLEVR Lint] scan cancellation requested by user");
             }
             else if (args.Message == "ExportHtml")
             {
@@ -141,21 +146,9 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
             {
                 RemoveExclusions(webView, args.Data);
             }
-            else if (args.Message == "RequestManualChecks")
-            {
-                PostManualChecks(webView);
-            }
             else if (args.Message == "RequestRulesCatalog")
             {
-                _ = Task.Run(() => PostRulesCatalog(webView));
-            }
-            else if (args.Message == "AnswerManualCheck")
-            {
-                AnswerManualCheck(webView, args.Data);
-            }
-            else if (args.Message == "ClearManualCheck")
-            {
-                ClearManualCheck(webView, args.Data);
+                _ = Task.Run(() => PostRulesCatalog(webView, _uiContext));
             }
             else if (args.Message == "RequestLinterConfig")
             {
@@ -327,70 +320,6 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
         {
             _logService.Error("[CLEVR Lint] removing exclusions (batch) failed", ex);
             webView.PostMessage("ExclusionError", ex.Message);
-        }
-    }
-
-    // ---- Manual checks (control questions): mirrors the exclusions flow. C# only stores
-    // the answer per check-id; the questions + 30-day expiry live in the render layer.
-
-    private void PostManualChecks(IWebView webView)
-    {
-        try
-        {
-            webView.PostMessage("ManualCheckAnswers", _manualChecks.LoadJson(ExclusionsProjectDir()));
-        }
-        catch (Exception ex)
-        {
-            _logService.Error("[CLEVR Lint] loading manual checks failed", ex);
-            webView.PostMessage("ManualCheckError", ex.Message);
-        }
-    }
-
-    private void AnswerManualCheck(IWebView webView, JsonObject? data)
-    {
-        try
-        {
-            var id = data?["id"]?.GetValue<string>() ?? "";
-            var answer = (data?["answer"]?.GetValue<string>() ?? "").Trim().ToLowerInvariant();
-            var note = data?["note"]?.GetValue<string>()?.Trim() ?? "";
-            if (string.IsNullOrWhiteSpace(id)) { webView.PostMessage("ManualCheckError", "Missing manual-check id."); return; }
-            if (answer != "yes" && answer != "no") { webView.PostMessage("ManualCheckError", "Answer must be 'yes' or 'no'."); return; }
-            if (string.IsNullOrWhiteSpace(note))
-            {
-                // Server-side safeguard: never an answer without a mandatory explanation/reason.
-                webView.PostMessage("ManualCheckError", "An explanation (Yes) or reason (No) is required.");
-                return;
-            }
-            _manualChecks.Answer(ExclusionsProjectDir(), new ManualCheckAnswer
-            {
-                Id = id,
-                Answer = answer,
-                Note = note,
-                AnsweredBy = Environment.UserName,
-                Date = DateTime.Now.ToString("yyyy-MM-dd"),
-            });
-            PostManualChecks(webView);
-        }
-        catch (Exception ex)
-        {
-            _logService.Error("[CLEVR Lint] answering manual check failed", ex);
-            webView.PostMessage("ManualCheckError", ex.Message);
-        }
-    }
-
-    private void ClearManualCheck(IWebView webView, JsonObject? data)
-    {
-        try
-        {
-            var id = data?["id"]?.GetValue<string>() ?? "";
-            if (string.IsNullOrWhiteSpace(id)) { webView.PostMessage("ManualCheckError", "Missing manual-check id."); return; }
-            _manualChecks.Clear(ExclusionsProjectDir(), id);
-            PostManualChecks(webView);
-        }
-        catch (Exception ex)
-        {
-            _logService.Error("[CLEVR Lint] clearing manual check failed", ex);
-            webView.PostMessage("ManualCheckError", ex.Message);
         }
     }
 
@@ -639,12 +568,11 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
     }
 
     /// <summary>
-    /// Scan behind the "Scan" button. Runs mxcli lint + the CLEVR native rules (security export +
-    /// expression pass) on a background thread (UI stays responsive). Progress + results
-    /// are marshaled to the UI thread via the captured <paramref name="uiContext"/>.
-    /// Every outcome is posted (never silently stuck on "busy"): AcrViolations, ScanProgress, ScanFinished.
+    /// Scan behind the "Scan" button. Runs mxcli lint + the CLEVR native rules on a background thread
+    /// (UI stays responsive). Progress + results are marshaled to the UI thread via the captured
+    /// <paramref name="uiContext"/>. Every outcome is posted: LintViolations, ScanProgress, ScanFinished.
     /// </summary>
-    private void RunFullScan(IWebView webView, SynchronizationContext? uiContext, bool deepScan)
+    private void RunFullScan(IWebView webView, SynchronizationContext? uiContext, CancellationToken ct = default)
     {
         // One canonical project directory for BOTH steps (same resolution as exclusions/scan:
         // settings.ProjectPath → its directory, otherwise the open app). This ensures the export
@@ -668,14 +596,10 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
                 // Start git in parallel — finishes well before mxcli does on any real project.
                 var gitTask = Task.Run(() => GitChangedDocumentsService.GetChangedDocumentIds(projectDir));
 
-                // STREAMED: the FAST batch comes first (catalog/lint/security, ~seconds), then — only on
-                // deepscan — the describe findings PER CHUNK (~20-30s each). Each batch goes as "LintViolations"
-                // to the UI; it distinguishes on 'phase' (fast = replace/clean-slate, describe = append) and
-                // on 'final' (last batch → counts definitive). The sum = exactly the non-streamed scan.
                 try
                 {
                     new LintScanService(_fileService, _logService)
-                        .RunScanStreaming(projectDir, deepScan, batchJson => Post("LintViolations", batchJson));
+                        .RunScanStreaming(projectDir, batchJson => Post("LintViolations", batchJson), ct);
                 }
                 catch (Exception ex)
                 {
@@ -705,13 +629,16 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
         });
     }
 
-    private void PostRulesCatalog(IWebView webView)
+    private void PostRulesCatalog(IWebView webView, SynchronizationContext? uiContext = null)
     {
+        var projectDirForLog = _getProjectDir();
+        DebugLog.Write(projectDirForLog, $"[PostRulesCatalog] starting, uiContext={(uiContext != null ? uiContext.GetType().Name : "null")}");
         try
         {
             var service = new LintScanService(_fileService, _logService);
             var result = service.TryLoadRulesCatalog(_getProjectDir());
-            if (result == null) return;
+            if (result == null) { DebugLog.Write(projectDirForLog, "[PostRulesCatalog] TryLoadRulesCatalog returned null — mxcli or project not configured"); return; }
+            DebugLog.Write(projectDirForLog, $"[PostRulesCatalog] catalog loaded: {result.Value.ruleNames.Count} rules");
 
             var payload = JsonSerializer.Serialize(new
             {
@@ -719,7 +646,11 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
                 ruleCategories = result.Value.ruleCategories,
             }, LintScanService.JsonOut);
 
-            SafePost(webView, _getProjectDir(), "RulesCatalog", payload);
+            var projectDir = _getProjectDir();
+            if (uiContext != null)
+                uiContext.Post(_ => SafePost(webView, projectDir, "RulesCatalog", payload), null);
+            else
+                SafePost(webView, projectDir, "RulesCatalog", payload);
         }
         catch (Exception ex)
         {
@@ -795,13 +726,18 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
         try
         {
             var model = _getModel();
-            var modules = model is null
-                ? new List<string>()
+            var apiModules = model is null
+                ? []
                 : model.Root.GetModules()
-                    .Select(m => m.Name)
-                    .Where(n => n != "System")
-                    .OrderBy(n => n)
+                    .OrderBy(m => m.Name)
+                    .Select(m => (Name: m.Name, FromMarketplace: m.FromAppStore, AppStoreVersion: (string?)m.AppStoreVersion))
                     .ToList();
+            apiModules.Insert(0, ("Project", false, null));
+            if (!apiModules.Any(m => m.Name == "System"))
+                apiModules.Insert(1, ("System", false, null));
+            var modules = apiModules
+                .Select(m => new { name = m.Name, fromMarketplace = m.FromMarketplace, appStoreVersion = m.AppStoreVersion })
+                .ToList<object>();
             var payload = JsonSerializer.Serialize(new { modules }, LintScanService.JsonOut);
             webView.PostMessage("Modules", payload);
         }

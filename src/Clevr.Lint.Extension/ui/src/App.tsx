@@ -7,10 +7,6 @@ import { FilterBar } from "./components/FilterBar";
 import { Report } from "./components/Report";
 import { Settings } from "./components/Settings";
 import { Toast } from "./components/Toast";
-import { activeViolations } from "./utils/filters";
-import { answeredManualChecks } from "./utils/manualChecks";
-import { excludedView } from "./utils/exclusions";
-
 export function App() {
   const [state, dispatch] = useReducer(appReducer, initialState);
 
@@ -36,12 +32,6 @@ export function App() {
     void loadLogo();
   }, []);
 
-  const hasAnything =
-    activeViolations(state).length > 0 ||
-    answeredManualChecks(state.manualAnswers).length > 0 ||
-    excludedView(state).groups.length > 0;
-
-
   return (
     <AppContext.Provider value={state}>
       <AppDispatch.Provider value={dispatch}>
@@ -51,7 +41,7 @@ export function App() {
               <img className="lint-logo" src="./clevr-logo.png" alt="CLEVR" />
               <div>
                 <h1 className="lint-title">CLEVR Lint Review</h1>
-                <div className="lint-subtitle">Improvements you the project, with mxcli linting rules</div>
+                <div className="lint-subtitle">Improvements to the project, with mxcli linting rules</div>
               </div>
             </div>
           </div>
@@ -62,25 +52,27 @@ export function App() {
             <Settings />
           ) : (
             <>
-              {hasAnything && (
+              {state.scanHasRun && (
                 <>
-                  <input
-                    id="filter"
-                    className="lint-search"
-                    type="search"
-                    placeholder="Filter by rule, document, category, severity, reason…"
-                    value={state.filterQuery}
-                    onChange={(e) => dispatch({ type: "SET_FILTER_QUERY", query: e.target.value })}
-                    style={{ display: "block", width: "100%", marginBottom: 8 }}
-                  />
-                  <button
-                    type="button"
-                    title="Clear all filters (category, severity, source, text)"
-                    onClick={() => dispatch({ type: "RESET_FILTERS" })}
-                    style={{ marginBottom: 8 }}
-                  >
-                    Reset filters
-                  </button>
+                  <div className="lint-search-row">
+                    <input
+                      id="filter"
+                      className="lint-search"
+                      type="search"
+                      placeholder="Filter by rule, document, category, severity, reason…"
+                      value={state.filterQuery}
+                      onChange={(e) => dispatch({ type: "SET_FILTER_QUERY", query: e.target.value })}
+                    />
+                    <button
+                      type="button"
+                      className="lint-search-reset"
+                      title="Clear all filters (category, severity, source, text)"
+                      onClick={() => dispatch({ type: "RESET_FILTERS" })}
+                      aria-label="Reset filters"
+                    >
+                      ✕
+                    </button>
+                  </div>
                   <FilterBar />
                 </>
               )}

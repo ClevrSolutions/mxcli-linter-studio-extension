@@ -35,7 +35,7 @@ public sealed class LinterConfigStore
     public LinterConfig Load(string projectDir)
     {
         var path = ConfigPath(projectDir);
-        if (!File.Exists(path)) return new LinterConfig();
+        if (!File.Exists(path)) return new LinterConfig { ExcludedModules = ["System"] };
         try
         {
             var yaml = File.ReadAllText(path);
@@ -47,7 +47,7 @@ public sealed class LinterConfigStore
             var excludedModules = raw.ExcludedModules ?? new List<string>();
             return new LinterConfig { Rules = rules, ExcludedModules = excludedModules };
         }
-        catch { return new LinterConfig(); }
+        catch (Exception ex) { DebugLog.Write(projectDir, $"Failed to load lint-config.yaml: {ex.Message}"); return new LinterConfig(); }
     }
 
     public void Save(string projectDir, LinterConfig config)
@@ -64,7 +64,10 @@ public sealed class LinterConfigStore
             Rules = rawRules.Count > 0 ? rawRules : null,
         };
         var yaml = Serializer.Serialize(raw);
-        File.WriteAllText(path, yaml);
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        var tmpPath = path + ".tmp";
+        File.WriteAllText(tmpPath, yaml);
+        File.Move(tmpPath, path, overwrite: true);
     }
 
     private static string ConfigPath(string projectDir) =>

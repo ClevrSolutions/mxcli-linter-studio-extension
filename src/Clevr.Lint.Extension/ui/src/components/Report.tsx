@@ -4,7 +4,6 @@ import { activeViolations, displayCategory, passesFilters } from "../utils/filte
 import { SummaryCards } from "./SummaryCards";
 import { CategoryGroup } from "./CategoryGroup";
 import { ExcludedSection } from "./ExcludedSection";
-import { AnsweredChecksSection } from "./AnsweredChecksSection";
 
 export function Report() {
   const state = useAppState();
@@ -38,13 +37,14 @@ export function Report() {
     <div id="report">
       {streamingBanner}
       <SummaryCards />
-      {!state.lastDeepScan && (
-        <p className="lint-scan-note">
-          Quick scan — the deep microflow &amp; expression analysis (complexity, nested ifs, empty-string checks, default ReadWrite access) is NOT included. Run a Deepscan for the full analysis.
-        </p>
-      )}
       {all.length === 0 ? (
-        <div className="lint-empty">No improvements match the filter.</div>
+        <div className="lint-empty">
+          {!state.scanHasRun
+            ? "Run a scan to see improvements."
+            : state.violations.length === 0
+              ? "No improvements found — great work!"
+              : "No improvements match the current filter."}
+        </div>
       ) : (
         LINT_CATEGORIES.map((c) => {
           const items = all.filter((v) => displayCategory(v, state.ruleCategories) === c);
@@ -52,7 +52,6 @@ export function Report() {
         })
       )}
       <ExcludedSection />
-      <AnsweredChecksSection />
     </div>
   );
 }

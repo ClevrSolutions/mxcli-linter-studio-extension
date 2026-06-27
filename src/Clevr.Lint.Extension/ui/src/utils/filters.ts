@@ -1,12 +1,10 @@
 ﻿import { GENERIC_CATEGORY_FALLBACK, GENERIC_PREFIX_FALLBACK, MXCLI_CATEGORY_TO_LINT } from "../constants";
 import type { Violation } from "../types";
-import { originBadge, originOf, isSystemModule, isAppStoreModule } from "./origins";
-import { openManualCheckViolations } from "./manualChecks";
+import { isAppStoreModule, moduleOf } from "./origins";
 import { excludedFingerprintSet } from "./exclusions";
 import type { AppState } from "../context/AppReducer";
 
 export function displayCategory(v: Violation, ruleCategories: Record<string, string>): string {
-  if (v.kind === "manual") return v.category;
   const mxcliCat = (ruleCategories[v.ruleId] ?? "").toLowerCase();
   if (mxcliCat && MXCLI_CATEGORY_TO_LINT[mxcliCat]) return MXCLI_CATEGORY_TO_LINT[mxcliCat]!;
   return GENERIC_PREFIX_FALLBACK[v.category] ?? GENERIC_CATEGORY_FALLBACK;
@@ -16,7 +14,7 @@ export function matches(v: Violation, q: string, ruleNames: Record<string, strin
   if (!q) return true;
   return [
     v.ruleId, ruleNames[v.ruleId], v.category,
-    displayCategory(v, ruleCategories), v.severity, originBadge(v),
+    displayCategory(v, ruleCategories), v.severity,
     v.documentType, v.documentQualifiedName, v.elementName, v.reason, v.suggestion,
   ]
     .filter(Boolean)
@@ -41,13 +39,17 @@ export function passesFilters(
 }
 
 export function allDisplayViolations(state: AppState): Violation[] {
-  return state.violations.concat(openManualCheckViolations(state.manualAnswers));
+  return state.violations;
 }
 
 export function baseViolations(state: AppState): Violation[] {
-  return allDisplayViolations(state)
-    .filter((v) => !isSystemModule(v))
+  let vs = allDisplayViolations(state)
     .filter((v) => state.appStoreVisible || !isAppStoreModule(v, state.appStoreModules));
+  if (state.savedExcludedModules.includes("Project")) {
+    const knownModules = new Set(state.modules.map((m) => m.name).filter((n) => n !== "Project"));
+    vs = vs.filter((v) => knownModules.has(moduleOf(v)));
+  }
+  return vs;
 }
 
 export function activeViolations(state: AppState): Violation[] {

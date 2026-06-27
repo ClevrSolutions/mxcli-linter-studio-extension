@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useAppDispatch, useAppState } from "../context/AppContext";
 import { post } from "../hooks/useMessageBus";
 import { LINT_CATEGORIES, MXCLI_CATEGORY_TO_LINT } from "../constants";
@@ -33,8 +33,6 @@ function isPendingChanged(
 export function Settings() {
   const state = useAppState();
   const dispatch = useAppDispatch();
-  const [activeTab, setActiveTab] = useState<"modules" | "rules">("modules");
-
   useEffect(() => {
     post("RequestModules");
     post("RequestRulesCatalog");
@@ -58,7 +56,15 @@ export function Settings() {
   }
 
   function deselectAllModules() {
-    dispatch({ type: "SET_EXCLUDED_MODULES", modules: [...state.modules] });
+    dispatch({ type: "SET_EXCLUDED_MODULES", modules: state.modules.map((m) => m.name) });
+  }
+
+  function excludeAllMarketplace() {
+    dispatch({ type: "SET_MARKETPLACE_MODULES_EXCLUDED", exclude: true });
+  }
+
+  function includeAllMarketplace() {
+    dispatch({ type: "SET_MARKETPLACE_MODULES_EXCLUDED", exclude: false });
   }
 
   function enableRules(ruleIds: string[]) {
@@ -128,6 +134,19 @@ export function Settings() {
           <thead>
             <tr>
               <th>Module</th>
+              <th className="lint-settings-marketplace-cell">
+                <div className="lint-settings-col-header">
+                  <span>Marketplace</span>
+                  {state.modules.some((m) => m.fromMarketplace) && (
+                    <div className="lint-settings-bulk-actions">
+                      {state.modules.filter((m) => m.fromMarketplace).every((m) => state.pendingExcludedModules.includes(m.name))
+                        ? <button type="button" className="lint-settings-bulk-btn" onClick={includeAllMarketplace}>Include all</button>
+                        : <button type="button" className="lint-settings-bulk-btn" onClick={excludeAllMarketplace}>Exclude all</button>
+                      }
+                    </div>
+                  )}
+                </div>
+              </th>
               <th className="lint-settings-enabled-cell">
                 <div className="lint-settings-col-header">
                   <span>Include in scan</span>
@@ -141,16 +160,26 @@ export function Settings() {
             </tr>
           </thead>
           <tbody>
-            {state.modules.map((moduleName) => {
-              const isExcluded = state.pendingExcludedModules.includes(moduleName);
+            {state.modules.map((module) => {
+              const isExcluded = state.pendingExcludedModules.includes(module.name);
               return (
-                <tr key={moduleName} className={isExcluded ? "lint-settings-disabled-row" : ""}>
-                  <td className="lint-settings-module-cell">{moduleName}</td>
+                <tr key={module.name} className={isExcluded ? "lint-settings-disabled-row" : ""}>
+                  <td className="lint-settings-module-cell">{module.name}</td>
+                  <td className="lint-settings-marketplace-cell">
+                    {module.fromMarketplace && (
+                      <span
+                        className="lint-settings-marketplace-badge"
+                        title={module.appStoreVersion ? `Mendix Marketplace v${module.appStoreVersion}` : "Mendix Marketplace"}
+                      >
+                        MX
+                      </span>
+                    )}
+                  </td>
                   <td className="lint-settings-enabled-cell">
                     <input
                       type="checkbox"
                       checked={!isExcluded}
-                      onChange={() => toggleModule(moduleName)}
+                      onChange={() => toggleModule(module.name)}
                       title={isExcluded ? "Module is excluded — click to include" : "Module is included — click to exclude"}
                     />
                   </td>
@@ -167,15 +196,15 @@ export function Settings() {
     <div className="lint-settings-tabs">
       <button
         type="button"
-        className={`lint-settings-tab${activeTab === "modules" ? " active" : ""}`}
-        onClick={() => setActiveTab("modules")}
+        className={`lint-settings-tab${state.settingsActiveTab === "modules" ? " active" : ""}`}
+        onClick={() => dispatch({ type: "SET_SETTINGS_TAB", tab: "modules" })}
       >
         Modules
       </button>
       <button
         type="button"
-        className={`lint-settings-tab${activeTab === "rules" ? " active" : ""}`}
-        onClick={() => setActiveTab("rules")}
+        className={`lint-settings-tab${state.settingsActiveTab === "rules" ? " active" : ""}`}
+        onClick={() => dispatch({ type: "SET_SETTINGS_TAB", tab: "rules" })}
       >
         Rules configuration
       </button>
@@ -267,7 +296,7 @@ export function Settings() {
     <div className="lint-settings">
       {settingsHeader}
       {tabBar}
-      {activeTab === "modules" ? moduleSection : rulesContent}
+      {state.settingsActiveTab === "modules" ? moduleSection : rulesContent}
     </div>
   );
 }

@@ -1,12 +1,12 @@
 ﻿import { useAppDispatch, useAppState } from "../context/AppContext";
-import { allDisplayViolations } from "../utils/filters";
-import { isAppStoreModule, isSystemModule } from "../utils/origins";
+import { activeViolations } from "../utils/filters";
+import { isAppStoreModule } from "../utils/origins";
 
 export function FilterBar() {
   const state = useAppState();
   const dispatch = useAppDispatch();
 
-  const base = allDisplayViolations(state).filter((v) => !isSystemModule(v));
+  const base = activeViolations(state);
   const asCount = base.filter((v) => isAppStoreModule(v, state.appStoreModules)).length;
   const changedCount = state.uncommittedAvailable
     ? base.filter((v) => !v.documentId || state.uncommittedDocumentIds.has(v.documentId)).length

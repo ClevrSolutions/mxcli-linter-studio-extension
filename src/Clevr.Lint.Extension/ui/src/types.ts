@@ -1,31 +1,4 @@
-﻿export type ViolationKind = "mxcli" | "manual";
-
-export interface ManualCheckDef {
-  id: string;
-  category: string;
-  severity: string;
-  question: string;
-  context: string;
-}
-
-export interface ManualAnswer {
-  id: string;
-  answer: string;
-  note: string;
-  answeredBy?: string;
-  excludedBy?: string;
-  date: string;
-}
-
-export interface ManualCheckState {
-  def: ManualCheckDef;
-  answer: ManualAnswer | null;
-  status: "unanswered" | "no" | "expired" | "valid-yes";
-  open: boolean;
-  recheckDate?: string;
-  recheckInDays?: number;
-  daysOverdue?: number;
-}
+﻿export type ViolationKind = "mxcli";
 
 export interface Violation {
   ruleId: string;
@@ -40,7 +13,6 @@ export interface Violation {
   suggestion?: string;
   fingerprint: string;
   documentationUrl?: string;
-  manual?: ManualCheckState;
 }
 
 export interface Exclusion {
@@ -89,6 +61,12 @@ export interface ExcludedView {
 export interface RuleGroup {
   rule: Violation;
   items: Violation[];
+}
+
+export interface ModuleInfo {
+  name: string;
+  fromMarketplace: boolean;
+  appStoreVersion: string | null;
 }
 
 export interface LinterConfigRule {
