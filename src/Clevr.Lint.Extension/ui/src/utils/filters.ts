@@ -56,7 +56,7 @@ export function activeViolations(state: AppState): Violation[] {
   const ex = excludedFingerprintSet(state.exclusions);
   let vs = baseViolations(state).filter((v) => !ex.has(v.fingerprint));
   if (state.uncommittedFilterActive && state.uncommittedAvailable) {
-    vs = vs.filter((v) => !v.documentId || state.uncommittedDocumentIds.has(v.documentId));
+    vs = vs.filter((v) => !!v.documentId && state.uncommittedDocumentIds.has(v.documentId.toLowerCase()));
   }
   return vs;
 }

@@ -172,7 +172,7 @@ export function appReducer(state: AppState, action: AppAction): AppState {
     case "SET_UNCOMMITTED_DOCUMENTS":
       return {
         ...state,
-        uncommittedDocumentIds: new Set(action.documentIds),
+        uncommittedDocumentIds: new Set(action.documentIds.map(id => id.toLowerCase())),
         uncommittedAvailable: action.available,
         uncommittedFilterActive: action.available ? state.uncommittedFilterActive : false,
       };

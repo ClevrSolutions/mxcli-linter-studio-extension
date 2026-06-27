@@ -9,7 +9,7 @@ export function FilterBar() {
   const base = activeViolations(state);
   const asCount = base.filter((v) => isAppStoreModule(v, state.appStoreModules)).length;
   const changedCount = state.uncommittedAvailable
-    ? base.filter((v) => !v.documentId || state.uncommittedDocumentIds.has(v.documentId)).length
+    ? base.filter((v) => !!v.documentId && state.uncommittedDocumentIds.has(v.documentId.toLowerCase())).length
     : 0;
 
   if (asCount === 0 && !state.uncommittedAvailable) return null;
