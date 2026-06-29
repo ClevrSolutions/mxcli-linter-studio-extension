@@ -5,6 +5,7 @@ import { LINT_CATEGORIES, MXCLI_CATEGORY_TO_LINT } from "../constants";
 import type { LinterConfigRule } from "../types";
 import { ConfigurationTab } from "./ConfigurationTab";
 import { RuleSourcesTab } from "./RuleSourcesTab";
+import { AboutTab } from "./AboutTab";
 
 const SEVERITY_OPTIONS = ["inherit", "error", "warning", "info", "hint"] as const;
 
@@ -107,7 +108,7 @@ export function Settings() {
     ...(byCategory.has("Other") ? ["Other"] : []),
   ];
 
-  const isConfigTab = state.settingsActiveTab === "configuration" || state.settingsActiveTab === "sources";
+  const isConfigTab = state.settingsActiveTab === "configuration" || state.settingsActiveTab === "sources" || state.settingsActiveTab === "about";
 
   const settingsHeader = (
     <div className="lint-settings-header">
@@ -228,6 +229,13 @@ export function Settings() {
       >
         Sources
       </button>
+      <button
+        type="button"
+        className={`lint-settings-tab lint-settings-tab-about${state.settingsActiveTab === "about" ? " active" : ""}`}
+        onClick={() => dispatch({ type: "SET_SETTINGS_TAB", tab: "about" })}
+      >
+        About
+      </button>
     </div>
   );
 
@@ -320,6 +328,7 @@ export function Settings() {
       {state.settingsActiveTab === "rules" && rulesContent}
       {state.settingsActiveTab === "configuration" && <ConfigurationTab />}
       {state.settingsActiveTab === "sources" && <RuleSourcesTab />}
+      {state.settingsActiveTab === "about" && <AboutTab />}
     </div>
   );
 }

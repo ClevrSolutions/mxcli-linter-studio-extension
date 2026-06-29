@@ -25,7 +25,7 @@ export interface AppState {
   settingsVisible: boolean;
   scanHasRun: boolean;
   scanCompletedAt: number | null;
-  settingsActiveTab: "modules" | "rules" | "configuration" | "sources";
+  settingsActiveTab: "modules" | "rules" | "configuration" | "sources" | "about";
   mxcliInfo: MxcliInfo | null;
   mxcliDownloading: boolean;
   mxcliDownloadProgress: number | null;
@@ -68,7 +68,7 @@ export type AppAction =
   | { type: "SET_EXCLUDED_MODULES"; modules: string[] }
   | { type: "SET_MARKETPLACE_MODULES_EXCLUDED"; exclude: boolean }
   | { type: "BULK_SET_RULES_ENABLED"; ruleIds: string[]; enabled: boolean | undefined }
-  | { type: "SET_SETTINGS_TAB"; tab: "modules" | "rules" | "configuration" | "sources" }
+  | { type: "SET_SETTINGS_TAB"; tab: "modules" | "rules" | "configuration" | "sources" | "about" }
   | { type: "SET_RULE_SOURCES"; sources: RuleSource[] }
   | { type: "ADD_RULE_SOURCE"; source: RuleSource }
   | { type: "REMOVE_RULE_SOURCE"; id: string }

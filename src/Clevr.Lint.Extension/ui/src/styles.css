@@ -318,3 +318,25 @@ details.lint-rule > summary .lint-ai-btn { margin-left: 8px; }
 .lint-source-status-ok { color: #1a7f37; }
 .lint-source-status-warn { color: #c97a00; }
 .lint-source-error-list { margin: 4px 0 0 16px; padding: 0; list-style: disc; }
+
+/* About tab */
+.lint-settings-tab-about { margin-left: auto; }
+.lint-about { padding: 4px 0; }
+.lint-about-section { margin-bottom: 22px; }
+.lint-about-identity { display: flex; flex-direction: column; gap: 6px; }
+.lint-about-name { font-size: 18px; font-weight: 700; color: var(--clevr-fg); }
+.lint-about-tagline { color: var(--clevr-muted); font-size: 12px; }
+.lint-about-badges { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 2px; }
+.lint-about-badge { display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 11px; font-weight: 600; background: var(--clevr-accent); color: #fff; white-space: nowrap; }
+.lint-about-badge-muted { background: #e7eef6; color: var(--clevr-accent); }
+.lint-about-heading { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--clevr-muted); margin: 0 0 8px; }
+.lint-about-para { font-size: 12px; color: var(--clevr-fg); margin: 0 0 6px; line-height: 1.5; }
+.lint-about-link { color: var(--clevr-accent); text-decoration: none; }
+.lint-about-link:hover { text-decoration: underline; }
+.lint-about-table { margin: 0; }
+.lint-about-contributor-name { font-size: 12px; font-weight: 500; padding: 4px 8px 4px 0; }
+.lint-about-contributor-role { font-size: 12px; color: var(--clevr-muted); padding: 4px 8px; }
+.lint-about-release { margin-bottom: 16px; }
+.lint-about-release-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.lint-about-changes { margin: 0; padding: 0 0 0 18px; }
+.lint-about-changes li { font-size: 12px; color: var(--clevr-fg); padding: 2px 0; line-height: 1.45; }

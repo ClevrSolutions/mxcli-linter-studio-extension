@@ -22,6 +22,7 @@ export function RuleSourcesTab() {
     post("SaveRuleSources", { sources: updated });
     setNewUrl("");
     setNewLabel("");
+    fetchSource(source.id, source.url, false);
   }
 
   function removeSource(id: string) {
