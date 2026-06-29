@@ -60,5 +60,10 @@ Get-ChildItem $distDir -File | Where-Object { $_.Name -notin $filesToCopy -and $
     Remove-Item $_.FullName -Force
 }
 
-Write-Host "dist\clevrlint updated:" -ForegroundColor Green
-Get-ChildItem $distDir -Recurse | Select-Object -ExpandProperty FullName
+# Copy installer and end-user docs into the dist package root
+$distRoot = Join-Path $repoRoot 'dist'
+Copy-Item (Join-Path $repoRoot 'Install-ClevrLint.ps1') $distRoot -Force
+Copy-Item (Join-Path $repoRoot 'INSTALL.md') (Join-Path $distRoot 'README.md') -Force
+
+Write-Host "dist updated:" -ForegroundColor Green
+Get-ChildItem (Join-Path $repoRoot 'dist') -Recurse | Select-Object -ExpandProperty FullName

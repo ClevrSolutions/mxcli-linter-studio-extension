@@ -13,10 +13,8 @@ TestResults/
 # Rider
 .idea/
 
-# Compiled extension binaries (distribute via GitHub Releases, not source control)
-dist/clevrlint/*.dll
-dist/clevrlint/*.pdb
-dist/clevrlint/*.deps.json
+# dist/ is assembled locally by Pack-Dist.ps1 — nothing committed
+dist/
 
 # Logs
 *.log
