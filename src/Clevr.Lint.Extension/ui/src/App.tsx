@@ -70,7 +70,7 @@ export function App() {
                       onClick={() => dispatch({ type: "RESET_FILTERS" })}
                       aria-label="Reset filters"
                     >
-                      ✕
+                      Reset Filter
                     </button>
                   </div>
                   <FilterBar />

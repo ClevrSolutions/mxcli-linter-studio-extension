@@ -52,11 +52,33 @@ export function baseViolations(state: AppState): Violation[] {
   return vs;
 }
 
+function selectedBaselineViolations(state: AppState): Violation[] {
+  const b = state.baselines.find((x) => x.id === state.selectedBaselineId);
+  return b?.violations ?? [];
+}
+
+export function baselineFingerprintSet(state: AppState): Set<string> {
+  return new Set(selectedBaselineViolations(state).map((v) => v.fingerprint));
+}
+
+export function currentFingerprintSet(state: AppState): Set<string> {
+  return new Set(state.violations.map((v) => v.fingerprint));
+}
+
 export function activeViolations(state: AppState): Violation[] {
+  if (state.baselineFilter === "fixed" && state.selectedBaselineId) {
+    const currentFps = currentFingerprintSet(state);
+    return selectedBaselineViolations(state).filter((v) => !currentFps.has(v.fingerprint));
+  }
+
   const ex = excludedFingerprintSet(state.exclusions);
   let vs = baseViolations(state).filter((v) => !ex.has(v.fingerprint));
   if (state.uncommittedFilterActive && state.uncommittedAvailable) {
     vs = vs.filter((v) => !!v.documentId && state.uncommittedDocumentIds.has(v.documentId.toLowerCase()));
+  }
+  if (state.baselineFilter === "new" && state.selectedBaselineId) {
+    const baselineFps = baselineFingerprintSet(state);
+    vs = vs.filter((v) => !baselineFps.has(v.fingerprint));
   }
   return vs;
 }

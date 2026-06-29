@@ -3,14 +3,7 @@ import { activeViolations } from "../utils/filters";
 import { excludedView } from "../utils/exclusions";
 import { post } from "../hooks/useMessageBus";
 import { buildReportHtml } from "../utils/report";
-
-function relativeTime(ts: number): string {
-  const sec = Math.floor((Date.now() - ts) / 1000);
-  if (sec < 5) return "just now";
-  if (sec < 60) return `${sec}s ago`;
-  if (sec < 3600) return `${Math.floor(sec / 60)}m ago`;
-  return `${Math.floor(sec / 3600)}h ago`;
-}
+import { relativeTime } from "../utils/time";
 
 export function Toolbar() {
   const state = useAppState();
@@ -49,14 +42,6 @@ export function Toolbar() {
       <span className="lint-scan-status" title={state.scanStreaming ? "Scan in progress" : state.scanHasRun ? "Last scan result" : "Run a scan to see improvements"}>
         {statusText}
       </span>
-      <button
-        type="button"
-        disabled={state.scanStreaming}
-        title="Scan: catalog rules and mxcli's own lint rules."
-        onClick={() => startScan()}
-      >
-        Scan
-      </button>
       {state.scanStreaming && (
         <>
           <span className="lint-spinner" aria-label="Scanning…" />
@@ -70,9 +55,27 @@ export function Toolbar() {
           </button>
         </>
       )}
+      <button
+        type="button"
+        disabled={state.scanStreaming}
+        title="Scan: catalog rules and mxcli's own lint rules."
+        onClick={() => startScan()}
+      >
+        Scan
+      </button>
       {hasAnything && !state.scanStreaming && (
         <button type="button" onClick={exportReport}>
           Export
+        </button>
+      )}
+      {state.scanHasRun && !state.scanStreaming && (
+        <button
+          type="button"
+          className="lint-baseline-save-btn"
+          title="Save the current scan result as a baseline. Future scans highlight only new or fixed violations."
+          onClick={() => post("SaveBaseline", { violations: state.violations, savedAt: Date.now() })}
+        >
+          Save Baseline
         </button>
       )}
       <button

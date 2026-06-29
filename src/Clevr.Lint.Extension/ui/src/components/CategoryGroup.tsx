@@ -6,9 +6,10 @@ interface Props {
   category: string;
   items: Violation[];
   interactive?: boolean;
+  isFixed?: boolean;
 }
 
-export function CategoryGroup({ category, items, interactive = true }: Props) {
+export function CategoryGroup({ category, items, interactive = true, isFixed = false }: Props) {
   const rules = groupByRule(items).sort((a, b) =>
     a.rule.ruleId.localeCompare(b.rule.ruleId)
   );
@@ -20,7 +21,7 @@ export function CategoryGroup({ category, items, interactive = true }: Props) {
         <span className="lint-group-count">{items.length} improvements</span>
       </div>
       {rules.map((r) => (
-        <RuleCard key={r.rule.ruleId} rule={r.rule} items={r.items} interactive={interactive} />
+        <RuleCard key={r.rule.ruleId} rule={r.rule} items={r.items} interactive={interactive} isFixed={isFixed} />
       ))}
     </div>
   );

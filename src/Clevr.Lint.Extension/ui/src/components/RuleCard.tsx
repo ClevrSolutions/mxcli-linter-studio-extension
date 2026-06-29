@@ -11,9 +11,10 @@ interface Props {
   rule: Violation;
   items: Violation[];
   interactive?: boolean;
+  isFixed?: boolean;
 }
 
-export function RuleCard({ rule, items, interactive = true }: Props) {
+export function RuleCard({ rule, items, interactive = true, isFixed = false }: Props) {
   const state = useAppState();
   const dispatch = useAppDispatch();
   const [showExcludeRule, setShowExcludeRule] = useState(false);
@@ -61,7 +62,7 @@ const name = ruleName(rule, state.ruleNames);
         </summary>
         <div className="lint-rule-body">
           {items.map((v, i) => (
-            <ViolationInstance key={v.fingerprint + i} rule={rule} v={v} interactive={interactive} />
+            <ViolationInstance key={v.fingerprint + i} rule={rule} v={v} interactive={interactive} isFixed={isFixed} />
           ))}
         </div>
       </details>

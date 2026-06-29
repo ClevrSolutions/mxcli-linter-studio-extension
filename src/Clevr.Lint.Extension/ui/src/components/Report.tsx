@@ -8,6 +8,7 @@ import { ExcludedSection } from "./ExcludedSection";
 export function Report() {
   const state = useAppState();
   const q = state.filterQuery.trim().toLowerCase();
+  const isFixed = state.baselineFilter === "fixed";
 
   const all = activeViolations(state).filter((v) =>
     passesFilters(v, q, state.categoryEnabled, state.severityEnabled, state.ruleNames, state.ruleCategories)
@@ -48,7 +49,7 @@ export function Report() {
       ) : (
         LINT_CATEGORIES.map((c) => {
           const items = all.filter((v) => displayCategory(v, state.ruleCategories) === c);
-          return items.length ? <CategoryGroup key={c} category={c} items={items} /> : null;
+          return items.length ? <CategoryGroup key={c} category={c} items={items} isFixed={isFixed} /> : null;
         })
       )}
       <ExcludedSection />

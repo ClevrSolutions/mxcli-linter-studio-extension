@@ -10,9 +10,10 @@ interface Props {
   rule: Violation;
   v: Violation;
   interactive?: boolean;
+  isFixed?: boolean;
 }
 
-export function ViolationInstance({ rule, v, interactive = true }: Props) {
+export function ViolationInstance({ rule, v, interactive = true, isFixed = false }: Props) {
   const state = useAppState();
   const dispatch = useAppDispatch();
   const [showExclude, setShowExclude] = useState(false);
@@ -43,18 +44,19 @@ export function ViolationInstance({ rule, v, interactive = true }: Props) {
   return (
     <div className="lint-instance">
       <div
-        className={"lint-doc" + (interactive ? " lint-doc-clickable" : "")}
-        title={interactive ? "Open this document in Studio Pro" : undefined}
-        onClick={interactive ? openDoc : undefined}
+        className={"lint-doc" + (interactive && !isFixed ? " lint-doc-clickable" : "")}
+        title={interactive && !isFixed ? "Open this document in Studio Pro" : undefined}
+        onClick={interactive && !isFixed ? openDoc : undefined}
       >
         <span className="doctype">{v.documentType}: </span>
         <span className="qname">{v.documentQualifiedName}</span>
         {v.elementName && <><span> › </span><span className="elem">{v.elementName}</span></>}
-        {interactive && <span className="lint-open-hint"> ↗ open</span>}
+        {isFixed && <span className="lint-fixed-badge">FIXED</span>}
+        {interactive && !isFixed && <span className="lint-open-hint"> ↗ open</span>}
       </div>
       <div className="lint-reason">{v.reason}</div>
       {v.suggestion && <div className="lint-suggestion">{v.suggestion}</div>}
-      {interactive && (
+      {interactive && !isFixed && (
         <div className="lint-instance-actions">
           <button type="button" className="lint-ai-btn" title="Generate an English prompt for AI and copy it to the clipboard" onClick={copyAiPrompt}>
             Copy AI prompt
