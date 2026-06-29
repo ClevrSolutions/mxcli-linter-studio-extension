@@ -78,3 +78,18 @@ export interface LinterConfig {
   rules: Record<string, LinterConfigRule>;
   excludedModules: string[];
 }
+
+export interface BaselineEntry {
+  id: string;
+  savedAt: string; // ISO 8601 from DateTimeOffset
+  gitRevision: string | null;
+  violations: Violation[];
+}
+
+export interface MxcliInfo {
+  source: "path" | "clevrLint" | "custom" | "notFound";
+  resolvedPath: string | null;
+  version: string | null;
+  found: boolean;
+  downloadedAt: string | null;
+}

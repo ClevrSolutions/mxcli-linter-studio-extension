@@ -3,6 +3,7 @@ import { useAppDispatch, useAppState } from "../context/AppContext";
 import { post } from "../hooks/useMessageBus";
 import { LINT_CATEGORIES, MXCLI_CATEGORY_TO_LINT } from "../constants";
 import type { LinterConfigRule } from "../types";
+import { ConfigurationTab } from "./ConfigurationTab";
 
 const SEVERITY_OPTIONS = ["inherit", "error", "warning", "info", "hint"] as const;
 
@@ -105,18 +106,22 @@ export function Settings() {
     ...(byCategory.has("Other") ? ["Other"] : []),
   ];
 
+  const isConfigTab = state.settingsActiveTab === "configuration";
+
   const settingsHeader = (
     <div className="lint-settings-header">
       <button type="button" className="lint-settings-back" onClick={() => dispatch({ type: "HIDE_SETTINGS" })}>
         ← Back
       </button>
       <h2>Settings</h2>
-      <div className="lint-settings-header-actions">
-        {hasChanges && <span className="lint-settings-unsaved">Unsaved changes</span>}
-        <button type="button" className="lint-settings-save" disabled={!hasChanges} onClick={save}>
-          Save
-        </button>
-      </div>
+      {!isConfigTab && (
+        <div className="lint-settings-header-actions">
+          {hasChanges && <span className="lint-settings-unsaved">Unsaved changes</span>}
+          <button type="button" className="lint-settings-save" disabled={!hasChanges} onClick={save}>
+            Save
+          </button>
+        </div>
+      )}
     </div>
   );
 
@@ -208,6 +213,13 @@ export function Settings() {
       >
         Rules configuration
       </button>
+      <button
+        type="button"
+        className={`lint-settings-tab${state.settingsActiveTab === "configuration" ? " active" : ""}`}
+        onClick={() => dispatch({ type: "SET_SETTINGS_TAB", tab: "configuration" })}
+      >
+        Configuration
+      </button>
     </div>
   );
 
@@ -296,7 +308,9 @@ export function Settings() {
     <div className="lint-settings">
       {settingsHeader}
       {tabBar}
-      {state.settingsActiveTab === "modules" ? moduleSection : rulesContent}
+      {state.settingsActiveTab === "modules" && moduleSection}
+      {state.settingsActiveTab === "rules" && rulesContent}
+      {state.settingsActiveTab === "configuration" && <ConfigurationTab />}
     </div>
   );
 }

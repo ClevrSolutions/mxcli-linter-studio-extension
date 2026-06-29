@@ -246,3 +246,49 @@ details.lint-rule > summary .lint-ai-btn { margin-left: 8px; }
 .lint-search-row .lint-search { flex: 1; margin-bottom: 0; }
 .lint-search-reset { flex-shrink: 0; background: transparent; border: 1px solid #ccc; border-radius: 4px; padding: 3px 8px; cursor: pointer; color: #666; font-size: 0.9em; line-height: 1; }
 .lint-search-reset:hover { background: #f0f0f0; color: #333; }
+
+/* Baseline feature */
+.lint-baseline-save-btn { background: none; border: 1px solid var(--clevr-border); border-radius: 6px; font-size: 12px; color: var(--clevr-muted); padding: 4px 10px; }
+.lint-baseline-save-btn:hover { border-color: var(--clevr-accent); color: var(--clevr-accent); }
+
+.lint-baseline-filter { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 4px 0; font-size: 12px; }
+.lint-filter-label { color: var(--clevr-muted); white-space: nowrap; }
+.lint-baseline-select { font-size: 12px; padding: 2px 4px; border: 1px solid var(--clevr-border); border-radius: 4px; background: var(--clevr-card); color: var(--clevr-fg); max-width: 180px; }
+.lint-baseline-delete-btn { background: none; border: 1px solid var(--clevr-border); border-radius: 4px; padding: 1px 7px; font-size: 13px; color: var(--clevr-muted); cursor: pointer; line-height: 1.3; }
+.lint-baseline-delete-btn:hover { border-color: var(--sev-critical); color: var(--sev-critical); }
+.lint-baseline-segs { display: flex; gap: 0; }
+.lint-baseline-seg { padding: 2px 10px; font-size: 11px; font-weight: 600; cursor: pointer; border: 1px solid var(--clevr-border); background: var(--clevr-card); color: var(--clevr-muted); white-space: nowrap; }
+.lint-baseline-segs .lint-baseline-seg:first-child { border-radius: 10px 0 0 10px; }
+.lint-baseline-segs .lint-baseline-seg:last-child { border-radius: 0 10px 10px 0; border-left: none; }
+.lint-baseline-segs .lint-baseline-seg:not(:first-child):not(:last-child) { border-left: none; }
+.lint-baseline-seg.active { background: var(--clevr-accent); color: #fff; border-color: var(--clevr-accent); }
+.lint-baseline-new.active { background: var(--sev-major); border-color: var(--sev-major); }
+.lint-baseline-fixed.active { background: #1a7f37; border-color: #1a7f37; }
+
+.lint-fixed-badge { display: inline-block; padding: 1px 7px; border-radius: 10px; font-size: 10px; font-weight: 700; letter-spacing: .03em; background: #1a7f37; color: #fff; white-space: nowrap; margin-left: 8px; vertical-align: middle; }
+
+/* Configuration tab — mxcli setup */
+.lint-mxcli-table th { width: 90px; font-weight: 500; white-space: nowrap; }
+.lint-mxcli-path { font-family: "Cascadia Code", Consolas, monospace; font-size: 11px; word-break: break-all; }
+.lint-mxcli-source-badge { display: inline-block; padding: 1px 9px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+.lint-mxcli-source-path      { background: #e7eef6; color: var(--clevr-accent); }
+.lint-mxcli-source-clevrLint { background: #e6f4ea; color: #1a7f37; }
+.lint-mxcli-source-custom    { background: #fff4e5; color: #c97a00; }
+.lint-mxcli-source-notFound  { background: #fde8e8; color: var(--sev-blocker); }
+.lint-mxcli-warning { color: var(--sev-blocker); font-size: 12px; margin: 10px 0 0; }
+.lint-mxcli-actions { display: flex; align-items: center; gap: 12px; margin-top: 14px; flex-wrap: wrap; }
+.lint-mxcli-progress-wrap { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 160px; }
+.lint-mxcli-progress-bar-track { flex: 1; height: 6px; background: var(--clevr-border); border-radius: 3px; overflow: hidden; }
+.lint-mxcli-progress-bar-fill { height: 100%; background: var(--clevr-accent); border-radius: 3px; transition: width .15s ease; }
+.lint-mxcli-progress-label { font-size: 11px; color: var(--clevr-muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.lint-mxcli-location-cell { vertical-align: middle; }
+.lint-mxcli-location-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.lint-mxcli-location-btns { display: flex; gap: 4px; flex-shrink: 0; margin-left: auto; }
+.lint-mxcli-browse-btn { background: none; border: 1px solid var(--clevr-border); border-radius: 4px; padding: 2px 8px; font-size: 11px; color: var(--clevr-muted); cursor: pointer; white-space: nowrap; }
+.lint-mxcli-browse-btn:hover { border-color: var(--clevr-accent); color: var(--clevr-accent); }
+.lint-mxcli-edit-row { display: flex; align-items: center; gap: 6px; width: 100%; }
+.lint-mxcli-path-input { flex: 1; font-family: "Cascadia Code", Consolas, monospace; font-size: 11px; padding: 4px 6px; border: 1px solid var(--clevr-border); border-radius: 4px; outline: none; min-width: 0; }
+.lint-mxcli-path-input:focus { border-color: var(--clevr-accent); }
+.lint-mxcli-apply-btn { padding: 3px 10px; font-size: 11px; background: var(--clevr-accent); color: #fff; border: 1px solid var(--clevr-accent); border-radius: 4px; cursor: pointer; white-space: nowrap; }
+.lint-mxcli-apply-btn:disabled { opacity: .45; cursor: default; }
+.lint-mxcli-cancel-btn { padding: 3px 10px; font-size: 11px; background: #fff; border: 1px solid var(--clevr-border); border-radius: 4px; cursor: pointer; white-space: nowrap; }

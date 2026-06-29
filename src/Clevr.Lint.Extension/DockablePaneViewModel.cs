@@ -33,6 +33,7 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
     private readonly Func<IModel?> _getModel;
     private readonly IDockingWindowService _dockingWindowService;
     private readonly ExclusionStore _exclusions = new();
+    private readonly BaselineStore _baselines = new();
     private CancellationTokenSource? _scanCts;
     private SynchronizationContext? _uiContext;
 
@@ -158,9 +159,68 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
             {
                 SaveLinterConfig(webView, args.Data);
             }
+            else if (args.Message == "RequestMxcliInfo")
+            {
+                _ = Task.Run(() => PostMxcliInfo(webView, _uiContext));
+            }
+            else if (args.Message == "BrowseMxcliPath")
+            {
+                // File picker must run on the UI (STA) thread — MessageReceived is already on it.
+                var settingsPath = _fileService.ResolvePath("lint-scan-settings.json");
+                var currentPath = File.Exists(settingsPath)
+                    ? LintScanSettings.Load(File.ReadAllText(settingsPath), null).MxcliPath
+                    : null;
+                var picked = NativeFileDialog.ShowExePicker("Select mxcli.exe", currentPath);
+                if (picked != null)
+                    ApplyMxcliPath(webView, picked);
+            }
+            else if (args.Message == "SetMxcliPath")
+            {
+                // Set a manually typed path from the UI.
+                var path = args.Data?["path"]?.GetValue<string>()?.Trim() ?? "";
+                if (!string.IsNullOrEmpty(path))
+                    ApplyMxcliPath(webView, path);
+            }
+            else if (args.Message == "DownloadMxcli")
+            {
+                var ctx = _uiContext;
+                void PostDownload(string msg, string data)
+                {
+                    if (ctx != null) ctx.Post(_ => SafePost(webView, _getProjectDir(), msg, data), null);
+                    else SafePost(webView, _getProjectDir(), msg, data);
+                }
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        var info = await MxcliService.DownloadLatestAsync(
+                            _fileService,
+                            pct => PostDownload("MxcliDownloadProgress", pct.ToString()),
+                            default);
+                        PostDownload("MxcliInfo", JsonSerializer.Serialize(info, LintScanService.JsonOut));
+                    }
+                    catch (Exception ex)
+                    {
+                        _logService.Error("[CLEVR Lint] mxcli download failed", ex);
+                        PostDownload("MxcliDownloadError", ex.Message);
+                    }
+                });
+            }
             else if (args.Message == "RequestModules")
             {
                 PostModules(webView);
+            }
+            else if (args.Message == "RequestBaselines")
+            {
+                PostBaselines(webView);
+            }
+            else if (args.Message == "SaveBaseline")
+            {
+                SaveBaseline(webView, args.Data);
+            }
+            else if (args.Message == "DeleteBaseline")
+            {
+                DeleteBaseline(webView, args.Data);
             }
         };
     }
@@ -658,6 +718,74 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
         }
     }
 
+    // ---- Baselines: snapshot scan results for new/fixed comparison.
+    // Stored in $project/.clevr-lint/baselines.json (version-controlled, shared with team).
+
+    private void PostBaselines(IWebView webView)
+    {
+        try
+        {
+            var list = _baselines.Load(ExclusionsProjectDir());
+            webView.PostMessage("BaselinesLoaded", JsonSerializer.Serialize(list, LintScanService.JsonOut));
+        }
+        catch (Exception ex)
+        {
+            _logService.Error("[CLEVR Lint] loading baselines failed", ex);
+            webView.PostMessage("BaselineError", ex.Message);
+        }
+    }
+
+    private void SaveBaseline(IWebView webView, JsonObject? data)
+    {
+        try
+        {
+            var projectDir = ExclusionsProjectDir();
+            if (string.IsNullOrWhiteSpace(projectDir))
+            {
+                webView.PostMessage("BaselineError", "No project folder available to save the baseline.");
+                return;
+            }
+            var savedAtMs = data?["savedAt"]?.GetValue<long>() ?? DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            var savedAt = DateTimeOffset.FromUnixTimeMilliseconds(savedAtMs);
+            var id = savedAt.ToString("yyyyMMdd-HHmmss");
+            var violationsNode = data?["violations"];
+            var violations = violationsNode != null
+                ? JsonSerializer.Deserialize<Violation[]>(violationsNode.ToJsonString(), LintScanService.JsonOut) ?? []
+                : Array.Empty<Violation>();
+            var gitRevision = BaselineStore.GetGitRevision(projectDir);
+            var entry = new BaselineEntry { Id = id, SavedAt = savedAt, GitRevision = gitRevision, Violations = violations };
+            _baselines.Save(projectDir, entry);
+            PostBaselines(webView);
+        }
+        catch (Exception ex)
+        {
+            _logService.Error("[CLEVR Lint] saving baseline failed", ex);
+            webView.PostMessage("BaselineError", ex.Message);
+        }
+    }
+
+    private void DeleteBaseline(IWebView webView, JsonObject? data)
+    {
+        try
+        {
+            var projectDir = ExclusionsProjectDir();
+            if (string.IsNullOrWhiteSpace(projectDir))
+            {
+                webView.PostMessage("BaselineError", "No project folder available.");
+                return;
+            }
+            var id = data?["id"]?.GetValue<string>() ?? "";
+            if (!string.IsNullOrWhiteSpace(id))
+                _baselines.Delete(projectDir, id);
+            PostBaselines(webView);
+        }
+        catch (Exception ex)
+        {
+            _logService.Error("[CLEVR Lint] deleting baseline failed", ex);
+            webView.PostMessage("BaselineError", ex.Message);
+        }
+    }
+
     private readonly LinterConfigStore _linterConfig = new();
 
     private void PostLinterConfig(IWebView webView)
@@ -745,6 +873,54 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
         {
             _logService.Error("[CLEVR Lint] loading modules failed", ex);
             webView.PostMessage("ModulesError", ex.Message);
+        }
+    }
+
+    /// <summary>Saves a user-selected mxcli path to settings and posts back the updated MxcliInfo.</summary>
+    private void ApplyMxcliPath(IWebView webView, string path)
+    {
+        try
+        {
+            var settingsPath = _fileService.ResolvePath("lint-scan-settings.json");
+            LintScanSettings existing;
+            if (File.Exists(settingsPath))
+                existing = LintScanSettings.Load(File.ReadAllText(settingsPath), null);
+            else
+                existing = new LintScanSettings();
+
+            existing.MxcliPath = path;
+            var json = System.Text.Json.JsonSerializer.Serialize(
+                new { mxcliPath = existing.MxcliPath, projectPath = existing.ProjectPath },
+                new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+            File.WriteAllText(settingsPath, json, System.Text.Encoding.UTF8);
+
+            // Resolve and broadcast the updated state.
+            _ = Task.Run(() => PostMxcliInfo(webView, _uiContext));
+        }
+        catch (Exception ex)
+        {
+            _logService.Error("[CLEVR Lint] ApplyMxcliPath failed", ex);
+            SafePost(webView, _getProjectDir(), "MxcliPathError", ex.Message);
+        }
+    }
+
+    private void PostMxcliInfo(IWebView webView, SynchronizationContext? uiContext)
+    {
+        try
+        {
+            var settingsPath = _fileService.ResolvePath("lint-scan-settings.json");
+            var settingsJson = File.Exists(settingsPath) ? File.ReadAllText(settingsPath) : null;
+            var info = MxcliService.Resolve(settingsJson, _getProjectDir());
+            var payload = JsonSerializer.Serialize(info, LintScanService.JsonOut);
+            var projectDir = _getProjectDir();
+            if (uiContext != null)
+                uiContext.Post(_ => SafePost(webView, projectDir, "MxcliInfo", payload), null);
+            else
+                SafePost(webView, projectDir, "MxcliInfo", payload);
+        }
+        catch (Exception ex)
+        {
+            _logService.Warn($"[CLEVR Lint] PostMxcliInfo failed: {ex.Message}");
         }
     }
 

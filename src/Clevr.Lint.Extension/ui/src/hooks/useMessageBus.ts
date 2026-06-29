@@ -1,6 +1,6 @@
 ﻿import { Dispatch, useEffect } from "react";
 import type { AppAction, ScanDescribePayload, ScanFastPayload } from "../context/AppReducer";
-import type { Exclusion, LinterConfigRule, ModuleInfo } from "../types";
+import type { BaselineEntry, Exclusion, LinterConfigRule, ModuleInfo, MxcliInfo } from "../types";
 
 export function post(message: string, data?: unknown): void {
   window.chrome?.webview?.postMessage({ message, data });
@@ -76,6 +76,26 @@ function handleModules(data: unknown, dispatch: Dispatch<AppAction>): void {
   dispatch({ type: "SET_MODULES", modules });
 }
 
+function handleBaselinesLoaded(data: unknown, dispatch: Dispatch<AppAction>): void {
+  let list: BaselineEntry[] | null;
+  try {
+    list = typeof data === "string" ? JSON.parse(data) : (data as BaselineEntry[] | null);
+  } catch (e) {
+    dispatch({ type: "SHOW_TOAST", text: "Could not parse baselines: " + String(e), isError: true });
+    return;
+  }
+  dispatch({ type: "SET_BASELINES", baselines: Array.isArray(list) ? list : [] });
+}
+
+function handleMxcliInfo(data: unknown, dispatch: Dispatch<AppAction>): void {
+  let payload: MxcliInfo | null;
+  try {
+    payload = typeof data === "string" ? JSON.parse(data) : (data as MxcliInfo | null);
+  } catch (e) { dispatch({ type: "SHOW_TOAST", text: "Could not parse mxcli info: " + String(e), isError: true }); return; }
+  if (!payload) return;
+  dispatch({ type: "SET_MXCLI_INFO", info: payload });
+}
+
 function handleRulesCatalog(data: unknown, dispatch: Dispatch<AppAction>): void {
   let payload: { ruleNames?: Record<string, string>; ruleCategories?: Record<string, string> } | null;
   try {
@@ -113,14 +133,26 @@ export function useMessageBus(dispatch: Dispatch<AppAction>): void {
         case "Modules":             return handleModules(data, dispatch);
         case "UncommittedDocuments": return handleUncommittedDocuments(data, dispatch);
         case "ModulesError":        return dispatch({ type: "SHOW_TOAST", text: "Could not load modules: " + String(data), isError: true });
+        case "BaselinesLoaded":          return handleBaselinesLoaded(data, dispatch);
+        case "BaselineError":            return dispatch({ type: "SHOW_TOAST", text: "Baseline error: " + String(data), isError: true });
+        case "MxcliInfo":                return handleMxcliInfo(data, dispatch);
+        case "MxcliDownloadProgress":    return dispatch({ type: "MXCLI_DOWNLOAD_PROGRESS", percent: Number(data) });
+        case "MxcliDownloadError":       {
+          dispatch({ type: "SET_MXCLI_INFO", info: { source: "notFound", resolvedPath: null, version: null, found: false, downloadedAt: null } });
+          dispatch({ type: "SHOW_TOAST", text: "mxcli download failed: " + String(data), isError: true });
+          return;
+        }
+        case "MxcliPathError":           return dispatch({ type: "SHOW_TOAST", text: "Could not apply mxcli path: " + String(data), isError: true });
       }
     }
 
     window.chrome?.webview?.addEventListener("message", handleMessage);
     post("MessageListenerRegistered");
     post("RequestExclusions");
+    post("RequestBaselines");
     post("RequestRulesCatalog");
     post("RequestLinterConfig");
+    post("RequestMxcliInfo");
 
     return () => window.chrome?.webview?.removeEventListener("message", handleMessage);
   }, [dispatch]);

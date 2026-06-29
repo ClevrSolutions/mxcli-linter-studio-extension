@@ -1,4 +1,4 @@
-﻿import type { Exclusion, LinterConfigRule, ModuleInfo, ScanMeta, ScanProgress, Violation } from "../types";
+﻿import type { BaselineEntry, Exclusion, LinterConfigRule, ModuleInfo, MxcliInfo, ScanMeta, ScanProgress, Violation } from "../types";
 
 
 export interface AppState {
@@ -25,12 +25,18 @@ export interface AppState {
   settingsVisible: boolean;
   scanHasRun: boolean;
   scanCompletedAt: number | null;
-  settingsActiveTab: "modules" | "rules";
+  settingsActiveTab: "modules" | "rules" | "configuration";
+  mxcliInfo: MxcliInfo | null;
+  mxcliDownloading: boolean;
+  mxcliDownloadProgress: number | null;
   linterConfig: Record<string, LinterConfigRule>;
   pendingConfig: Record<string, LinterConfigRule>;
   modules: ModuleInfo[];
   savedExcludedModules: string[];
   pendingExcludedModules: string[];
+  baselines: BaselineEntry[];
+  selectedBaselineId: string | null;
+  baselineFilter: "new" | "fixed" | null;
 }
 
 export type AppAction =
@@ -60,7 +66,13 @@ export type AppAction =
   | { type: "SET_EXCLUDED_MODULES"; modules: string[] }
   | { type: "SET_MARKETPLACE_MODULES_EXCLUDED"; exclude: boolean }
   | { type: "BULK_SET_RULES_ENABLED"; ruleIds: string[]; enabled: boolean | undefined }
-  | { type: "SET_SETTINGS_TAB"; tab: "modules" | "rules" };
+  | { type: "SET_SETTINGS_TAB"; tab: "modules" | "rules" | "configuration" }
+  | { type: "SET_MXCLI_INFO"; info: MxcliInfo }
+  | { type: "MXCLI_DOWNLOAD_STARTED" }
+  | { type: "MXCLI_DOWNLOAD_PROGRESS"; percent: number }
+  | { type: "SET_BASELINES"; baselines: BaselineEntry[] }
+  | { type: "SELECT_BASELINE"; id: string | null }
+  | { type: "SET_BASELINE_FILTER"; filter: "new" | "fixed" | null };
 
 export interface ScanFastPayload {
   violations?: Violation[];
@@ -112,6 +124,12 @@ export const initialState: AppState = {
   modules: [],
   savedExcludedModules: [],
   pendingExcludedModules: [],
+  baselines: [],
+  selectedBaselineId: null,
+  baselineFilter: null,
+  mxcliInfo: null,
+  mxcliDownloading: false,
+  mxcliDownloadProgress: null,
 };
 
 function toggleSet(set: Set<string>, key: string): Set<string> {
@@ -157,8 +175,10 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         scanIncomplete,
       };
     }
-    case "SCAN_FINISHED":
-      return { ...state, scanStreaming: false, scanProgress: null, scanHasRun: true, scanCompletedAt: action.completedAt ?? state.scanCompletedAt };
+    case "SCAN_FINISHED": {
+      const autoSelect = state.baselines.length > 0 ? (state.selectedBaselineId ?? state.baselines[0].id) : null;
+      return { ...state, scanStreaming: false, scanProgress: null, scanHasRun: true, scanCompletedAt: action.completedAt ?? state.scanCompletedAt, selectedBaselineId: autoSelect };
+    }
     case "SCAN_ERROR":
       return { ...state, scanStreaming: false, scanProgress: null, toast: { text: action.error, isError: true, id: ++toastId } };
     case "SET_EXCLUSIONS":
@@ -189,6 +209,7 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         severityEnabled: new Set(),
         filterQuery: "",
         uncommittedFilterActive: false,
+        baselineFilter: null,
       };
     case "SHOW_TOAST":
       return { ...state, toast: { text: action.text, isError: action.isError, id: ++toastId } };
@@ -210,7 +231,7 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         pendingExcludedModules: [...state.savedExcludedModules],
       };
     case "HIDE_SETTINGS":
-      return { ...state, settingsVisible: false, pendingConfig: {}, pendingExcludedModules: [] };
+      return { ...state, settingsVisible: false, pendingConfig: {}, pendingExcludedModules: [], mxcliDownloading: false, mxcliDownloadProgress: null };
     case "SET_SETTINGS_TAB":
       return { ...state, settingsActiveTab: action.tab };
     case "SET_LINTER_CONFIG":
@@ -270,6 +291,23 @@ export function appReducer(state: AppState, action: AppAction): AppState {
       }
       return { ...state, pendingConfig: next };
     }
+    case "SET_BASELINES": {
+      const ids = new Set(action.baselines.map((b) => b.id));
+      const selectedId = state.selectedBaselineId && ids.has(state.selectedBaselineId)
+        ? state.selectedBaselineId
+        : action.baselines[0]?.id ?? null;
+      return { ...state, baselines: action.baselines, selectedBaselineId: selectedId };
+    }
+    case "SELECT_BASELINE":
+      return { ...state, selectedBaselineId: action.id, baselineFilter: null };
+    case "SET_BASELINE_FILTER":
+      return { ...state, baselineFilter: action.filter };
+    case "SET_MXCLI_INFO":
+      return { ...state, mxcliInfo: action.info, mxcliDownloading: false, mxcliDownloadProgress: null };
+    case "MXCLI_DOWNLOAD_STARTED":
+      return { ...state, mxcliDownloading: true, mxcliDownloadProgress: 0 };
+    case "MXCLI_DOWNLOAD_PROGRESS":
+      return { ...state, mxcliDownloadProgress: action.percent };
     default:
       return state;
   }
