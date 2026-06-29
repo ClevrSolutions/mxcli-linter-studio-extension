@@ -6,7 +6,7 @@
     <Nullable>enable</Nullable>
     <AssemblyName>Clevr.Lint.Extension</AssemblyName>
     <RootNamespace>Clevr.Lint.Extension</RootNamespace>
-    <Version>0.1.0</Version>
+    <Version>0.1.1</Version>
     <!-- Required so NuGet package DLLs (e.g. YamlDotNet) are copied to the output
          directory. Class libraries default to false; the Mendix extension host needs
          all dependency DLLs present next to the extension assembly. -->

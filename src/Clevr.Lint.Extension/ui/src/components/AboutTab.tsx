@@ -1,10 +1,18 @@
 import { useAppState } from "../context/AppContext";
 
-const VERSION = "0.1.0";
+const VERSION = "0.1.1";
 const REPO_URL = "https://github.com/clevr/clevr-lint-extension";
 const ISSUES_URL = "https://github.com/ClevrSolutions/mxcli-linter-studio-extension/issues";
 
 const CHANGELOG: { version: string; changes: string[] }[] = [
+  {
+    version: "0.1.1",
+    changes: [
+      "Add per-module filter section to FilterBar",
+      "Add About tab and auto-fetch files when adding a new rule source",
+      "Fix rule source data loss, partial delete abort, path traversal, and code duplication",
+    ],
+  },
   {
     version: "0.1.0",
     changes: [

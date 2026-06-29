@@ -6,7 +6,7 @@
     <Nullable>enable</Nullable>
     <RootNamespace>Clevr.Lint.Normalizer</RootNamespace>
     <AssemblyName>Clevr.Lint.Normalizer</AssemblyName>
-    <Version>0.1.0</Version>
+    <Version>0.1.1</Version>
   </PropertyGroup>
 
   <!-- Bewust GEEN afhankelijkheden: de normalizer is een pure, los testbare module
