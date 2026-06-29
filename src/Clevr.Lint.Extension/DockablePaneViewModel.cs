@@ -185,25 +185,20 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
             else if (args.Message == "DownloadMxcli")
             {
                 var ctx = _uiContext;
-                void PostDownload(string msg, string data)
-                {
-                    if (ctx != null) ctx.Post(_ => SafePost(webView, _getProjectDir(), msg, data), null);
-                    else SafePost(webView, _getProjectDir(), msg, data);
-                }
                 _ = Task.Run(async () =>
                 {
                     try
                     {
                         var info = await MxcliService.DownloadLatestAsync(
                             _fileService,
-                            pct => PostDownload("MxcliDownloadProgress", pct.ToString()),
+                            pct => PostBackground(ctx, webView, "MxcliDownloadProgress", pct.ToString()),
                             default);
-                        PostDownload("MxcliInfo", JsonSerializer.Serialize(info, LintScanService.JsonOut));
+                        PostBackground(ctx, webView, "MxcliInfo", JsonSerializer.Serialize(info, LintScanService.JsonOut));
                     }
                     catch (Exception ex)
                     {
                         _logService.Error("[CLEVR Lint] mxcli download failed", ex);
-                        PostDownload("MxcliDownloadError", ex.Message);
+                        PostBackground(ctx, webView, "MxcliDownloadError", ex.Message);
                     }
                 });
             }
@@ -236,30 +231,25 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
                 var id  = args.Data?["id"]?.GetValue<string>()  ?? "";
                 var url = args.Data?["url"]?.GetValue<string>() ?? "";
                 var ctx = _uiContext;
-                void PostDelete(string msg, string data)
-                {
-                    if (ctx != null) ctx.Post(_ => SafePost(webView, _getProjectDir(), msg, data), null);
-                    else SafePost(webView, _getProjectDir(), msg, data);
-                }
                 _ = Task.Run(async () =>
                 {
-                    PostDelete("RuleSourceFetchStarted", JsonSerializer.Serialize(new { id }, LintScanService.JsonOut));
+                    PostBackground(ctx, webView, "RuleSourceFetchStarted", JsonSerializer.Serialize(new { id }, LintScanService.JsonOut));
                     try
                     {
                         var projectDir = ExclusionsProjectDir();
                         var result = await _ruleSourcesService.DeleteRuleSourceFilesAsync(
                             url, projectDir ?? "",
-                            msg => PostDelete("RuleSourceFetchProgress", JsonSerializer.Serialize(new { id, message = msg }, LintScanService.JsonOut)),
+                            msg => PostBackground(ctx, webView, "RuleSourceFetchProgress", JsonSerializer.Serialize(new { id, message = msg }, LintScanService.JsonOut)),
                             default);
                         var payload = JsonSerializer.Serialize(
-                            new { id, deleted = result.Deleted, notFound = result.NotFound },
+                            new { id, deleted = result.Deleted, notFound = result.NotFound, failed = result.Failed, errors = result.Errors },
                             LintScanService.JsonOut);
-                        PostDelete("RuleSourceFilesDeleted", payload);
+                        PostBackground(ctx, webView, "RuleSourceFilesDeleted", payload);
                     }
                     catch (Exception ex)
                     {
                         _logService.Error("[CLEVR Lint] DeleteRuleSourceFiles failed", ex);
-                        PostDelete("RuleSourceFetchError", JsonSerializer.Serialize(new { id, error = ex.Message }, LintScanService.JsonOut));
+                        PostBackground(ctx, webView, "RuleSourceFetchError", JsonSerializer.Serialize(new { id, error = ex.Message }, LintScanService.JsonOut));
                     }
                 });
             }
@@ -269,30 +259,25 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
                 var url = args.Data?["url"]?.GetValue<string>() ?? "";
                 var replace = args.Data?["replaceExisting"]?.GetValue<bool>() ?? false;
                 var ctx = _uiContext;
-                void PostFetch(string msg, string data)
-                {
-                    if (ctx != null) ctx.Post(_ => SafePost(webView, _getProjectDir(), msg, data), null);
-                    else SafePost(webView, _getProjectDir(), msg, data);
-                }
                 _ = Task.Run(async () =>
                 {
-                    PostFetch("RuleSourceFetchStarted", JsonSerializer.Serialize(new { id }, LintScanService.JsonOut));
+                    PostBackground(ctx, webView, "RuleSourceFetchStarted", JsonSerializer.Serialize(new { id }, LintScanService.JsonOut));
                     try
                     {
                         var projectDir = ExclusionsProjectDir();
                         var result = await _ruleSourcesService.FetchRuleSourceAsync(
                             url, projectDir ?? "", replace,
-                            msg => PostFetch("RuleSourceFetchProgress", JsonSerializer.Serialize(new { id, message = msg }, LintScanService.JsonOut)),
+                            msg => PostBackground(ctx, webView, "RuleSourceFetchProgress", JsonSerializer.Serialize(new { id, message = msg }, LintScanService.JsonOut)),
                             default);
                         var payload = JsonSerializer.Serialize(
                             new { id, copied = result.Copied, skipped = result.Skipped, failed = result.Failed, errors = result.Errors },
                             LintScanService.JsonOut);
-                        PostFetch("RuleSourceFetched", payload);
+                        PostBackground(ctx, webView, "RuleSourceFetched", payload);
                     }
                     catch (Exception ex)
                     {
                         _logService.Error("[CLEVR Lint] FetchRuleSource failed", ex);
-                        PostFetch("RuleSourceFetchError", JsonSerializer.Serialize(new { id, error = ex.Message }, LintScanService.JsonOut));
+                        PostBackground(ctx, webView, "RuleSourceFetchError", JsonSerializer.Serialize(new { id, error = ex.Message }, LintScanService.JsonOut));
                     }
                 });
             }
@@ -963,10 +948,7 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
                 existing = new LintScanSettings();
 
             existing.MxcliPath = path;
-            var json = System.Text.Json.JsonSerializer.Serialize(
-                new { mxcliPath = existing.MxcliPath, projectPath = existing.ProjectPath, ruleSources = existing.RuleSources },
-                new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
-            File.WriteAllText(settingsPath, json, System.Text.Encoding.UTF8);
+            File.WriteAllText(settingsPath, JsonSerializer.Serialize(existing, SettingsJson.WriteOptions), System.Text.Encoding.UTF8);
 
             // Resolve and broadcast the updated state.
             _ = Task.Run(() => PostMxcliInfo(webView, _uiContext));
@@ -1010,10 +992,7 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
                 : new LintScanSettings();
 
             existing.RuleSources = sources;
-            var json = System.Text.Json.JsonSerializer.Serialize(
-                new { mxcliPath = existing.MxcliPath, projectPath = existing.ProjectPath, ruleSources = existing.RuleSources },
-                new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
-            File.WriteAllText(settingsPath, json, System.Text.Encoding.UTF8);
+            File.WriteAllText(settingsPath, JsonSerializer.Serialize(existing, SettingsJson.WriteOptions), System.Text.Encoding.UTF8);
 
             webView.PostMessage("RuleSourcesSaved", "{}");
         }
@@ -1042,6 +1021,12 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
         {
             _logService.Warn($"[CLEVR Lint] PostMxcliInfo failed: {ex.Message}");
         }
+    }
+
+    private void PostBackground(SynchronizationContext? ctx, IWebView webView, string message, string data)
+    {
+        if (ctx != null) ctx.Post(_ => SafePost(webView, _getProjectDir(), message, data), null);
+        else SafePost(webView, _getProjectDir(), message, data);
     }
 
     /// <summary>PostMessage with safeguard: if it fails (e.g. wrong thread), log instead of silently swallowing.</summary>

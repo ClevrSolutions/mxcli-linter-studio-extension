@@ -105,5 +105,5 @@ export interface RuleSourceFetchStatus {
   progress?: string;
   error?: string;
   lastResult?: { copied: number; skipped: number; failed: number; errors: string[] };
-  lastDeleteResult?: { deleted: number; notFound: number };
+  lastDeleteResult?: { deleted: number; notFound: number; failed: number; errors: string[] };
 }

@@ -169,12 +169,26 @@ export function RuleSourcesTab() {
                         </>
                       );
                     })()}
-                    {!status.fetching && status.lastDeleteResult && (
-                      <span className="lint-source-status-ok">
-                        Deleted: {status.lastDeleteResult.deleted}
-                        {status.lastDeleteResult.notFound > 0 && ` · Not found: ${status.lastDeleteResult.notFound}`}
-                      </span>
-                    )}
+                    {!status.fetching && status.lastDeleteResult && (() => {
+                      const r = status.lastDeleteResult;
+                      const hasFailed = r.failed > 0;
+                      return (
+                        <>
+                          <span className={hasFailed ? "lint-source-status-warn" : "lint-source-status-ok"}>
+                            Deleted: {r.deleted}
+                            {r.notFound > 0 && ` · Not found: ${r.notFound}`}
+                            {hasFailed && ` · Failed: ${r.failed}`}
+                          </span>
+                          {r.errors.length > 0 && (
+                            <ul className="lint-source-error-list">
+                              {r.errors.map((e, i) => (
+                                <li key={i} className="lint-source-status-error">{e}</li>
+                              ))}
+                            </ul>
+                          )}
+                        </>
+                      );
+                    })()}
                   </div>
                 )}
               </div>

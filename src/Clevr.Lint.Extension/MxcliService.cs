@@ -191,9 +191,7 @@ public static class MxcliService
                 existing = new LintScanSettings();
 
             existing.MxcliPath = mxcliPath;
-            var json = JsonSerializer.Serialize(
-                new { mxcliPath = existing.MxcliPath, projectPath = existing.ProjectPath },
-                new JsonSerializerOptions { WriteIndented = true });
+            var json = JsonSerializer.Serialize(existing, SettingsJson.WriteOptions);
             File.WriteAllText(settingsPath, json, System.Text.Encoding.UTF8);
         }
         catch { /* best-effort: settings update failing doesn't undo a successful download */ }

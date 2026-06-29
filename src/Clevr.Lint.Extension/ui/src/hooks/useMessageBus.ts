@@ -127,7 +127,7 @@ function handleRuleSourceFetched(data: unknown, dispatch: Dispatch<AppAction>): 
 }
 
 function handleRuleSourceFilesDeleted(data: unknown, dispatch: Dispatch<AppAction>): void {
-  let payload: { id?: string; deleted?: number; notFound?: number } | null;
+  let payload: { id?: string; deleted?: number; notFound?: number; failed?: number; errors?: string[] } | null;
   try {
     payload = typeof data === "string" ? JSON.parse(data) : (data as typeof payload);
   } catch { return; }
@@ -137,7 +137,12 @@ function handleRuleSourceFilesDeleted(data: unknown, dispatch: Dispatch<AppActio
     id: payload.id,
     status: {
       fetching: false,
-      lastDeleteResult: { deleted: payload.deleted ?? 0, notFound: payload.notFound ?? 0 },
+      lastDeleteResult: {
+        deleted: payload.deleted ?? 0,
+        notFound: payload.notFound ?? 0,
+        failed: payload.failed ?? 0,
+        errors: payload.errors ?? [],
+      },
     },
   });
 }
@@ -218,8 +223,10 @@ export function useMessageBus(dispatch: Dispatch<AppAction>): void {
         case "RuleSources":              return handleRuleSources(data, dispatch);
         case "RuleSourcesError":         return dispatch({ type: "SHOW_TOAST", text: "Rule sources error: " + String(data), isError: true });
         case "RuleSourceFetchStarted":   {
-          const p = typeof data === "string" ? JSON.parse(data) as { id?: string } : data as { id?: string };
-          if (p?.id) dispatch({ type: "SET_RULE_SOURCE_FETCH_STATUS", id: p.id, status: { fetching: true } });
+          try {
+            const p = typeof data === "string" ? JSON.parse(data) as { id?: string } : data as { id?: string };
+            if (p?.id) dispatch({ type: "SET_RULE_SOURCE_FETCH_STATUS", id: p.id, status: { fetching: true } });
+          } catch { /* ignore malformed payload */ }
           return;
         }
         case "RuleSourceFetchProgress":  return handleRuleSourceFetchProgress(data, dispatch);

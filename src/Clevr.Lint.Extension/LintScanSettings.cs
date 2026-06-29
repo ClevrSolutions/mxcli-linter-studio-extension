@@ -10,6 +10,11 @@ public sealed record RuleSource
     [JsonPropertyName("label")] public string? Label { get; init; }
 }
 
+internal static class SettingsJson
+{
+    internal static readonly JsonSerializerOptions WriteOptions = new() { WriteIndented = true };
+}
+
 /// <summary>
 /// Configurable scan settings (NOT hardcoded). Loaded from
 /// lint-scan-settings.json in the extension directory; missing fields receive a default.

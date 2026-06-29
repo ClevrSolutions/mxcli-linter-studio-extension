@@ -6,7 +6,7 @@ using System.Text.RegularExpressions;
 namespace Clevr.Lint.Extension;
 
 public sealed record RuleSourceFetchResult(int Copied, int Skipped, int Failed, string[] Errors);
-public sealed record RuleSourceDeleteResult(int Deleted, int NotFound);
+public sealed record RuleSourceDeleteResult(int Deleted, int NotFound, int Failed, string[] Errors);
 
 internal sealed class RuleSourcesService
 {
@@ -82,6 +82,9 @@ internal sealed class RuleSourcesService
                 "No project path configured. Open a project in Studio Pro or set the Mendix project path in Settings → Configuration before fetching rule sources.");
     }
 
+    private static bool IsUnsafeFileName(string name)
+        => name.Contains('/') || name.Contains('\\') || name.Contains("..");
+
     public async Task<RuleSourceFetchResult> FetchRuleSourceAsync(
         string githubUrl,
         string projectDir,
@@ -121,6 +124,13 @@ internal sealed class RuleSourcesService
             var fileName = item.Name ?? "";
             if (string.IsNullOrEmpty(fileName) || string.IsNullOrEmpty(item.DownloadUrl))
                 continue;
+
+            if (IsUnsafeFileName(fileName))
+            {
+                failed++;
+                errors.Add($"Skipped '{fileName}': filename contains path separators.");
+                continue;
+            }
 
             onProgress($"[{i + 1}/{fileItems.Length}] {fileName}");
 
@@ -170,33 +180,49 @@ internal sealed class RuleSourcesService
         if (fileItems.Length == 0)
         {
             onProgress("No files found in directory.");
-            return new RuleSourceDeleteResult(0, 0);
+            return new RuleSourceDeleteResult(0, 0, 0, []);
         }
 
         var rulesDir = Path.Combine(projectDir, ".claude", "lint-rules");
         var deleted = 0;
         var notFound = 0;
+        var failed = 0;
+        var errors = new List<string>();
 
         for (var i = 0; i < fileItems.Length; i++)
         {
             var fileName = fileItems[i].Name ?? "";
             if (string.IsNullOrEmpty(fileName)) continue;
 
+            if (IsUnsafeFileName(fileName))
+            {
+                failed++;
+                errors.Add($"Skipped '{fileName}': filename contains path separators.");
+                continue;
+            }
+
             onProgress($"[{i + 1}/{fileItems.Length}] {fileName}");
 
             var filePath = Path.Combine(rulesDir, fileName);
-            if (File.Exists(filePath))
+            if (!File.Exists(filePath))
+            {
+                notFound++;
+                continue;
+            }
+
+            try
             {
                 File.Delete(filePath);
                 deleted++;
             }
-            else
+            catch (Exception ex)
             {
-                notFound++;
+                failed++;
+                errors.Add($"{fileName}: {ex.Message}");
             }
         }
 
-        return new RuleSourceDeleteResult(deleted, notFound);
+        return new RuleSourceDeleteResult(deleted, notFound, failed, [.. errors]);
     }
 }
 
