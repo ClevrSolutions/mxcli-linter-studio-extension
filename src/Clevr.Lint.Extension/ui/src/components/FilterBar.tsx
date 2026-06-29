@@ -1,6 +1,6 @@
 import { useAppDispatch, useAppState } from "../context/AppContext";
 import { activeViolations, baselineFingerprintSet, currentFingerprintSet } from "../utils/filters";
-import { isAppStoreModule } from "../utils/origins";
+import { isAppStoreModule, moduleOf } from "../utils/origins";
 import { post } from "../hooks/useMessageBus";
 import { relativeTime } from "../utils/time";
 
@@ -16,6 +16,17 @@ export function FilterBar() {
 
   const hasBaseline = state.baselines.length > 0 && state.scanHasRun;
 
+  const modulesWithCounts = (() => {
+    const counts = new Map<string, number>();
+    for (const v of base) {
+      const m = moduleOf(v);
+      if (m) counts.set(m, (counts.get(m) ?? 0) + 1);
+    }
+    return Array.from(counts.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  })();
+
   // Baseline counts — compute with override state to get "what would show"
   const newCount = hasBaseline
     ? activeViolations({ ...state, baselineFilter: "new" }).length
@@ -28,7 +39,7 @@ export function FilterBar() {
   const selectedBaseline = state.baselines.find((b) => b.id === state.selectedBaselineId);
   const savedAgo = selectedBaseline ? relativeTime(new Date(selectedBaseline.savedAt).getTime()) : "";
 
-  if (asCount === 0 && !state.uncommittedAvailable && !hasBaseline) return null;
+  if (asCount === 0 && !state.uncommittedAvailable && !hasBaseline && modulesWithCounts.length < 2) return null;
 
   return (
     <div className="lint-engine-filter">
@@ -51,6 +62,21 @@ export function FilterBar() {
           />
           <span> Limit to uncommitted ({changedCount})</span>
         </label>
+      )}
+      {modulesWithCounts.length >= 2 && (
+        <div className="lint-module-filter">
+          <span className="lint-filter-label">Improvements per module:</span>
+          {modulesWithCounts.map(({ name, count }) => (
+            <label key={name} className="lint-origin-toggle">
+              <input
+                type="checkbox"
+                checked={state.moduleFilterEnabled.has(name)}
+                onChange={() => dispatch({ type: "TOGGLE_MODULE_FILTER", moduleName: name })}
+              />
+              <span> {name} ({count})</span>
+            </label>
+          ))}
+        </div>
       )}
       {hasBaseline && (
         <div className="lint-baseline-filter">

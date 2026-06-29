@@ -28,12 +28,14 @@ export function passesFilters(
   q: string,
   categoryEnabled: Set<string>,
   severityEnabled: Set<string>,
+  moduleFilterEnabled: Set<string>,
   ruleNames: Record<string, string>,
   ruleCategories: Record<string, string>,
 ): boolean {
   return (
     (categoryEnabled.size === 0 || categoryEnabled.has(displayCategory(v, ruleCategories))) &&
     (severityEnabled.size === 0 || severityEnabled.has(v.severity)) &&
+    (moduleFilterEnabled.size === 0 || moduleFilterEnabled.has(moduleOf(v))) &&
     matches(v, q, ruleNames, ruleCategories)
   );
 }

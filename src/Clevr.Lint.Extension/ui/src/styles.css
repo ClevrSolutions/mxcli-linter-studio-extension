@@ -252,6 +252,7 @@ details.lint-rule > summary .lint-ai-btn { margin-left: 8px; }
 .lint-baseline-save-btn:hover { border-color: var(--clevr-accent); color: var(--clevr-accent); }
 
 .lint-baseline-filter { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 4px 0; font-size: 12px; }
+.lint-module-filter { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 4px 0; font-size: 12px; }
 .lint-filter-label { color: var(--clevr-muted); white-space: nowrap; }
 .lint-baseline-select { font-size: 12px; padding: 2px 4px; border: 1px solid var(--clevr-border); border-radius: 4px; background: var(--clevr-card); color: var(--clevr-fg); max-width: 180px; }
 .lint-baseline-delete-btn { background: none; border: 1px solid var(--clevr-border); border-radius: 4px; padding: 1px 7px; font-size: 13px; color: var(--clevr-muted); cursor: pointer; line-height: 1.3; }

@@ -12,7 +12,7 @@ export function SummaryCards({ interactive = true }: Props) {
   const dispatch = useAppDispatch();
   const q = state.filterQuery.trim().toLowerCase();
   const filtered = activeViolations(state).filter((v) =>
-    passesFilters(v, q, state.categoryEnabled, state.severityEnabled, state.ruleNames, state.ruleCategories)
+    passesFilters(v, q, state.categoryEnabled, state.severityEnabled, state.moduleFilterEnabled, state.ruleNames, state.ruleCategories)
   );
 
   return (

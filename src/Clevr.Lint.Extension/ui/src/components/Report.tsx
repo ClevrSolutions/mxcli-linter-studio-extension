@@ -11,7 +11,7 @@ export function Report() {
   const isFixed = state.baselineFilter === "fixed";
 
   const all = activeViolations(state).filter((v) =>
-    passesFilters(v, q, state.categoryEnabled, state.severityEnabled, state.ruleNames, state.ruleCategories)
+    passesFilters(v, q, state.categoryEnabled, state.severityEnabled, state.moduleFilterEnabled, state.ruleNames, state.ruleCategories)
   );
 
   const streamingBanner = state.scanStreaming ? (

@@ -2,6 +2,7 @@ import { useAppState } from "../context/AppContext";
 
 const VERSION = "0.1.0";
 const REPO_URL = "https://github.com/clevr/clevr-lint-extension";
+const ISSUES_URL = "https://github.com/ClevrSolutions/mxcli-linter-studio-extension/issues";
 
 const CHANGELOG: { version: string; changes: string[] }[] = [
   {
@@ -75,6 +76,20 @@ export function AboutTab() {
           <a className="lint-about-link" href={REPO_URL} target="_blank" rel="noreferrer">
             {REPO_URL}
           </a>
+        </p>
+      </section>
+
+      <section className="lint-about-section">
+        <h3 className="lint-about-heading">Feedback &amp; Support</h3>
+        <p className="lint-about-para">
+          Found a bug, have a feature request, or want to suggest a new lint rule?{" "}
+          <a className="lint-about-link" href={ISSUES_URL} target="_blank" rel="noreferrer">
+            Open an issue on GitHub
+          </a>
+          .
+        </p>
+        <p className="lint-about-para">
+          When reporting an issue, please include your mxcli version, a description of the problem, and steps to reproduce it.
         </p>
       </section>
 

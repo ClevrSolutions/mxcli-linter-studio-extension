@@ -14,6 +14,7 @@ export interface AppState {
   scanStartMs: number;
   categoryEnabled: Set<string>;
   severityEnabled: Set<string>;
+  moduleFilterEnabled: Set<string>;
   appStoreVisible: boolean;
   uncommittedDocumentIds: Set<string>;
   uncommittedAvailable: boolean;
@@ -49,6 +50,7 @@ export type AppAction =
   | { type: "SET_EXCLUSIONS"; exclusions: Exclusion[] }
   | { type: "TOGGLE_CATEGORY"; category: string }
   | { type: "TOGGLE_SEVERITY"; severity: string }
+  | { type: "TOGGLE_MODULE_FILTER"; moduleName: string }
   | { type: "TOGGLE_APPSTORE" }
   | { type: "SET_UNCOMMITTED_DOCUMENTS"; documentIds: string[]; available: boolean }
   | { type: "TOGGLE_UNCOMMITTED_FILTER" }
@@ -113,6 +115,7 @@ export const initialState: AppState = {
   scanStartMs: 0,
   categoryEnabled: new Set(),
   severityEnabled: new Set(),
+  moduleFilterEnabled: new Set(),
   appStoreVisible: true,
   uncommittedDocumentIds: new Set<string>(),
   uncommittedAvailable: false,
@@ -195,6 +198,8 @@ export function appReducer(state: AppState, action: AppAction): AppState {
       return { ...state, categoryEnabled: toggleSet(state.categoryEnabled, action.category) };
     case "TOGGLE_SEVERITY":
       return { ...state, severityEnabled: toggleSet(state.severityEnabled, action.severity) };
+    case "TOGGLE_MODULE_FILTER":
+      return { ...state, moduleFilterEnabled: toggleSet(state.moduleFilterEnabled, action.moduleName) };
     case "TOGGLE_APPSTORE":
       return { ...state, appStoreVisible: !state.appStoreVisible };
     case "SET_UNCOMMITTED_DOCUMENTS":
@@ -215,6 +220,7 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         ...state,
         categoryEnabled: new Set(),
         severityEnabled: new Set(),
+        moduleFilterEnabled: new Set(),
         filterQuery: "",
         uncommittedFilterActive: false,
         baselineFilter: null,
