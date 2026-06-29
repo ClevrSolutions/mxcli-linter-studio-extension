@@ -1,4 +1,4 @@
-﻿import type { BaselineEntry, Exclusion, LinterConfigRule, ModuleInfo, MxcliInfo, ScanMeta, ScanProgress, Violation } from "../types";
+﻿import type { BaselineEntry, Exclusion, LinterConfigRule, ModuleInfo, MxcliInfo, RuleSource, RuleSourceFetchStatus, ScanMeta, ScanProgress, Violation } from "../types";
 
 
 export interface AppState {
@@ -25,7 +25,7 @@ export interface AppState {
   settingsVisible: boolean;
   scanHasRun: boolean;
   scanCompletedAt: number | null;
-  settingsActiveTab: "modules" | "rules" | "configuration";
+  settingsActiveTab: "modules" | "rules" | "configuration" | "sources";
   mxcliInfo: MxcliInfo | null;
   mxcliDownloading: boolean;
   mxcliDownloadProgress: number | null;
@@ -37,6 +37,8 @@ export interface AppState {
   baselines: BaselineEntry[];
   selectedBaselineId: string | null;
   baselineFilter: "new" | "fixed" | null;
+  ruleSources: RuleSource[];
+  ruleSourceFetchStatus: Record<string, RuleSourceFetchStatus>;
 }
 
 export type AppAction =
@@ -66,7 +68,11 @@ export type AppAction =
   | { type: "SET_EXCLUDED_MODULES"; modules: string[] }
   | { type: "SET_MARKETPLACE_MODULES_EXCLUDED"; exclude: boolean }
   | { type: "BULK_SET_RULES_ENABLED"; ruleIds: string[]; enabled: boolean | undefined }
-  | { type: "SET_SETTINGS_TAB"; tab: "modules" | "rules" | "configuration" }
+  | { type: "SET_SETTINGS_TAB"; tab: "modules" | "rules" | "configuration" | "sources" }
+  | { type: "SET_RULE_SOURCES"; sources: RuleSource[] }
+  | { type: "ADD_RULE_SOURCE"; source: RuleSource }
+  | { type: "REMOVE_RULE_SOURCE"; id: string }
+  | { type: "SET_RULE_SOURCE_FETCH_STATUS"; id: string; status: RuleSourceFetchStatus }
   | { type: "SET_MXCLI_INFO"; info: MxcliInfo }
   | { type: "MXCLI_DOWNLOAD_STARTED" }
   | { type: "MXCLI_DOWNLOAD_PROGRESS"; percent: number }
@@ -130,6 +136,8 @@ export const initialState: AppState = {
   mxcliInfo: null,
   mxcliDownloading: false,
   mxcliDownloadProgress: null,
+  ruleSources: [],
+  ruleSourceFetchStatus: {},
 };
 
 function toggleSet(set: Set<string>, key: string): Set<string> {
@@ -308,6 +316,23 @@ export function appReducer(state: AppState, action: AppAction): AppState {
       return { ...state, mxcliDownloading: true, mxcliDownloadProgress: 0 };
     case "MXCLI_DOWNLOAD_PROGRESS":
       return { ...state, mxcliDownloadProgress: action.percent };
+    case "SET_RULE_SOURCES":
+      return { ...state, ruleSources: action.sources };
+    case "ADD_RULE_SOURCE":
+      return { ...state, ruleSources: [...state.ruleSources, action.source] };
+    case "REMOVE_RULE_SOURCE": {
+      const { [action.id]: _removed, ...restStatus } = state.ruleSourceFetchStatus;
+      return {
+        ...state,
+        ruleSources: state.ruleSources.filter((s) => s.id !== action.id),
+        ruleSourceFetchStatus: restStatus,
+      };
+    }
+    case "SET_RULE_SOURCE_FETCH_STATUS":
+      return {
+        ...state,
+        ruleSourceFetchStatus: { ...state.ruleSourceFetchStatus, [action.id]: action.status },
+      };
     default:
       return state;
   }

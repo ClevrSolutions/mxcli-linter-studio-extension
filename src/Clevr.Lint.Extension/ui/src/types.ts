@@ -93,3 +93,17 @@ export interface MxcliInfo {
   found: boolean;
   downloadedAt: string | null;
 }
+
+export interface RuleSource {
+  id: string;
+  url: string;
+  label?: string;
+}
+
+export interface RuleSourceFetchStatus {
+  fetching: boolean;
+  progress?: string;
+  error?: string;
+  lastResult?: { copied: number; skipped: number; failed: number; errors: string[] };
+  lastDeleteResult?: { deleted: number; notFound: number };
+}

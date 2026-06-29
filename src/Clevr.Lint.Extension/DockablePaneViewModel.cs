@@ -34,6 +34,7 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
     private readonly IDockingWindowService _dockingWindowService;
     private readonly ExclusionStore _exclusions = new();
     private readonly BaselineStore _baselines = new();
+    private readonly RuleSourcesService _ruleSourcesService = new();
     private CancellationTokenSource? _scanCts;
     private SynchronizationContext? _uiContext;
 
@@ -221,6 +222,79 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
             else if (args.Message == "DeleteBaseline")
             {
                 DeleteBaseline(webView, args.Data);
+            }
+            else if (args.Message == "RequestRuleSources")
+            {
+                PostRuleSources(webView);
+            }
+            else if (args.Message == "SaveRuleSources")
+            {
+                SaveRuleSources(webView, args.Data);
+            }
+            else if (args.Message == "DeleteRuleSourceFiles")
+            {
+                var id  = args.Data?["id"]?.GetValue<string>()  ?? "";
+                var url = args.Data?["url"]?.GetValue<string>() ?? "";
+                var ctx = _uiContext;
+                void PostDelete(string msg, string data)
+                {
+                    if (ctx != null) ctx.Post(_ => SafePost(webView, _getProjectDir(), msg, data), null);
+                    else SafePost(webView, _getProjectDir(), msg, data);
+                }
+                _ = Task.Run(async () =>
+                {
+                    PostDelete("RuleSourceFetchStarted", JsonSerializer.Serialize(new { id }, LintScanService.JsonOut));
+                    try
+                    {
+                        var projectDir = ExclusionsProjectDir();
+                        var result = await _ruleSourcesService.DeleteRuleSourceFilesAsync(
+                            url, projectDir ?? "",
+                            msg => PostDelete("RuleSourceFetchProgress", JsonSerializer.Serialize(new { id, message = msg }, LintScanService.JsonOut)),
+                            default);
+                        var payload = JsonSerializer.Serialize(
+                            new { id, deleted = result.Deleted, notFound = result.NotFound },
+                            LintScanService.JsonOut);
+                        PostDelete("RuleSourceFilesDeleted", payload);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logService.Error("[CLEVR Lint] DeleteRuleSourceFiles failed", ex);
+                        PostDelete("RuleSourceFetchError", JsonSerializer.Serialize(new { id, error = ex.Message }, LintScanService.JsonOut));
+                    }
+                });
+            }
+            else if (args.Message == "FetchRuleSource")
+            {
+                var id  = args.Data?["id"]?.GetValue<string>()  ?? "";
+                var url = args.Data?["url"]?.GetValue<string>() ?? "";
+                var replace = args.Data?["replaceExisting"]?.GetValue<bool>() ?? false;
+                var ctx = _uiContext;
+                void PostFetch(string msg, string data)
+                {
+                    if (ctx != null) ctx.Post(_ => SafePost(webView, _getProjectDir(), msg, data), null);
+                    else SafePost(webView, _getProjectDir(), msg, data);
+                }
+                _ = Task.Run(async () =>
+                {
+                    PostFetch("RuleSourceFetchStarted", JsonSerializer.Serialize(new { id }, LintScanService.JsonOut));
+                    try
+                    {
+                        var projectDir = ExclusionsProjectDir();
+                        var result = await _ruleSourcesService.FetchRuleSourceAsync(
+                            url, projectDir ?? "", replace,
+                            msg => PostFetch("RuleSourceFetchProgress", JsonSerializer.Serialize(new { id, message = msg }, LintScanService.JsonOut)),
+                            default);
+                        var payload = JsonSerializer.Serialize(
+                            new { id, copied = result.Copied, skipped = result.Skipped, failed = result.Failed, errors = result.Errors },
+                            LintScanService.JsonOut);
+                        PostFetch("RuleSourceFetched", payload);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logService.Error("[CLEVR Lint] FetchRuleSource failed", ex);
+                        PostFetch("RuleSourceFetchError", JsonSerializer.Serialize(new { id, error = ex.Message }, LintScanService.JsonOut));
+                    }
+                });
             }
         };
     }
@@ -890,7 +964,7 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
 
             existing.MxcliPath = path;
             var json = System.Text.Json.JsonSerializer.Serialize(
-                new { mxcliPath = existing.MxcliPath, projectPath = existing.ProjectPath },
+                new { mxcliPath = existing.MxcliPath, projectPath = existing.ProjectPath, ruleSources = existing.RuleSources },
                 new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
             File.WriteAllText(settingsPath, json, System.Text.Encoding.UTF8);
 
@@ -901,6 +975,52 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
         {
             _logService.Error("[CLEVR Lint] ApplyMxcliPath failed", ex);
             SafePost(webView, _getProjectDir(), "MxcliPathError", ex.Message);
+        }
+    }
+
+    private void PostRuleSources(IWebView webView)
+    {
+        try
+        {
+            var settingsPath = _fileService.ResolvePath("lint-scan-settings.json");
+            var settingsJson = File.Exists(settingsPath) ? File.ReadAllText(settingsPath) : null;
+            var settings = LintScanSettings.Load(settingsJson, null);
+            var payload = JsonSerializer.Serialize(settings.RuleSources, LintScanService.JsonOut);
+            webView.PostMessage("RuleSources", payload);
+        }
+        catch (Exception ex)
+        {
+            _logService.Error("[CLEVR Lint] loading rule sources failed", ex);
+            webView.PostMessage("RuleSourcesError", ex.Message);
+        }
+    }
+
+    private void SaveRuleSources(IWebView webView, JsonObject? data)
+    {
+        try
+        {
+            var sourcesNode = data?["sources"];
+            var sources = sourcesNode is null
+                ? []
+                : JsonSerializer.Deserialize<List<RuleSource>>(sourcesNode.ToJsonString(), LintScanService.JsonOut) ?? [];
+
+            var settingsPath = _fileService.ResolvePath("lint-scan-settings.json");
+            var existing = File.Exists(settingsPath)
+                ? LintScanSettings.Load(File.ReadAllText(settingsPath), null)
+                : new LintScanSettings();
+
+            existing.RuleSources = sources;
+            var json = System.Text.Json.JsonSerializer.Serialize(
+                new { mxcliPath = existing.MxcliPath, projectPath = existing.ProjectPath, ruleSources = existing.RuleSources },
+                new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+            File.WriteAllText(settingsPath, json, System.Text.Encoding.UTF8);
+
+            webView.PostMessage("RuleSourcesSaved", "{}");
+        }
+        catch (Exception ex)
+        {
+            _logService.Error("[CLEVR Lint] saving rule sources failed", ex);
+            webView.PostMessage("RuleSourcesError", ex.Message);
         }
     }
 

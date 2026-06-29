@@ -1,6 +1,6 @@
 ﻿import { Dispatch, useEffect } from "react";
 import type { AppAction, ScanDescribePayload, ScanFastPayload } from "../context/AppReducer";
-import type { BaselineEntry, Exclusion, LinterConfigRule, ModuleInfo, MxcliInfo } from "../types";
+import type { BaselineEntry, Exclusion, LinterConfigRule, ModuleInfo, MxcliInfo, RuleSource, RuleSourceFetchStatus } from "../types";
 
 export function post(message: string, data?: unknown): void {
   window.chrome?.webview?.postMessage({ message, data });
@@ -96,6 +96,78 @@ function handleMxcliInfo(data: unknown, dispatch: Dispatch<AppAction>): void {
   dispatch({ type: "SET_MXCLI_INFO", info: payload });
 }
 
+function handleRuleSources(data: unknown, dispatch: Dispatch<AppAction>): void {
+  let list: RuleSource[];
+  try {
+    list = typeof data === "string" ? JSON.parse(data) : (data as RuleSource[]);
+    if (!Array.isArray(list)) list = [];
+  } catch (e) {
+    dispatch({ type: "SHOW_TOAST", text: "Could not parse rule sources: " + String(e), isError: true });
+    return;
+  }
+  dispatch({ type: "SET_RULE_SOURCES", sources: list });
+}
+
+function handleRuleSourceFetched(data: unknown, dispatch: Dispatch<AppAction>): void {
+  let payload: { id?: string; copied?: number; skipped?: number; failed?: number; errors?: string[] } | null;
+  try {
+    payload = typeof data === "string" ? JSON.parse(data) : (data as typeof payload);
+  } catch { return; }
+  if (!payload?.id) return;
+  const status: RuleSourceFetchStatus = {
+    fetching: false,
+    lastResult: {
+      copied: payload.copied ?? 0,
+      skipped: payload.skipped ?? 0,
+      failed: payload.failed ?? 0,
+      errors: payload.errors ?? [],
+    },
+  };
+  dispatch({ type: "SET_RULE_SOURCE_FETCH_STATUS", id: payload.id, status });
+}
+
+function handleRuleSourceFilesDeleted(data: unknown, dispatch: Dispatch<AppAction>): void {
+  let payload: { id?: string; deleted?: number; notFound?: number } | null;
+  try {
+    payload = typeof data === "string" ? JSON.parse(data) : (data as typeof payload);
+  } catch { return; }
+  if (!payload?.id) return;
+  dispatch({
+    type: "SET_RULE_SOURCE_FETCH_STATUS",
+    id: payload.id,
+    status: {
+      fetching: false,
+      lastDeleteResult: { deleted: payload.deleted ?? 0, notFound: payload.notFound ?? 0 },
+    },
+  });
+}
+
+function handleRuleSourceFetchError(data: unknown, dispatch: Dispatch<AppAction>): void {
+  let payload: { id?: string; error?: string } | null;
+  try {
+    payload = typeof data === "string" ? JSON.parse(data) : (data as typeof payload);
+  } catch { return; }
+  if (!payload?.id) return;
+  dispatch({
+    type: "SET_RULE_SOURCE_FETCH_STATUS",
+    id: payload.id,
+    status: { fetching: false, error: payload.error ?? "Fetch failed" },
+  });
+}
+
+function handleRuleSourceFetchProgress(data: unknown, dispatch: Dispatch<AppAction>): void {
+  let payload: { id?: string; message?: string } | null;
+  try {
+    payload = typeof data === "string" ? JSON.parse(data) : (data as typeof payload);
+  } catch { return; }
+  if (!payload?.id) return;
+  dispatch({
+    type: "SET_RULE_SOURCE_FETCH_STATUS",
+    id: payload.id,
+    status: { fetching: true, progress: payload.message },
+  });
+}
+
 function handleRulesCatalog(data: unknown, dispatch: Dispatch<AppAction>): void {
   let payload: { ruleNames?: Record<string, string>; ruleCategories?: Record<string, string> } | null;
   try {
@@ -143,6 +215,17 @@ export function useMessageBus(dispatch: Dispatch<AppAction>): void {
           return;
         }
         case "MxcliPathError":           return dispatch({ type: "SHOW_TOAST", text: "Could not apply mxcli path: " + String(data), isError: true });
+        case "RuleSources":              return handleRuleSources(data, dispatch);
+        case "RuleSourcesError":         return dispatch({ type: "SHOW_TOAST", text: "Rule sources error: " + String(data), isError: true });
+        case "RuleSourceFetchStarted":   {
+          const p = typeof data === "string" ? JSON.parse(data) as { id?: string } : data as { id?: string };
+          if (p?.id) dispatch({ type: "SET_RULE_SOURCE_FETCH_STATUS", id: p.id, status: { fetching: true } });
+          return;
+        }
+        case "RuleSourceFetchProgress":  return handleRuleSourceFetchProgress(data, dispatch);
+        case "RuleSourceFetched":        return handleRuleSourceFetched(data, dispatch);
+        case "RuleSourceFilesDeleted":   return handleRuleSourceFilesDeleted(data, dispatch);
+        case "RuleSourceFetchError":     return handleRuleSourceFetchError(data, dispatch);
       }
     }
 
@@ -153,6 +236,7 @@ export function useMessageBus(dispatch: Dispatch<AppAction>): void {
     post("RequestRulesCatalog");
     post("RequestLinterConfig");
     post("RequestMxcliInfo");
+    post("RequestRuleSources");
 
     return () => window.chrome?.webview?.removeEventListener("message", handleMessage);
   }, [dispatch]);

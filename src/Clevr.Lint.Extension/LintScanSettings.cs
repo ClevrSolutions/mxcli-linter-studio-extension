@@ -3,6 +3,13 @@ using System.Text.Json.Serialization;
 
 namespace Clevr.Lint.Extension;
 
+public sealed record RuleSource
+{
+    [JsonPropertyName("id")]    public string Id    { get; init; } = "";
+    [JsonPropertyName("url")]   public string Url   { get; init; } = "";
+    [JsonPropertyName("label")] public string? Label { get; init; }
+}
+
 /// <summary>
 /// Configurable scan settings (NOT hardcoded). Loaded from
 /// lint-scan-settings.json in the extension directory; missing fields receive a default.
@@ -10,8 +17,9 @@ namespace Clevr.Lint.Extension;
 /// </summary>
 public sealed class LintScanSettings
 {
-    [JsonPropertyName("mxcliPath")] public string MxcliPath { get; set; } = "mxcli";
-    [JsonPropertyName("projectPath")] public string ProjectPath { get; set; } = "";
+    [JsonPropertyName("mxcliPath")]    public string MxcliPath    { get; set; } = "mxcli";
+    [JsonPropertyName("projectPath")]  public string ProjectPath  { get; set; } = "";
+    [JsonPropertyName("ruleSources")]  public List<RuleSource> RuleSources { get; set; } = [];
 
     public static LintScanSettings Load(string? settingsJson, string? fallbackProjectDir)
     {
@@ -24,6 +32,8 @@ public sealed class LintScanSettings
 
         if (string.IsNullOrWhiteSpace(settings.ProjectPath) && !string.IsNullOrWhiteSpace(fallbackProjectDir))
             settings.ProjectPath = fallbackProjectDir ?? "";
+
+        settings.RuleSources ??= [];
 
         return settings;
     }

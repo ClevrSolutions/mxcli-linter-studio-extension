@@ -292,3 +292,29 @@ details.lint-rule > summary .lint-ai-btn { margin-left: 8px; }
 .lint-mxcli-apply-btn { padding: 3px 10px; font-size: 11px; background: var(--clevr-accent); color: #fff; border: 1px solid var(--clevr-accent); border-radius: 4px; cursor: pointer; white-space: nowrap; }
 .lint-mxcli-apply-btn:disabled { opacity: .45; cursor: default; }
 .lint-mxcli-cancel-btn { padding: 3px 10px; font-size: 11px; background: #fff; border: 1px solid var(--clevr-border); border-radius: 4px; cursor: pointer; white-space: nowrap; }
+
+/* Rule Sources tab */
+.lint-source-add-form { display: flex; gap: 6px; align-items: center; margin-bottom: 8px; flex-wrap: wrap; }
+.lint-source-url-input { flex: 1; min-width: 200px; font-family: "Cascadia Code", Consolas, monospace; font-size: 11px; padding: 4px 6px; border: 1px solid var(--clevr-border); border-radius: 4px; outline: none; }
+.lint-source-url-input:focus { border-color: var(--clevr-accent); }
+.lint-source-label-input { width: 130px; font-size: 12px; padding: 4px 6px; border: 1px solid var(--clevr-border); border-radius: 4px; outline: none; }
+.lint-source-label-input:focus { border-color: var(--clevr-accent); }
+.lint-source-list { display: flex; flex-direction: column; }
+.lint-source-row { display: flex; flex-direction: column; gap: 4px; padding: 8px 0; border-bottom: 1px solid var(--clevr-border); }
+.lint-source-row:last-child { border-bottom: none; }
+.lint-source-info { display: flex; flex-direction: column; gap: 2px; }
+.lint-source-label { font-size: 12px; font-weight: 500; }
+.lint-source-actions { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 2px; }
+.lint-source-delete-btn { background: none; border: 1px solid var(--clevr-border); border-radius: 4px; padding: 2px 8px; font-size: 11px; color: #c97a00; cursor: pointer; white-space: nowrap; }
+.lint-source-delete-btn:hover:not(:disabled) { border-color: #c97a00; }
+.lint-source-delete-btn:disabled { opacity: .4; cursor: default; }
+.lint-source-remove-btn { background: none; border: 1px solid var(--clevr-border); border-radius: 4px; padding: 2px 8px; font-size: 11px; color: var(--sev-blocker); cursor: pointer; white-space: nowrap; }
+.lint-source-remove-btn:hover:not(:disabled) { border-color: var(--sev-blocker); }
+.lint-source-remove-btn:disabled { opacity: .4; cursor: default; }
+.lint-mxcli-browse-btn:disabled { opacity: .4; cursor: default; }
+.lint-source-status { font-size: 11px; margin-top: 2px; }
+.lint-source-status-fetching { color: var(--clevr-muted); }
+.lint-source-status-error { color: var(--sev-blocker); }
+.lint-source-status-ok { color: #1a7f37; }
+.lint-source-status-warn { color: #c97a00; }
+.lint-source-error-list { margin: 4px 0 0 16px; padding: 0; list-style: disc; }

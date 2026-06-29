@@ -2,6 +2,7 @@
 bin/
 obj/
 TestResults/
+src/Clevr.Lint.Extension/wwwroot/
 
 # Visual Studio
 .vs/
