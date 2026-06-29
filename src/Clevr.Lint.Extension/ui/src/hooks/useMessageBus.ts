@@ -50,7 +50,7 @@ function handleLinterConfig(data: unknown, dispatch: Dispatch<AppAction>): void 
 }
 
 function handleUncommittedDocuments(data: unknown, dispatch: Dispatch<AppAction>): void {
-  let payload: { documentIds?: string[]; available?: boolean } | null;
+  let payload: { documentIds?: string[]; qualifiedNames?: string[]; available?: boolean; status?: string } | null;
   try {
     payload = typeof data === "string" ? JSON.parse(data) : (data as typeof payload);
   } catch (e) { dispatch({ type: "SHOW_TOAST", text: "Could not parse uncommitted documents: " + String(e), isError: true }); return; }
@@ -58,7 +58,9 @@ function handleUncommittedDocuments(data: unknown, dispatch: Dispatch<AppAction>
   dispatch({
     type: "SET_UNCOMMITTED_DOCUMENTS",
     documentIds: payload.documentIds ?? [],
+    qualifiedNames: payload.qualifiedNames ?? [],
     available: payload.available ?? false,
+    status: payload.status ?? "",
   });
 }
 

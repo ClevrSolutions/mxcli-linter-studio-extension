@@ -76,7 +76,12 @@ export function activeViolations(state: AppState): Violation[] {
   const ex = excludedFingerprintSet(state.exclusions);
   let vs = baseViolations(state).filter((v) => !ex.has(v.fingerprint));
   if (state.uncommittedFilterActive && state.uncommittedAvailable) {
-    vs = vs.filter((v) => !!v.documentId && state.uncommittedDocumentIds.has(v.documentId.toLowerCase()));
+    vs = vs.filter((v) => {
+      const qnMatch = state.uncommittedQualifiedNames.size > 0
+        && state.uncommittedQualifiedNames.has(v.documentQualifiedName.toLowerCase());
+      const idMatch = !!v.documentId && state.uncommittedDocumentIds.has(v.documentId.toLowerCase());
+      return qnMatch || idMatch;
+    });
   }
   if (state.baselineFilter === "new" && state.selectedBaselineId) {
     const baselineFps = baselineFingerprintSet(state);

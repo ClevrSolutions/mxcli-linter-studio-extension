@@ -130,7 +130,6 @@ static async Task RunServeModeAsync(string? projectDir, string extensionDir)
     var fileService  = new HarnessFileService(extensionDir);
     var logService   = new HarnessLogService();
     var exclusions   = new ExclusionStore();
-    var manualChecks = new ManualCheckStore();
     var wwwroot      = Path.Combine(AppContext.BaseDirectory, "wwwroot");
 
     // Each connected SSE client gets its own channel so push() fans out to all of them.
@@ -154,6 +153,9 @@ static async Task RunServeModeAsync(string? projectDir, string extensionDir)
     Console.Error.WriteLine($"[serve] open          : {baseUrl}index");
     Console.Error.WriteLine($"[serve] Ctrl+C to stop");
     Console.Error.WriteLine("");
+    Console.Error.WriteLine($"[serve] hot reload    : cd src/Clevr.Lint.Extension/ui && npm run dev");
+    Console.Error.WriteLine($"[serve]                 then open http://localhost:5173 (Vite proxies /api/* here)");
+    Console.Error.WriteLine("");
 
     try { Process.Start(new ProcessStartInfo { FileName = $"{baseUrl}index", UseShellExecute = true }); }
     catch { Console.Error.WriteLine("[serve] Could not auto-open browser — navigate to {baseUrl}index manually."); }
@@ -173,7 +175,7 @@ static async Task RunServeModeAsync(string? projectDir, string extensionDir)
             try
             {
                 await HandleRequestAsync(ctx, projectDir, fileService, logService,
-                    exclusions, manualChecks, wwwroot, Push, clients);
+                    exclusions, wwwroot, Push, clients);
             }
             catch (Exception ex) { Console.Error.WriteLine($"[serve] request error: {ex.Message}"); }
         }, cts.Token);
@@ -189,7 +191,6 @@ static async Task HandleRequestAsync(
     HarnessFileService fileService,
     HarnessLogService logService,
     ExclusionStore exclusions,
-    ManualCheckStore manualChecks,
     string wwwroot,
     Action<string, string> push,
     ConcurrentDictionary<Guid, Channel<SseEvent>> clients)
@@ -263,7 +264,7 @@ static async Task HandleRequestAsync(
         var body = await reader.ReadToEndAsync();
 
         _ = Task.Run(() => DispatchMessage(body, projectDir, fileService, logService,
-            exclusions, manualChecks, push));
+            exclusions, push));
 
         resp.StatusCode = 204;
         resp.Close();
@@ -310,7 +311,6 @@ static void DispatchMessage(
     HarnessFileService fileService,
     HarnessLogService logService,
     ExclusionStore exclusions,
-    ManualCheckStore manualChecks,
     Action<string, string> push)
 {
     JsonObject? data;
@@ -338,7 +338,13 @@ static void DispatchMessage(
         case "RunFullScan":
         {
             push("ScanProgress", "Analyzing with mxcli…");
-            var gitTask = Task.Run(() => GitChangedDocumentsService.GetChangedDocumentIds(projectDir));
+            var settingsPath = fileService.ResolvePath("lint-scan-settings.json");
+            var settings = LintScanSettings.Load(
+                File.Exists(settingsPath) ? File.ReadAllText(settingsPath) : null, projectDir);
+            var (resolvedDir, mprFileName, resolveErr) = ResolveProject(settings.ProjectPath);
+            var changedTask = (resolveErr == null && !string.IsNullOrEmpty(mprFileName) && !string.IsNullOrEmpty(resolvedDir))
+                ? Task.Run(() => new ChangedElementsResolver(settings.MxcliPath, resolvedDir, mprFileName, logService).Resolve())
+                : Task.FromResult(new ChangedScanResult { Status = ChangedScanStatus.Error, Message = "project not resolved" });
             try
             {
                 new LintScanService(fileService, logService)
@@ -348,10 +354,14 @@ static void DispatchMessage(
             {
                 push("LintViolations", LintScanService.ErrorJson($"Unexpected error: {ex.Message}"));
             }
-            var changedIds = gitTask.GetAwaiter().GetResult();
-            push("UncommittedDocuments", JsonSerializer.Serialize(
-                new { documentIds = changedIds.ToArray(), available = changedIds.Count > 0 },
-                new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }));
+            var changedResult = changedTask.GetAwaiter().GetResult();
+            push("UncommittedDocuments", JsonSerializer.Serialize(new
+            {
+                status         = changedResult.Status.ToString(),
+                available      = changedResult.Status == ChangedScanStatus.Ok,
+                qualifiedNames = changedResult.Microflows.Concat(changedResult.Entities).ToArray(),
+                documentIds    = Array.Empty<string>(),
+            }, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }));
             push("ScanFinished", "");
             break;
         }
@@ -438,42 +448,6 @@ static void DispatchMessage(
             if (fingerprints.Count == 0) { push("ExclusionError", "No exclusions to remove for this rule."); break; }
             try { exclusions.RemoveMany(projectDir, fingerprints); push("Exclusions", exclusions.LoadJson(projectDir)); }
             catch (Exception ex) { push("ExclusionError", ex.Message); }
-            break;
-        }
-
-        case "RequestManualChecks":
-            try { push("ManualCheckAnswers", manualChecks.LoadJson(projectDir)); }
-            catch (Exception ex) { push("ManualCheckError", ex.Message); }
-            break;
-
-        case "AnswerManualCheck":
-        {
-            var id     = data?["id"]?.GetValue<string>() ?? "";
-            var answer = (data?["answer"]?.GetValue<string>() ?? "").Trim().ToLowerInvariant();
-            var note   = data?["note"]?.GetValue<string>()?.Trim() ?? "";
-            if (string.IsNullOrWhiteSpace(id))            { push("ManualCheckError", "Missing manual-check id."); break; }
-            if (answer != "yes" && answer != "no")        { push("ManualCheckError", "Answer must be 'yes' or 'no'."); break; }
-            if (string.IsNullOrWhiteSpace(note))          { push("ManualCheckError", "An explanation (Yes) or reason (No) is required."); break; }
-            try
-            {
-                manualChecks.Answer(projectDir, new ManualCheckAnswer
-                {
-                    Id = id, Answer = answer, Note = note,
-                    AnsweredBy = Environment.UserName,
-                    Date = DateTime.Now.ToString("yyyy-MM-dd"),
-                });
-                push("ManualCheckAnswers", manualChecks.LoadJson(projectDir));
-            }
-            catch (Exception ex) { push("ManualCheckError", ex.Message); }
-            break;
-        }
-
-        case "ClearManualCheck":
-        {
-            var id = data?["id"]?.GetValue<string>() ?? "";
-            if (string.IsNullOrWhiteSpace(id)) { push("ManualCheckError", "Missing manual-check id."); break; }
-            try { manualChecks.Clear(projectDir, id); push("ManualCheckAnswers", manualChecks.LoadJson(projectDir)); }
-            catch (Exception ex) { push("ManualCheckError", ex.Message); }
             break;
         }
 
@@ -653,6 +627,21 @@ static string ChromeWebViewShimJs() => """
       console.log('[shim] chrome.webview mock installed — TestHarness bridge active.');
     })();
     """;
+
+static (string projectDir, string mprFileName, string? error) ResolveProject(string projectPath)
+{
+    if (string.IsNullOrWhiteSpace(projectPath))
+        return ("", "", "No project path.");
+    if (File.Exists(projectPath) && projectPath.EndsWith(".mpr", StringComparison.OrdinalIgnoreCase))
+        return (Path.GetDirectoryName(projectPath) ?? "", Path.GetFileName(projectPath), null);
+    if (Directory.Exists(projectPath))
+    {
+        var mprs = Directory.GetFiles(projectPath, "*.mpr", SearchOption.TopDirectoryOnly);
+        if (mprs.Length == 1) return (projectPath, Path.GetFileName(mprs[0]), null);
+        return ("", "", mprs.Length == 0 ? "No .mpr found." : "Multiple .mpr files found.");
+    }
+    return ("", "", $"Path does not exist: {projectPath}");
+}
 
 record SseEvent(string Message, string Data);
 

@@ -17,8 +17,10 @@ export interface AppState {
   moduleFilterEnabled: Set<string>;
   appStoreVisible: boolean;
   uncommittedDocumentIds: Set<string>;
+  uncommittedQualifiedNames: Set<string>;
   uncommittedAvailable: boolean;
   uncommittedFilterActive: boolean;
+  uncommittedStatus: string;
   showExcluded: boolean;
   filterQuery: string;
   toast: { text: string; isError: boolean; id: number } | null;
@@ -52,7 +54,7 @@ export type AppAction =
   | { type: "TOGGLE_SEVERITY"; severity: string }
   | { type: "TOGGLE_MODULE_FILTER"; moduleName: string }
   | { type: "TOGGLE_APPSTORE" }
-  | { type: "SET_UNCOMMITTED_DOCUMENTS"; documentIds: string[]; available: boolean }
+  | { type: "SET_UNCOMMITTED_DOCUMENTS"; documentIds: string[]; qualifiedNames: string[]; available: boolean; status: string }
   | { type: "TOGGLE_UNCOMMITTED_FILTER" }
   | { type: "TOGGLE_SHOW_EXCLUDED" }
   | { type: "SET_FILTER_QUERY"; query: string }
@@ -118,8 +120,10 @@ export const initialState: AppState = {
   moduleFilterEnabled: new Set(),
   appStoreVisible: true,
   uncommittedDocumentIds: new Set<string>(),
+  uncommittedQualifiedNames: new Set<string>(),
   uncommittedAvailable: false,
   uncommittedFilterActive: false,
+  uncommittedStatus: "",
   showExcluded: false,
   filterQuery: "",
   toast: null,
@@ -206,8 +210,10 @@ export function appReducer(state: AppState, action: AppAction): AppState {
       return {
         ...state,
         uncommittedDocumentIds: new Set(action.documentIds.map(id => id.toLowerCase())),
+        uncommittedQualifiedNames: new Set(action.qualifiedNames.map(qn => qn.toLowerCase())),
         uncommittedAvailable: action.available,
         uncommittedFilterActive: action.available ? state.uncommittedFilterActive : false,
+        uncommittedStatus: action.status,
       };
     case "TOGGLE_UNCOMMITTED_FILTER":
       return { ...state, uncommittedFilterActive: !state.uncommittedFilterActive };

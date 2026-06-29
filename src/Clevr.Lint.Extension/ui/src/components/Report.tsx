@@ -14,29 +14,29 @@ export function Report() {
     passesFilters(v, q, state.categoryEnabled, state.severityEnabled, state.moduleFilterEnabled, state.ruleNames, state.ruleCategories)
   );
 
-  const streamingBanner = state.scanStreaming ? (
-    <div
-      style={{
-        display: "flex", alignItems: "center", gap: ".6em", margin: "0 0 12px",
-        padding: "10px 14px", borderRadius: "8px",
-        background: "#fff7e6", border: "1px solid #f0c36d", color: "#7a5b00", fontWeight: 600,
-      }}
-    >
-      <span style={{ fontSize: "1.1em" }}>⏳</span>
-      <span>
-        Scanning…{state.scanProgress ? ` ${state.scanProgress.label}` : " running the deep microflow & expression analysis…"} — counts below are PARTIAL until the scan finishes.
-      </span>
-      {state.scanIncomplete && (
-        <div style={{ flexBasis: "100%", color: "#a00", fontWeight: 600, marginTop: 4 }}>
-          ⚠ Some elements could not be described — final results may be incomplete (see the .clevr-lint log).
-        </div>
-      )}
-    </div>
-  ) : null;
+  // const streamingBanner = state.scanStreaming ? (
+  //   <div
+  //     style={{
+  //       display: "flex", alignItems: "center", gap: ".6em", margin: "0 0 12px",
+  //       padding: "10px 14px", borderRadius: "8px",
+  //       background: "#fff7e6", border: "1px solid #f0c36d", color: "#7a5b00", fontWeight: 600,
+  //     }}
+  //   >
+  //     <span style={{ fontSize: "1.1em" }}>⏳</span>
+  //     <span>
+  //       Scanning…{state.scanProgress ? ` ${state.scanProgress.label}` : " running the deep microflow & expression analysis…"} — counts below are PARTIAL until the scan finishes.
+  //     </span>
+  //     {state.scanIncomplete && (
+  //       <div style={{ flexBasis: "100%", color: "#a00", fontWeight: 600, marginTop: 4 }}>
+  //         ⚠ Some elements could not be described — final results may be incomplete (see the .clevr-lint log).
+  //       </div>
+  //     )}
+  //   </div>
+  // ) : null;
 
   return (
     <div id="report">
-      {streamingBanner}
+      {/* {streamingBanner} */}
       <SummaryCards />
       {all.length === 0 ? (
         <div className="lint-empty">
