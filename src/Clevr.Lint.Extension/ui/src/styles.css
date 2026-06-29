@@ -61,6 +61,8 @@ button:disabled { opacity: .55; cursor: default; }
 @media (max-width: 760px) { .lint-summary, .lint-summary-3 { grid-template-columns: 1fr; } }
 .lint-card { background: var(--clevr-card); border: 1px solid var(--clevr-border); border-radius: 8px; padding: 10px 12px; }
 .lint-card h3 { margin: 0 0 8px; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--clevr-muted); }
+.lint-card-toggle { cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none; }
+.lint-toggle-chevron { font-style: normal; font-size: 10px; }
 .lint-countrow { display: flex; justify-content: space-between; align-items: center; padding: 3px 0; }
 .lint-countrow .label { color: var(--clevr-fg); }
 .lint-countrow .count { font-variant-numeric: tabular-nums; font-weight: 600; min-width: 28px; text-align: right; }
@@ -238,17 +240,17 @@ details.lint-rule > summary .lint-ai-btn { margin-left: 8px; }
 .lint-scan-status { font-size: 0.82em; color: var(--text-secondary, #666); margin-right: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
 
 /* Cancel button */
-.lint-cancel-btn { background: transparent; border: 1px solid #c00; color: #c00; border-radius: 4px; padding: 2px 10px; cursor: pointer; font-size: 0.85em; }
+.lint-cancel-btn { background: transparent; border: 1px solid #c00; color: #c00; border-radius: 4px; padding: 8px; cursor: pointer; font-size: 0.85em; }
 .lint-cancel-btn:hover { background: #fff0f0; }
 
 /* Inline search row */
 .lint-search-row { display: flex; align-items: center; gap: 4px; margin-bottom: 8px; }
 .lint-search-row .lint-search { flex: 1; margin-bottom: 0; }
-.lint-search-reset { flex-shrink: 0; background: transparent; border: 1px solid #ccc; border-radius: 4px; padding: 3px 8px; cursor: pointer; color: #666; font-size: 0.9em; line-height: 1; }
+.lint-search-reset { flex-shrink: 0; background: transparent; border: 1px solid #ccc; border-radius: 4px; padding: 3px 8px; cursor: pointer; color: #666; font-size: 0.9em; line-height: 1; padding: 8px;}
 .lint-search-reset:hover { background: #f0f0f0; color: #333; }
 
 /* Baseline feature */
-.lint-baseline-save-btn { background: none; border: 1px solid var(--clevr-border); border-radius: 6px; font-size: 12px; color: var(--clevr-muted); padding: 4px 10px; }
+.lint-baseline-save-btn { background: none; border: 1px solid var(--clevr-border); border-radius: 6px; font-size: 12px; color: var(--clevr-muted); padding: px; }
 .lint-baseline-save-btn:hover { border-color: var(--clevr-accent); color: var(--clevr-accent); }
 
 .lint-baseline-filter { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 4px 0; font-size: 12px; }
