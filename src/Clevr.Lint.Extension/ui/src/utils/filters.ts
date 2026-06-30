@@ -69,8 +69,30 @@ export function currentFingerprintSet(state: AppState): Set<string> {
 
 export function activeViolations(state: AppState): Violation[] {
   if (state.baselineFilter === "fixed" && state.selectedBaselineId) {
-    const currentFps = currentFingerprintSet(state);
-    return selectedBaselineViolations(state).filter((v) => !currentFps.has(v.fingerprint));
+    // Use scoped current fingerprints — same view the user sees (app store + Project exclusion applied).
+    const scopedCurrentFps = new Set(baseViolations(state).map((v) => v.fingerprint));
+
+    // Scope baseline violations to match the current scan configuration so that
+    // violations from excluded modules or disabled rules don't appear as "fixed."
+    let baselineVs = selectedBaselineViolations(state);
+
+    // 1. App-store visibility
+    baselineVs = baselineVs.filter((v) => state.appStoreVisible || !isAppStoreModule(v, state.appStoreModules));
+
+    // 2. Module scan scope — mirrors baseViolations + general excluded modules
+    if (state.savedExcludedModules.includes("Project")) {
+      const knownModules = new Set(state.modules.map((m) => m.name).filter((n) => n !== "Project"));
+      baselineVs = baselineVs.filter((v) => knownModules.has(moduleOf(v)));
+    }
+    const otherExcluded = new Set(state.savedExcludedModules.filter((m) => m !== "Project"));
+    if (otherExcluded.size > 0) {
+      baselineVs = baselineVs.filter((v) => !otherExcluded.has(moduleOf(v)));
+    }
+
+    // 3. Rule scan scope — disabled rules were not evaluated, so their violations are not "fixed"
+    baselineVs = baselineVs.filter((v) => state.linterConfig[v.ruleId]?.enabled !== false);
+
+    return baselineVs.filter((v) => !scopedCurrentFps.has(v.fingerprint));
   }
 
   const ex = excludedFingerprintSet(state.exclusions);

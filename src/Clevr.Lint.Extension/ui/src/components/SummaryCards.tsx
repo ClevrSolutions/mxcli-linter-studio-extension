@@ -24,22 +24,20 @@ export function SummaryCards({ interactive = true }: Props) {
   );
 
   const base = activeViolations({ ...state, baselineFilter: null });
-  const modulesWithCounts = (() => {
-    const counts = new Map<string, number>();
-    for (const v of base) {
-      const m = moduleOf(v);
-      if (m) counts.set(m, (counts.get(m) ?? 0) + 1);
-    }
-    return Array.from(counts.entries())
-      .map(([name, count]) => ({ name, count }))
-      .sort((a, b) => a.name.localeCompare(b.name));
-  })();
+  const moduleViolationCounts = new Map<string, number>();
+  for (const v of base) {
+    const m = moduleOf(v);
+    if (m) moduleViolationCounts.set(m, (moduleViolationCounts.get(m) ?? 0) + 1);
+  }
+  const moduleRows = state.modules
+    .map(({ name }) => ({ name, count: moduleViolationCounts.get(name) ?? 0 }))
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   const [catExpanded, setCatExpanded] = useState(false);
   const [sevExpanded, setSevExpanded] = useState(false);
   const [modExpanded, setModExpanded] = useState(false);
 
-  const gridCols = modulesWithCounts.length >= 2 ? "grid-cols-3" : "grid-cols-2";
+  const gridCols = state.modules.length >= 2 ? "grid-cols-3" : "grid-cols-2";
 
   return (
     <div className={`grid gap-3 mb-4 max-[760px]:grid-cols-1 ${gridCols}`}>
@@ -49,7 +47,7 @@ export function SummaryCards({ interactive = true }: Props) {
           onClick={interactive ? () => setCatExpanded(x => !x) : undefined}
         >
           Improvements per category
-          {interactive && <span className="text-clevr-muted text-[10px] font-normal">{catExpanded ? "▾" : "▸"}</span>}
+          {interactive && <span className="text-clevr-muted text-[18px] font-bold">{catExpanded ? "▾" : "▸"}</span>}          
         </h3>
         {catExpanded ? (
           <>
@@ -90,7 +88,7 @@ export function SummaryCards({ interactive = true }: Props) {
           onClick={interactive ? () => setSevExpanded(x => !x) : undefined}
         >
           Improvements per severity
-          {interactive && <span className="text-clevr-muted text-[10px] font-normal">{sevExpanded ? "▾" : "▸"}</span>}
+          {interactive && <span className="text-clevr-muted text-[18px] font-bold">{sevExpanded ? "▾" : "▸"}</span>}
         </h3>
         {sevExpanded ? (
           <>
@@ -126,17 +124,17 @@ export function SummaryCards({ interactive = true }: Props) {
         )}
       </div>
 
-      {modulesWithCounts.length >= 2 && (
+      {state.modules.length >= 2 && (
         <div className={cardBase}>
           <h3
             className={interactive ? `${cardTitle} cursor-pointer flex justify-between items-center select-none` : cardTitle}
             onClick={interactive ? () => setModExpanded(x => !x) : undefined}
           >
             Improvements per module
-            {interactive && <span className="text-clevr-muted text-[10px] font-normal">{modExpanded ? "▾" : "▸"}</span>}
+            {interactive && <span className="text-clevr-muted text-[18px] font-bold">{modExpanded ? "▾" : "▸"}</span>}
           </h3>
           {modExpanded ? (
-            modulesWithCounts.map(({ name, count }) => {
+            moduleRows.map(({ name, count }) => {
               const selected = state.moduleFilterEnabled.has(name);
               return interactive ? (
                 <div

@@ -1,7 +1,7 @@
-import { useReducer, useEffect } from "react";
+﻿import { useReducer, useEffect } from "react";
 import { AppContext, AppDispatch } from "./context/AppContext";
 import { appReducer, initialState } from "./context/AppReducer";
-import { useMessageBus } from "./hooks/useMessageBus";
+import { useMessageBus, post } from "./hooks/useMessageBus";
 import { Toolbar } from "./components/Toolbar";
 import { FilterBar } from "./components/FilterBar";
 import { Report } from "./components/Report";
@@ -15,6 +15,7 @@ export function App() {
   useMessageBus(dispatch);
 
   useEffect(() => {
+    post("RequestModules");
     async function loadLogo() {
       try {
         const res = await fetch("./clevr-logo.png");
@@ -81,10 +82,6 @@ export function App() {
               <Report />
             </>
           )}
-
-          <div className="mt-7 pt-[10px] border-t border-clevr-border text-[11px] text-clevr-muted">
-            Requires Mendix Studio Pro 11 or higher (Extensibility API 11.10, .NET 10, mxcli). · CLEVR Lint
-          </div>
         </div>
         <Toast />
       </AppDispatch.Provider>

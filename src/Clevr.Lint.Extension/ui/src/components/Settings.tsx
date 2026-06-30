@@ -178,7 +178,7 @@ export function Settings() {
             {state.modules.map((module) => {
               const isExcluded = state.pendingExcludedModules.includes(module.name);
               return (
-                <tr key={module.name} className={isExcluded ? "opacity-50" : ""}>
+                <tr key={module.name} className={`cursor-pointer select-none hover:bg-clevr-hover ${isExcluded ? "opacity-50" : ""}`} onClick={() => toggleModule(module.name)}>
                   <td className={`${tdCell} font-medium`}>{module.name}</td>
                   <td className={`${tdCenter} w-[80px]`}>
                     {module.fromMarketplace && (
@@ -195,6 +195,7 @@ export function Settings() {
                       type="checkbox"
                       checked={!isExcluded}
                       onChange={() => toggleModule(module.name)}
+                      onClick={(e) => e.stopPropagation()}
                       title={isExcluded ? "Module is excluded — click to include" : "Module is included — click to exclude"}
                     />
                   </td>
@@ -251,7 +252,7 @@ export function Settings() {
                   const severity = cfg.severity ?? "inherit";
 
                   return (
-                    <tr key={ruleId} className={isEnabled ? "" : "opacity-50"}>
+                    <tr key={ruleId} className={`cursor-pointer select-none hover:bg-clevr-hover ${isEnabled ? "" : "opacity-50"}`} onClick={() => updateRule(ruleId, { enabled: isEnabled ? false : undefined })}>
                       <td className={tdCell}>
                         <span className="font-mono font-semibold text-[11px]">{ruleId}</span>
                         {name && <span className="text-clevr-muted ml-2">{name}</span>}
@@ -261,6 +262,7 @@ export function Settings() {
                           type="checkbox"
                           checked={isEnabled}
                           onChange={(e) => updateRule(ruleId, { enabled: e.target.checked ? undefined : false })}
+                          onClick={(e) => e.stopPropagation()}
                           title={isEnabled ? "Rule is enabled — click to disable" : "Rule is disabled — click to enable"}
                         />
                       </td>
@@ -270,6 +272,7 @@ export function Settings() {
                           value={severity}
                           disabled={!isEnabled}
                           onChange={(e) => updateRule(ruleId, { severity: e.target.value || "inherit" })}
+                          onClick={(e) => e.stopPropagation()}
                         >
                           {SEVERITY_OPTIONS.map((s) => (
                             <option key={s} value={s}>
