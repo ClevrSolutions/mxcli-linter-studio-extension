@@ -32,6 +32,7 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
     private readonly Func<string?> _getProjectDir;
     private readonly Func<IModel?> _getModel;
     private readonly IDockingWindowService _dockingWindowService;
+    private readonly string? _mendixVersion;
     private readonly ExclusionStore _exclusions = new();
     private readonly BaselineStore _baselines = new();
     private readonly RuleSourcesService _ruleSourcesService = new();
@@ -44,7 +45,8 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
         IExtensionFileService fileService,
         Func<string?> getProjectDir,
         Func<IModel?> getModel,
-        IDockingWindowService dockingWindowService)
+        IDockingWindowService dockingWindowService,
+        string? mendixVersion = null)
     {
         _baseUri = baseUri;
         _logService = logService;
@@ -52,6 +54,7 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
         _getProjectDir = getProjectDir;
         _getModel = getModel;
         _dockingWindowService = dockingWindowService;
+        _mendixVersion = mendixVersion;
     }
 
     public override void InitWebView(IWebView webView)
@@ -712,8 +715,18 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
             {
                 Post("ScanProgress", "Analyzing with mxcli…");
 
-                // Start git in parallel — finishes well before mxcli does on any real project.
-                var gitTask = Task.Run(() => GitChangedDocumentsService.GetChangedDocumentIds(projectDir));
+                // Resolve project settings so the changed-files resolver uses the same .mpr as the scan.
+                var settingsPath = _fileService.ResolvePath("lint-scan-settings.json");
+                var settings = LintScanSettings.Load(
+                    File.Exists(settingsPath) ? File.ReadAllText(settingsPath) : null, projectDir);
+                var (resolvedDir, mprFileName, resolveErr) = LintScanService.ResolveProject(settings.ProjectPath);
+
+                // Start changed-files detection in parallel — finishes well before mxcli does on any real project.
+                var changedTask = (resolveErr == null && !string.IsNullOrEmpty(mprFileName) && !string.IsNullOrEmpty(resolvedDir))
+                    ? Task.Run(() => new ChangedElementsResolver(
+                          settings.MxcliPath, resolvedDir, mprFileName, _logService, _mendixVersion).Resolve())
+                    : Task.FromResult(new ChangedScanResult
+                          { Status = ChangedScanStatus.Error, Message = "project not resolved" });
 
                 try
                 {
@@ -726,10 +739,22 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
                     Post("LintViolations", LintScanService.ErrorJson($"Unexpected error during mxcli scan: {ex.Message}"));
                 }
 
-                var changedIds = gitTask.GetAwaiter().GetResult();
-                var gitPayload = JsonSerializer.Serialize(
-                    new { documentIds = changedIds.ToArray(), available = changedIds.Count > 0 },
-                    LintScanService.JsonOut);
+                var changedResult = changedTask.GetAwaiter().GetResult();
+                DebugLog.Write(projectDir,
+                    $"[changed-files] status={changedResult.Status} message=\"{changedResult.Message}\" " +
+                    $"microflows={changedResult.Microflows.Count} entities={changedResult.Entities.Count}");
+                if (changedResult.Microflows.Count > 0)
+                    DebugLog.Write(projectDir, $"[changed-files] microflows: {string.Join(", ", changedResult.Microflows)}");
+                if (changedResult.Entities.Count > 0)
+                    DebugLog.Write(projectDir, $"[changed-files] entities: {string.Join(", ", changedResult.Entities)}");
+
+                var gitPayload = JsonSerializer.Serialize(new
+                {
+                    status         = changedResult.Status.ToString(),
+                    available      = changedResult.Status == ChangedScanStatus.Ok,
+                    qualifiedNames = changedResult.Microflows.Concat(changedResult.Entities).ToArray(),
+                    documentIds    = Array.Empty<string>(),
+                }, LintScanService.JsonOut);
                 Post("UncommittedDocuments", gitPayload);
 
                 DebugLog.Write(projectDir, "=== Full scan DONE ===");

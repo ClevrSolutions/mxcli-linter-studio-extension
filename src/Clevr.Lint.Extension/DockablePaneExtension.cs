@@ -45,7 +45,8 @@ public class DockablePaneExtension : MxDockablePaneExtension
             _fileService,
             () => CurrentApp?.Root?.DirectoryPath,
             () => CurrentApp,
-            _dockingWindowService)
+            _dockingWindowService,
+            Configuration.MendixVersion?.ToString())
         {
             Title = "CLEVR Lint",
         };
