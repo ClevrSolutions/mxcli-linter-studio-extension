@@ -52,7 +52,7 @@ public sealed class LintScanService
     /// Loads the mxcli rules catalog (name + category per ruleId) without running a full scan.
     /// Returns null if the project cannot be resolved or mxcli fails.
     /// </summary>
-    public (IReadOnlyDictionary<string, string> ruleNames, IReadOnlyDictionary<string, string> ruleCategories)?
+    public (IReadOnlyDictionary<string, string> ruleNames, IReadOnlyDictionary<string, string> ruleCategories, IReadOnlyDictionary<string, string> ruleDescriptions)?
         TryLoadRulesCatalog(string? fallbackProjectDir)
     {
         try
@@ -68,7 +68,8 @@ public sealed class LintScanService
 
             return (
                 catalog.ToDictionary(kv => kv.Key, kv => kv.Value.Name, StringComparer.Ordinal),
-                catalog.ToDictionary(kv => kv.Key, kv => kv.Value.Category, StringComparer.Ordinal)
+                catalog.ToDictionary(kv => kv.Key, kv => kv.Value.Category, StringComparer.Ordinal),
+                catalog.ToDictionary(kv => kv.Key, kv => kv.Value.Description, StringComparer.Ordinal)
             );
         }
         catch (Exception ex) { _log.Warn($"[CLEVR Lint] TryLoadRulesCatalog failed: {ex.Message}"); return null; }

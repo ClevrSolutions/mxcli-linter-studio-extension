@@ -176,7 +176,7 @@ function handleRuleSourceFetchProgress(data: unknown, dispatch: Dispatch<AppActi
 }
 
 function handleRulesCatalog(data: unknown, dispatch: Dispatch<AppAction>): void {
-  let payload: { ruleNames?: Record<string, string>; ruleCategories?: Record<string, string> } | null;
+  let payload: { ruleNames?: Record<string, string>; ruleCategories?: Record<string, string>; ruleDescriptions?: Record<string, string>; ruleStarContent?: Record<string, string> } | null;
   try {
     payload = typeof data === "string" ? JSON.parse(data) : (data as typeof payload);
   } catch (e) { dispatch({ type: "SHOW_TOAST", text: "Could not parse rules catalog: " + String(e), isError: true }); return; }
@@ -185,6 +185,8 @@ function handleRulesCatalog(data: unknown, dispatch: Dispatch<AppAction>): void 
     type: "SET_RULES_CATALOG",
     ruleNames: payload.ruleNames ?? {},
     ruleCategories: payload.ruleCategories ?? {},
+    ruleDescriptions: payload.ruleDescriptions,
+    ruleStarContent: payload.ruleStarContent,
   });
 }
 

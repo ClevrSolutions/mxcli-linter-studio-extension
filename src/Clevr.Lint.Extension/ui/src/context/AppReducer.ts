@@ -5,6 +5,8 @@ export interface AppState {
   violations: Violation[];
   ruleNames: Record<string, string>;
   ruleCategories: Record<string, string>;
+  ruleDescriptions: Record<string, string>;
+  ruleStarContent: Record<string, string>;
   meta: ScanMeta;
   appStoreModules: Set<string>;
   exclusions: Exclusion[];
@@ -62,7 +64,7 @@ export type AppAction =
   | { type: "SHOW_TOAST"; text: string; isError: boolean }
   | { type: "CLEAR_TOAST" }
   | { type: "SET_LOGO"; dataUri: string }
-  | { type: "SET_RULES_CATALOG"; ruleNames: Record<string, string>; ruleCategories: Record<string, string> }
+  | { type: "SET_RULES_CATALOG"; ruleNames: Record<string, string>; ruleCategories: Record<string, string>; ruleDescriptions?: Record<string, string>; ruleStarContent?: Record<string, string> }
   | { type: "SHOW_SETTINGS" }
   | { type: "HIDE_SETTINGS" }
   | { type: "SET_LINTER_CONFIG"; config: Record<string, LinterConfigRule>; excludedModules?: string[] }
@@ -108,6 +110,8 @@ export const initialState: AppState = {
   violations: [],
   ruleNames: {},
   ruleCategories: {},
+  ruleDescriptions: {},
+  ruleStarContent: {},
   meta: {},
   appStoreModules: new Set(),
   exclusions: [],
@@ -242,6 +246,8 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         ...state,
         ruleNames: { ...state.ruleNames, ...action.ruleNames },
         ruleCategories: { ...state.ruleCategories, ...action.ruleCategories },
+        ruleDescriptions: { ...state.ruleDescriptions, ...(action.ruleDescriptions ?? {}) },
+        ruleStarContent: { ...state.ruleStarContent, ...(action.ruleStarContent ?? {}) },
       };
     case "SHOW_SETTINGS":
       return {

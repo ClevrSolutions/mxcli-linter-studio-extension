@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useAppDispatch, useAppState } from "../context/AppContext";
 import { post } from "../hooks/useMessageBus";
 import { LINT_CATEGORIES, MXCLI_CATEGORY_TO_LINT } from "../constants";
@@ -6,6 +6,7 @@ import type { LinterConfigRule } from "../types";
 import { ConfigurationTab } from "./ConfigurationTab";
 import { RuleSourcesTab } from "./RuleSourcesTab";
 import { AboutTab } from "./AboutTab";
+import { RuleInfoDialog } from "./dialogs/RuleInfoDialog";
 import {
   btnPrimary, btnSecondary, bulkBtn, sectionHeading,
   settingsDesc, settingsEmpty, tableBase,
@@ -44,6 +45,7 @@ const tdCenter = "py-1.5 text-center border-b border-clevr-border";
 export function Settings() {
   const state = useAppState();
   const dispatch = useAppDispatch();
+  const [infoRuleId, setInfoRuleId] = useState<string | null>(null);
   useEffect(() => {
     post("RequestModules");
     post("RequestRulesCatalog");
@@ -254,8 +256,22 @@ export function Settings() {
                   return (
                     <tr key={ruleId} className={`cursor-pointer select-none hover:bg-clevr-hover ${isEnabled ? "" : "opacity-50"}`} onClick={() => updateRule(ruleId, { enabled: isEnabled ? false : undefined })}>
                       <td className={tdCell}>
-                        <span className="font-mono font-semibold text-[11px]">{ruleId}</span>
-                        {name && <span className="text-clevr-muted ml-2">{name}</span>}
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            title="Rule info"
+                            className="shrink-0 flex items-center justify-center bg-transparent border-0 p-0 cursor-pointer text-clevr-accent opacity-60 hover:opacity-100"
+                            onClick={(e) => { e.stopPropagation(); setInfoRuleId(ruleId); }}
+                          >
+                            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                              <circle cx="8" cy="8" r="7.5" fill="none" stroke="currentColor" strokeWidth="1.2"/>
+                              <rect x="7.25" y="7" width="1.5" height="5" rx="0.5"/>
+                              <circle cx="8" cy="4.5" r="0.85"/>
+                            </svg>
+                          </button>
+                          <span className="font-mono font-semibold text-[11px]">{ruleId}</span>
+                          {name && <span className="text-clevr-muted">{name}</span>}
+                        </div>
                       </td>
                       <td className={`${tdCenter} w-[70px]`}>
                         <input
@@ -322,6 +338,16 @@ export function Settings() {
       {state.settingsActiveTab === "configuration" && <ConfigurationTab />}
       {state.settingsActiveTab === "sources" && <RuleSourcesTab />}
       {state.settingsActiveTab === "about" && <AboutTab />}
+
+      {infoRuleId && (
+        <RuleInfoDialog
+          ruleId={infoRuleId}
+          name={state.ruleNames[infoRuleId] ?? ""}
+          description={state.ruleDescriptions[infoRuleId] ?? ""}
+          starContent={state.ruleStarContent[infoRuleId]}
+          onClose={() => setInfoRuleId(null)}
+        />
+      )}
     </div>
   );
 }

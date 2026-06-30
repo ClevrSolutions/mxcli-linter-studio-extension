@@ -2,8 +2,8 @@
 
 namespace Clevr.Lint.Normalizer;
 
-/// <summary>Name + mxcli category of a single rule from the mxcli catalog.</summary>
-public sealed record MxcliRuleInfo(string Name, string Category);
+/// <summary>Name, mxcli category, and description of a single rule from the mxcli catalog.</summary>
+public sealed record MxcliRuleInfo(string Name, string Category, string Description = "");
 
 /// <summary>
 /// Parses the output of `mxcli lint --list-rules` into a map ruleId → (name, category).
@@ -18,7 +18,7 @@ public sealed record MxcliRuleInfo(string Name, string Category);
 public static class MxcliRulesCatalogParser
 {
     private static readonly Regex RuleLine =
-        new(@"^\s*([A-Za-z][\w]*)\s+\(([^)]+)\)\s*-\s*", RegexOptions.Compiled);
+        new(@"^\s*([A-Za-z][\w]*)\s+\(([^)]+)\)\s*-\s*(.+)?", RegexOptions.Compiled);
 
     private static readonly Regex CategoryLine =
         new(@"^\s*Category:\s*([A-Za-z]+)", RegexOptions.Compiled);
@@ -36,7 +36,8 @@ public static class MxcliRulesCatalogParser
             {
                 var ruleId = rule.Groups[1].Value.Trim();
                 var name = rule.Groups[2].Value.Trim();
-                if (!map.ContainsKey(ruleId)) map[ruleId] = new MxcliRuleInfo(name, "");
+                var description = rule.Groups[3].Value.Trim();
+                if (!map.ContainsKey(ruleId)) map[ruleId] = new MxcliRuleInfo(name, "", description);
                 currentId = ruleId; // category follows on the next line
                 continue;
             }

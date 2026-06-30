@@ -773,6 +773,27 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
         });
     }
 
+    private static Dictionary<string, string> LoadStarContent(string? projectDir)
+    {
+        var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        if (string.IsNullOrWhiteSpace(projectDir)) return result;
+        var rulesDir = Path.Combine(projectDir, ".claude", "lint-rules");
+        if (!Directory.Exists(rulesDir)) return result;
+        foreach (var file in Directory.GetFiles(rulesDir, "*.star"))
+        {
+            try
+            {
+                var content = File.ReadAllText(file);
+                var match = System.Text.RegularExpressions.Regex.Match(
+                    content, @"^RULE_ID\s*=\s*""([^""]+)""", System.Text.RegularExpressions.RegexOptions.Multiline);
+                if (match.Success)
+                    result[match.Groups[1].Value.Trim().ToUpperInvariant()] = content;
+            }
+            catch { /* skip unreadable files */ }
+        }
+        return result;
+    }
+
     private void PostRulesCatalog(IWebView webView, SynchronizationContext? uiContext = null)
     {
         var projectDirForLog = _getProjectDir();
@@ -788,6 +809,8 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
             {
                 ruleNames = result.Value.ruleNames,
                 ruleCategories = result.Value.ruleCategories,
+                ruleDescriptions = result.Value.ruleDescriptions,
+                ruleStarContent = LoadStarContent(ExclusionsProjectDir()),
             }, LintScanService.JsonOut);
 
             var projectDir = _getProjectDir();
