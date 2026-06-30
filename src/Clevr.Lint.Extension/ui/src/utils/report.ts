@@ -1,4 +1,4 @@
-﻿import cssText from "../styles.css?inline";
+﻿import cssText from "./report-export.css?inline";
 import type { AppState } from "../context/AppReducer";
 import type { Violation } from "../types";
 import { activeViolations, displayCategory } from "./filters";

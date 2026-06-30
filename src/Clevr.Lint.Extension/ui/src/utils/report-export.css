@@ -1,0 +1,330 @@
+/*
+ * Export-only stylesheet for buildReportHtml().
+ * Loaded via: import cssText from "./report-export.css?inline"
+ * Plain CSS only — no @import "tailwindcss", no @apply.
+ *
+ * Color reference (keep in sync with @theme in styles.css):
+ *   bg         #ffffff    card       #f7f9fb
+ *   fg         #1f2933    accent     #0a6ed1
+ *   muted      #6b7280    border     #e3e7ec
+ *   sev-minor  #6b7280    sev-major  #c97a00
+ *   sev-critical #d9480f  sev-blocker #b00020
+ *   sev-info   #5b7083
+ */
+
+*, *::before, *::after { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  font-size: 13px;
+  color: #1f2933;
+  background: #ffffff;
+}
+
+/* ── Severity badges ─────────────────────────────────────────── */
+.sev {
+  display: inline-block;
+  padding: 0 8px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #ffffff;
+  white-space: nowrap;
+  background-color: #6b7280;
+}
+.sev-Minor    { background-color: #6b7280; }
+.sev-Major    { background-color: #c97a00; }
+.sev-Critical { background-color: #d9480f; }
+.sev-Blocker  { background-color: #b00020; }
+.sev-error    { background-color: #d9480f; }
+.sev-warning  { background-color: #c97a00; }
+.sev-info     { background-color: #5b7083; }
+.sev-hint     { background-color: #6b7280; }
+
+/* ── Severity left-border stripes ───────────────────────────── */
+.sevbar-Minor    { border-left-color: #6b7280 !important; }
+.sevbar-Major    { border-left-color: #c97a00 !important; }
+.sevbar-Critical { border-left-color: #d9480f !important; }
+.sevbar-Blocker  { border-left-color: #b00020 !important; }
+.sevbar-error    { border-left-color: #d9480f !important; }
+.sevbar-warning  { border-left-color: #c97a00 !important; }
+.sevbar-info     { border-left-color: #5b7083 !important; }
+.sevbar-hint     { border-left-color: #6b7280 !important; }
+
+/* ── Root ────────────────────────────────────────────────────── */
+.lint-root {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* ── Header ──────────────────────────────────────────────────── */
+.lint-header {
+  padding: 10px 0 12px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid #e3e7ec;
+}
+.lint-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.lint-logo {
+  height: 40px;
+  width: auto;
+  border-radius: 6px;
+  display: block;
+}
+.lint-title {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0;
+}
+.lint-subtitle {
+  font-size: 12px;
+  color: #6b7280;
+  margin-top: 2px;
+}
+
+/* ── Summary cards ───────────────────────────────────────────── */
+.lint-summary {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.lint-summary-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+.lint-card {
+  background: #f7f9fb;
+  border: 1px solid #e3e7ec;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+.lint-card h3 {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #6b7280;
+  margin: 0 0 8px;
+}
+.lint-countrow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 3px 0;
+}
+.lint-countrow .label { flex: 1; }
+.lint-countrow .count {
+  font-weight: 600;
+  min-width: 28px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.lint-total {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px dashed #e3e7ec;
+  font-weight: 600;
+}
+
+/* ── Category groups ─────────────────────────────────────────── */
+.lint-group {
+  margin-bottom: 16px;
+}
+.lint-group-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #e3e7ec;
+}
+.lint-group-head h3 {
+  font-size: 13px;
+  font-weight: 600;
+  margin: 0;
+}
+.lint-group-count {
+  margin-left: auto;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+/* ── Rule cards ──────────────────────────────────────────────── */
+.lint-rule {
+  border: 1px solid #e3e7ec;
+  border-left-width: 3px;
+  border-left-color: #6b7280;
+  border-radius: 6px;
+  margin-bottom: 8px;
+  background: #ffffff;
+}
+.lint-rule > summary {
+  cursor: pointer;
+  list-style: revert;
+  padding: 8px 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.lint-ruleid {
+  font-weight: 600;
+  font-family: "Cascadia Code", Consolas, monospace;
+  font-size: 12px;
+}
+.lint-acrcode {
+  font-size: 12px;
+  color: #6b7280;
+}
+.lint-rule-count {
+  margin-left: auto;
+  font-size: 12px;
+  color: #6b7280;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.lint-rule-body {
+  padding: 0 10px 8px 14px;
+}
+
+/* ── Violation instances ─────────────────────────────────────── */
+.lint-instance {
+  border-top: 1px dashed #e3e7ec;
+  padding: 6px 0;
+}
+.lint-doc {
+  font-size: 12px;
+  color: #6b7280;
+  line-height: 1.5;
+}
+.doctype {
+  font-weight: 500;
+  color: #1f2933;
+}
+.elem {
+  font-weight: 500;
+}
+.lint-reason {
+  margin: 4px 0;
+}
+.lint-suggestion {
+  font-size: 12px;
+  color: #6b7280;
+}
+.lint-suggestion::before { content: "→ "; }
+.lint-docslink {
+  margin-top: 4px;
+  font-size: 12px;
+}
+.lint-docslink a {
+  color: #0a6ed1;
+}
+.lint-docslink a:hover {
+  text-decoration: underline;
+}
+
+/* ── Footer ──────────────────────────────────────────────────── */
+.lint-footer {
+  margin-top: 24px;
+  padding-top: 10px;
+  border-top: 1px solid #e3e7ec;
+  font-size: 11px;
+  color: #6b7280;
+}
+
+/* ── Excluded improvements section ──────────────────────────── */
+.lint-excluded {
+  margin-top: 24px;
+}
+.lint-section-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 8px;
+  padding-bottom: 5px;
+  border-bottom: 2px solid #1f2933;
+}
+.lint-section-head h2 {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0;
+}
+.lint-section-count {
+  font-size: 12px;
+  color: #6b7280;
+}
+.lint-section-note {
+  font-size: 12px;
+  color: #6b7280;
+  font-style: italic;
+  margin-bottom: 16px;
+}
+
+.lint-excluded-rule {
+  margin-bottom: 16px;
+}
+.lint-excluded-rule-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+.lint-excluded-rule-count {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.lint-excluded-card {
+  background: #f7f9fb;
+  border: 1px solid #e3e7ec;
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 8px;
+}
+.lint-excluded-card.stale {
+  opacity: 0.6;
+  border-style: dashed;
+}
+.lint-excluded-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+.lint-excluded-where {
+  font-size: 12px;
+  color: #6b7280;
+}
+.lint-stale-badge {
+  display: inline-block;
+  padding: 0 8px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 600;
+  background: #c97a00;
+  color: #ffffff;
+}
+.lint-excluded-applies {
+  font-size: 11px;
+  color: #6b7280;
+}
+.lint-excluded-reason {
+  font-size: 12px;
+  color: #6b7280;
+}
+.lint-excluded-meta {
+  font-size: 11px;
+  color: #6b7280;
+  margin-top: 2px;
+}
+
+/* ── Print ───────────────────────────────────────────────────── */
+@media print {
+  .lint-rule     { break-inside: avoid; }
+  .lint-group    { break-inside: avoid; }
+  .lint-instance { break-inside: avoid; }
+}
