@@ -9,7 +9,7 @@
     <Version>0.1.1</Version>
   </PropertyGroup>
 
-  <!-- Bewust GEEN afhankelijkheden: de normalizer is een pure, los testbare module
-       (geen Mendix-API, geen Studio Pro, geen proces-aanroep, geen bestand-IO). -->
+  <!-- Deliberately NO dependencies: the normalizer is a pure, standalone testable module
+  (no Mendix API, no Studio Pro, no process call, no file IO). -->
 
 </Project>

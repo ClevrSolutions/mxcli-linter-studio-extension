@@ -9,6 +9,11 @@ const CHANGELOG: { version: string; changes: string[] }[] = [
   {
     version: "0.1.1",
     changes: [
+      "Make summary cards collapsible and move module filter into card",
+      "Show scanning message in report while scan is in progress",
+      "Scope baseline 'fixed' comparison to current scan configuration",
+      "Fix 'Limit to uncommitted' missing attribute-level entity changes",
+      "Migrate UI to Tailwind CSS v4 with style harmonization",
       "Add per-module filter section to FilterBar",
       "Add About tab and auto-fetch files when adding a new rule source",
       "Fix rule source data loss, partial delete abort, path traversal, and code duplication",
@@ -28,9 +33,16 @@ const CHANGELOG: { version: string; changes: string[] }[] = [
       "Initial release: mxcli-based linting inside Mendix Studio Pro 11",
     ],
   },
+  {
+    version: "0.0.1",
+    changes: [
+      "Research spike linting as replacement for ACR with various methods; direct, manual, mxlint and mxcli lint",
+    ],
+  },
 ];
 
 const CONTRIBUTORS = [
+  { name: "Michel Langras", role: "Author" },
   { name: "Andries Smit", role: "Author" },
 ];
 
