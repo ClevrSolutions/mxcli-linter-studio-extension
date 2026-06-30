@@ -19,11 +19,13 @@ export function Report() {
       <SummaryCards />
       {all.length === 0 ? (
         <div className="text-clevr-muted italic py-4">
-          {!state.scanHasRun
-            ? "Run a scan to see improvements."
-            : state.violations.length === 0
-              ? "No improvements found — great work!"
-              : "No improvements match the current filter."}
+          {state.scanStreaming
+            ? "Scanning — results will appear as they are found…"
+            : !state.scanHasRun
+              ? "Run a scan to see improvements."
+              : state.violations.length === 0
+                ? "No improvements found — great work!"
+                : "No improvements match the current filter."}
         </div>
       ) : (
         LINT_CATEGORIES.map((c) => {
