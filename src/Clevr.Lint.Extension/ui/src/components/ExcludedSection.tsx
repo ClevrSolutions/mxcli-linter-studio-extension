@@ -1,10 +1,11 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { useAppDispatch, useAppState } from "../context/AppContext";
 import { excludedView } from "../utils/exclusions";
 import { previewText, ruleName } from "../utils/grouping";
 import { post } from "../hooks/useMessageBus";
 import { ConfirmDialog } from "./dialogs/ConfirmDialog";
 import type { ExclusionRuleGroup } from "../types";
+import { btnPillMuted } from "../utils/classes";
 
 export function ExcludedSection() {
   const state = useAppState();
@@ -17,20 +18,24 @@ export function ExcludedSection() {
 
   return (
     <>
-      <div className="lint-excluded-toggle">
-        <button type="button" onClick={() => dispatch({ type: "TOGGLE_SHOW_EXCLUDED" })}>
+      <div className="my-2">
+        <button
+          type="button"
+          className="bg-transparent border-0 text-[12px] text-clevr-muted underline cursor-pointer p-0 hover:text-clevr-fg"
+          onClick={() => dispatch({ type: "TOGGLE_SHOW_EXCLUDED" })}
+        >
           {state.showExcluded ? "Hide" : "Show"} excluded ({ev.matchedCount}{staleNote})
         </button>
       </div>
       {state.showExcluded && (
-        <div className="lint-excluded">
-          <div className="lint-section-head">
-            <h2>Excluded improvements</h2>
-            <span className="lint-section-count">
+        <div className="mt-4">
+          <div className="flex items-baseline gap-2 mb-2 pb-[5px] border-b-2 border-clevr-fg">
+            <h2 className="text-[15px] font-semibold m-0">Excluded improvements</h2>
+            <span className="text-[12px] text-clevr-muted">
               {ev.matchedCount} excluded{ev.staleCount ? ` · ${ev.staleCount} stale` : ""}
             </span>
           </div>
-          <div className="lint-section-note">
+          <div className="text-[12px] text-clevr-muted italic mb-4">
             Intentionally not fixed — each with a reason, shared with the team via version control.
           </div>
           {ev.groups.map((g) => (
@@ -67,39 +72,52 @@ function ExcludedRuleGroup({ g }: { g: ExclusionRuleGroup }) {
     : "";
 
   return (
-    <div className="lint-excluded-rule">
-      <div className="lint-excluded-rule-head">
-        <span className="lint-ruleid">{g.ruleId}</span>
-        {name && <span className="lint-acrcode">{name}</span>}
-        <span className="lint-excluded-rule-count">{g.findingCount} excluded{staleNote}</span>
-        <button type="button" className="lint-unexclude-rule-btn" title="Restore all excluded findings for this rule" onClick={() => setShowConfirm(true)}>
+    <div className="mb-4">
+      <div className="flex items-center gap-2 mb-2 flex-wrap">
+        <span className="font-semibold font-mono text-[12px]">{g.ruleId}</span>
+        {name && <span className="text-[12px] text-clevr-muted">{name}</span>}
+        <span className="text-[12px] text-clevr-muted">{g.findingCount} excluded{staleNote}</span>
+        <button
+          type="button"
+          className={btnPillMuted}
+          title="Restore all excluded findings for this rule"
+          onClick={() => setShowConfirm(true)}
+        >
           Remove rule exclusion
         </button>
       </div>
       {g.entries.map((entry, i) => (
-        <div key={entry.exclusion.fingerprint + i} className={"lint-excluded-card" + (entry.isStale ? " stale" : "")}>
-          <div className="lint-excluded-top">
-            <span className="lint-ruleid">{entry.exclusion.ruleId}</span>
+        <div
+          key={entry.exclusion.fingerprint + i}
+          className={[
+            "bg-clevr-card border border-clevr-border rounded-[6px] p-3 mb-2",
+            entry.isStale ? "opacity-60 border-dashed" : "",
+          ].filter(Boolean).join(" ")}
+        >
+          <div className="flex items-center gap-2 flex-wrap mb-1">
+            <span className="font-semibold font-mono text-[12px]">{entry.exclusion.ruleId}</span>
             {state.ruleNames[entry.exclusion.ruleId] && (
-              <span className="lint-acrcode">{state.ruleNames[entry.exclusion.ruleId]}</span>
+              <span className="text-[12px] text-clevr-muted">{state.ruleNames[entry.exclusion.ruleId]}</span>
             )}
             {(entry.exclusion.elementName
               ? `${entry.exclusion.documentQualifiedName} › ${entry.exclusion.elementName}`
               : entry.exclusion.documentQualifiedName) && (
-              <span className="lint-excluded-where">
+              <span className="text-[12px] text-clevr-muted">
                 {entry.exclusion.elementName
                   ? `${entry.exclusion.documentQualifiedName} › ${entry.exclusion.elementName}`
                   : entry.exclusion.documentQualifiedName}
               </span>
             )}
             {entry.isStale ? (
-              <span className="lint-stale-badge">stale — no longer matches</span>
+              <span className="inline-block px-2 py-px rounded-full text-[11px] font-semibold bg-sev-major text-white">
+                stale — no longer matches
+              </span>
             ) : entry.violations.length > 1 ? (
-              <span className="lint-excluded-applies">applies to {entry.violations.length} findings</span>
+              <span className="text-[11px] text-clevr-muted">applies to {entry.violations.length} findings</span>
             ) : null}
             <button
               type="button"
-              className="lint-unexclude-btn"
+              className={btnPillMuted}
               title="Remove this exclusion — the improvement reappears"
               onClick={() => {
                 post("RemoveExclusion", { fingerprint: entry.exclusion.fingerprint });
@@ -109,16 +127,16 @@ function ExcludedRuleGroup({ g }: { g: ExclusionRuleGroup }) {
               Remove exclusion
             </button>
           </div>
-          <div className="lint-excluded-reason">Reason: {entry.exclusion.reason}</div>
+          <div className="text-[12px] text-clevr-muted">Reason: {entry.exclusion.reason}</div>
           {[entry.exclusion.excludedBy ? `by ${entry.exclusion.excludedBy}` : "", entry.exclusion.date].filter(Boolean).join(" · ") && (
-            <div className="lint-excluded-meta">
+            <div className="text-[11px] text-clevr-muted mt-0.5">
               {[entry.exclusion.excludedBy ? `by ${entry.exclusion.excludedBy}` : "", entry.exclusion.date].filter(Boolean).join(" · ")}
             </div>
           )}
           {entry.violations.length > 0 && (
-            <div className="lint-excluded-items">
+            <div className="mt-1.5">
               {entry.violations.map((v, vi) => (
-                <div key={vi} className="lint-excluded-item">{previewText(v.reason, 120)}</div>
+                <div key={vi} className="text-[12px] text-clevr-muted truncate">{previewText(v.reason, 120)}</div>
               ))}
             </div>
           )}

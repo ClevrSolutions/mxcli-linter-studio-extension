@@ -6,6 +6,10 @@ import type { LinterConfigRule } from "../types";
 import { ConfigurationTab } from "./ConfigurationTab";
 import { RuleSourcesTab } from "./RuleSourcesTab";
 import { AboutTab } from "./AboutTab";
+import {
+  btnPrimary, btnSecondary, bulkBtn, sectionHeading,
+  settingsDesc, settingsEmpty, tableBase,
+} from "../utils/classes";
 
 const SEVERITY_OPTIONS = ["inherit", "error", "warning", "info", "hint"] as const;
 
@@ -32,6 +36,10 @@ function isPendingChanged(
   const savedSet = new Set(savedExcluded);
   return pendingExcluded.some((m) => !savedSet.has(m));
 }
+
+const thCell = "text-left py-1.5 pr-3 text-clevr-muted font-medium border-b border-clevr-border";
+const tdCell = "py-1.5 pr-3 border-b border-clevr-border";
+const tdCenter = "py-1.5 text-center border-b border-clevr-border";
 
 export function Settings() {
   const state = useAppState();
@@ -94,7 +102,6 @@ export function Settings() {
 
   const ruleIds = Object.keys(state.ruleNames).sort();
 
-  // Group rules by category
   const byCategory = new Map<string, string[]>();
   for (const ruleId of ruleIds) {
     const cat = displayCategory(ruleId, state.ruleCategories);
@@ -102,7 +109,6 @@ export function Settings() {
     byCategory.get(cat)!.push(ruleId);
   }
 
-  // Order: known categories first, then "Other"
   const orderedCategories = [
     ...LINT_CATEGORIES.filter((c) => byCategory.has(c)),
     ...(byCategory.has("Other") ? ["Other"] : []),
@@ -110,57 +116,59 @@ export function Settings() {
 
   const isConfigTab = state.settingsActiveTab === "configuration" || state.settingsActiveTab === "sources" || state.settingsActiveTab === "about";
 
-  const settingsHeader = (
-    <div className="lint-settings-header">
-      <button type="button" className="lint-settings-back" onClick={() => dispatch({ type: "HIDE_SETTINGS" })}>
-        ← Back
+  const tabBtn = (tab: string, label: string) => {
+    const active = state.settingsActiveTab === tab;
+    return (
+      <button
+        key={tab}
+        type="button"
+        className={[
+          "bg-transparent border-0 border-b-2 px-[14px] py-[6px] text-[12px] font-medium cursor-pointer -mb-px",
+          active
+            ? "text-clevr-fg border-b-clevr-accent"
+            : "text-clevr-muted border-b-transparent hover:text-clevr-fg",
+        ].join(" ")}
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        onClick={() => dispatch({ type: "SET_SETTINGS_TAB", tab: tab as any })}      >
+        {label}
       </button>
-      <h2>Settings</h2>
-      {!isConfigTab && (
-        <div className="lint-settings-header-actions">
-          {hasChanges && <span className="lint-settings-unsaved">Unsaved changes</span>}
-          <button type="button" className="lint-settings-save" disabled={!hasChanges} onClick={save}>
-            Save
-          </button>
-        </div>
-      )}
-    </div>
-  );
+    );
+  };
 
   const moduleSection = (
-    <section className="lint-settings-section">
-      <h3 className="lint-settings-category">Modules</h3>
-      <p className="lint-settings-desc">
+    <section className="mb-6">
+      <h3 className={sectionHeading}>Modules</h3>
+      <p className={settingsDesc}>
         Excluded modules are skipped on the next scan. Changes are written to{" "}
         <code>lint-config.yaml</code> in your project directory.
       </p>
       {state.modules.length === 0 ? (
-        <p className="lint-settings-empty">No modules found — open a project in Studio Pro.</p>
+        <p className={settingsEmpty}>No modules found — open a project in Studio Pro.</p>
       ) : (
-        <table className="lint-settings-table">
+        <table className={tableBase}>
           <thead>
             <tr>
-              <th>Module</th>
-              <th className="lint-settings-marketplace-cell">
-                <div className="lint-settings-col-header">
+              <th className={`${thCell} text-left`}>Module</th>
+              <th className={`${thCell} w-[80px]`}>
+                <div className="flex items-center gap-1">
                   <span>Marketplace</span>
                   {state.modules.some((m) => m.fromMarketplace) && (
-                    <div className="lint-settings-bulk-actions">
+                    <div className="flex items-center gap-1 ml-1 text-[11px]">
                       {state.modules.filter((m) => m.fromMarketplace).every((m) => state.pendingExcludedModules.includes(m.name))
-                        ? <button type="button" className="lint-settings-bulk-btn" onClick={includeAllMarketplace}>Include all</button>
-                        : <button type="button" className="lint-settings-bulk-btn" onClick={excludeAllMarketplace}>Exclude all</button>
+                        ? <button type="button" className={bulkBtn} onClick={includeAllMarketplace}>Include all</button>
+                        : <button type="button" className={bulkBtn} onClick={excludeAllMarketplace}>Exclude all</button>
                       }
                     </div>
                   )}
                 </div>
               </th>
-              <th className="lint-settings-enabled-cell">
-                <div className="lint-settings-col-header">
+              <th className={`${thCell} w-[110px]`}>
+                <div className="flex items-center gap-1">
                   <span>Include in scan</span>
-                  <div className="lint-settings-bulk-actions">
-                    <button type="button" className="lint-settings-bulk-btn" onClick={selectAllModules}>All</button>
-                    <span className="lint-settings-bulk-sep">·</span>
-                    <button type="button" className="lint-settings-bulk-btn" onClick={deselectAllModules}>None</button>
+                  <div className="flex items-center gap-1 ml-1 text-[11px]">
+                    <button type="button" className={bulkBtn} onClick={selectAllModules}>All</button>
+                    <span className="text-clevr-muted">·</span>
+                    <button type="button" className={bulkBtn} onClick={deselectAllModules}>None</button>
                   </div>
                 </div>
               </th>
@@ -170,19 +178,19 @@ export function Settings() {
             {state.modules.map((module) => {
               const isExcluded = state.pendingExcludedModules.includes(module.name);
               return (
-                <tr key={module.name} className={isExcluded ? "lint-settings-disabled-row" : ""}>
-                  <td className="lint-settings-module-cell">{module.name}</td>
-                  <td className="lint-settings-marketplace-cell">
+                <tr key={module.name} className={isExcluded ? "opacity-50" : ""}>
+                  <td className={`${tdCell} font-medium`}>{module.name}</td>
+                  <td className={`${tdCenter} w-[80px]`}>
                     {module.fromMarketplace && (
                       <span
-                        className="lint-settings-marketplace-badge"
+                        className="inline-block px-[7px] py-px rounded-full text-[10px] font-bold tracking-[0.03em] bg-[#e7eef6] text-clevr-accent cursor-default select-none"
                         title={module.appStoreVersion ? `Mendix Marketplace v${module.appStoreVersion}` : "Mendix Marketplace"}
                       >
                         MX
                       </span>
                     )}
                   </td>
-                  <td className="lint-settings-enabled-cell">
+                  <td className={`${tdCenter} w-[110px]`}>
                     <input
                       type="checkbox"
                       checked={!isExcluded}
@@ -199,80 +207,40 @@ export function Settings() {
     </section>
   );
 
-  const tabBar = (
-    <div className="lint-settings-tabs">
-      <button
-        type="button"
-        className={`lint-settings-tab${state.settingsActiveTab === "modules" ? " active" : ""}`}
-        onClick={() => dispatch({ type: "SET_SETTINGS_TAB", tab: "modules" })}
-      >
-        Modules
-      </button>
-      <button
-        type="button"
-        className={`lint-settings-tab${state.settingsActiveTab === "rules" ? " active" : ""}`}
-        onClick={() => dispatch({ type: "SET_SETTINGS_TAB", tab: "rules" })}
-      >
-        Rules
-      </button>
-      <button
-        type="button"
-        className={`lint-settings-tab${state.settingsActiveTab === "configuration" ? " active" : ""}`}
-        onClick={() => dispatch({ type: "SET_SETTINGS_TAB", tab: "configuration" })}
-      >
-        Configuration
-      </button>
-      <button
-        type="button"
-        className={`lint-settings-tab${state.settingsActiveTab === "sources" ? " active" : ""}`}
-        onClick={() => dispatch({ type: "SET_SETTINGS_TAB", tab: "sources" })}
-      >
-        Sources
-      </button>
-      <button
-        type="button"
-        className={`lint-settings-tab lint-settings-tab-about${state.settingsActiveTab === "about" ? " active" : ""}`}
-        onClick={() => dispatch({ type: "SET_SETTINGS_TAB", tab: "about" })}
-      >
-        About
-      </button>
-    </div>
-  );
-
   const rulesContent = ruleIds.length === 0 ? (
-    <p className="lint-settings-empty">Loading rules — make sure a project is open in Studio Pro.</p>
+    <p className={settingsEmpty}>Loading rules — make sure a project is open in Studio Pro.</p>
   ) : (
     <>
-      <div className="lint-settings-rules-header">
-        <p className="lint-settings-desc" style={{ margin: 0 }}>
+      <div className="flex items-start justify-between gap-3 mb-3">
+        <p className={`${settingsDesc} m-0`}>
           Configure which rules are active and their severity. Changes are written to{" "}
           <code>lint-config.yaml</code> in your project directory and take effect on the next scan.
         </p>
-        <div className="lint-settings-bulk-actions">
-          <button type="button" className="lint-settings-bulk-btn" onClick={() => enableRules(ruleIds)}>Enable all</button>
-          <span className="lint-settings-bulk-sep">·</span>
-          <button type="button" className="lint-settings-bulk-btn" onClick={() => disableRules(ruleIds)}>Disable all</button>
+        <div className="flex items-center gap-1 text-[11px] shrink-0">
+          <button type="button" className={bulkBtn} onClick={() => enableRules(ruleIds)}>Enable all</button>
+          <span className="text-clevr-muted">·</span>
+          <button type="button" className={bulkBtn} onClick={() => disableRules(ruleIds)}>Disable all</button>
         </div>
       </div>
 
       {orderedCategories.map((category) => {
         const rules = byCategory.get(category) ?? [];
         return (
-          <section key={category} className="lint-settings-section">
-            <div className="lint-settings-category-header">
-              <h3 className="lint-settings-category">{category}</h3>
-              <div className="lint-settings-bulk-actions">
-                <button type="button" className="lint-settings-bulk-btn" onClick={() => enableRules(rules)}>Enable all</button>
-                <span className="lint-settings-bulk-sep">·</span>
-                <button type="button" className="lint-settings-bulk-btn" onClick={() => disableRules(rules)}>Disable all</button>
+          <section key={category} className="mb-6">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className={sectionHeading}>{category}</h3>
+              <div className="flex items-center gap-1 text-[11px]">
+                <button type="button" className={bulkBtn} onClick={() => enableRules(rules)}>Enable all</button>
+                <span className="text-clevr-muted">·</span>
+                <button type="button" className={bulkBtn} onClick={() => disableRules(rules)}>Disable all</button>
               </div>
             </div>
-            <table className="lint-settings-table">
+            <table className={tableBase}>
               <thead>
                 <tr>
-                  <th>Rule</th>
-                  <th>Enabled</th>
-                  <th>Severity</th>
+                  <th className={`${thCell} text-left`}>Rule</th>
+                  <th className={`${thCell} w-[70px]`}>Enabled</th>
+                  <th className={`${thCell} w-[100px]`}>Severity</th>
                 </tr>
               </thead>
               <tbody>
@@ -283,12 +251,12 @@ export function Settings() {
                   const severity = cfg.severity ?? "inherit";
 
                   return (
-                    <tr key={ruleId} className={isEnabled ? "" : "lint-settings-disabled-row"}>
-                      <td className="lint-settings-rule-cell">
-                        <span className="lint-settings-rule-id">{ruleId}</span>
-                        {name && <span className="lint-settings-rule-name">{name}</span>}
+                    <tr key={ruleId} className={isEnabled ? "" : "opacity-50"}>
+                      <td className={tdCell}>
+                        <span className="font-mono font-semibold text-[11px]">{ruleId}</span>
+                        {name && <span className="text-clevr-muted ml-2">{name}</span>}
                       </td>
-                      <td className="lint-settings-enabled-cell">
+                      <td className={`${tdCenter} w-[70px]`}>
                         <input
                           type="checkbox"
                           checked={isEnabled}
@@ -296,8 +264,9 @@ export function Settings() {
                           title={isEnabled ? "Rule is enabled — click to disable" : "Rule is disabled — click to enable"}
                         />
                       </td>
-                      <td className="lint-settings-severity-cell">
+                      <td className={`${tdCell} w-[100px]`}>
                         <select
+                          className="border border-clevr-border rounded px-1.5 py-0.5 text-[12px] w-full outline-none focus:border-clevr-accent"
                           value={severity}
                           disabled={!isEnabled}
                           onChange={(e) => updateRule(ruleId, { severity: e.target.value || "inherit" })}
@@ -321,9 +290,30 @@ export function Settings() {
   );
 
   return (
-    <div className="lint-settings">
-      {settingsHeader}
-      {tabBar}
+    <div className="pb-8">
+      <div className="flex items-center gap-3 mb-3 pb-2 border-b border-clevr-border">
+        <button type="button" className={btnSecondary} onClick={() => dispatch({ type: "HIDE_SETTINGS" })}>
+          ← Back
+        </button>
+        <h2 className="text-[15px] font-semibold m-0">Settings</h2>
+        {!isConfigTab && (
+          <div className="ml-auto flex items-center gap-2">
+            {hasChanges && <span className="text-[12px] text-clevr-muted italic">Unsaved changes</span>}
+            <button type="button" className={btnPrimary} disabled={!hasChanges} onClick={save}>
+              Save
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div className="flex border-b border-clevr-border mb-4">
+        {tabBtn("modules", "Modules")}
+        {tabBtn("rules", "Rules")}
+        {tabBtn("configuration", "Configuration")}
+        {tabBtn("sources", "Sources")}
+        {tabBtn("about", "About")}
+      </div>
+
       {state.settingsActiveTab === "modules" && moduleSection}
       {state.settingsActiveTab === "rules" && rulesContent}
       {state.settingsActiveTab === "configuration" && <ConfigurationTab />}

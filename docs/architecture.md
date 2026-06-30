@@ -31,7 +31,7 @@ Pure .NET 10 library — zero external dependencies, no Mendix API references. T
 
 ### React UI (`src/Clevr.Lint.Extension/ui/`)
 
-TypeScript + React 19 + Vite. Compiled to `wwwroot/` and served to the WebView2 panel.
+TypeScript + React 19 + Vite + Tailwind CSS v4. Compiled to `wwwroot/` and served to the WebView2 panel.
 
 - Receives `Violation[]` batches via `window.chrome.webview.onmessage`.
 - `AppContext` + `AppReducer` manage state (Redux-like, no external state library).

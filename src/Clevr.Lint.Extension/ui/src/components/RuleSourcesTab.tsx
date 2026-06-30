@@ -2,6 +2,10 @@ import { useState } from "react";
 import { useAppDispatch, useAppState } from "../context/AppContext";
 import { post } from "../hooks/useMessageBus";
 import type { RuleSource } from "../types";
+import { btnPrimary, btnSecondary, inputBase, sectionHeading, settingsDesc, settingsEmpty, warningBox } from "../utils/classes";
+
+const btnDeleteFile =
+  "px-3 py-1.5 text-[12px] font-medium bg-white text-sev-major border border-sev-major rounded-[6px] cursor-pointer hover:bg-[#fff7e6] disabled:opacity-45 disabled:cursor-not-allowed";
 
 export function RuleSourcesTab() {
   const state = useAppState();
@@ -44,19 +48,19 @@ export function RuleSourcesTab() {
   const isValidUrl = newUrl.trim().startsWith("https://github.com/");
 
   return (
-    <section className="lint-settings-section">
-      <h3 className="lint-settings-category">Lint rule sources</h3>
-      <p className="lint-settings-desc">
+    <section className="mb-6">
+      <h3 className={sectionHeading}>Lint rule sources</h3>
+      <p className={settingsDesc}>
         Add GitHub directory URLs as rule sources. Files are copied into{" "}
         <code>.claude/lint-rules</code> in your Mendix project folder.
         Use <strong>Add files</strong> to copy only new files, or{" "}
         <strong>Replace files</strong> to overwrite existing ones.
       </p>
 
-      <div className="lint-source-add-form">
+      <div className="flex gap-2 mb-3 flex-wrap">
         <input
           type="url"
-          className="lint-source-url-input"
+          className={`${inputBase} flex-1 min-w-[200px]`}
           placeholder="https://github.com/org/repo/tree/main/path/to/rules"
           value={newUrl}
           onChange={(e) => setNewUrl(e.target.value)}
@@ -64,7 +68,7 @@ export function RuleSourcesTab() {
         />
         <input
           type="text"
-          className="lint-source-label-input"
+          className={`${inputBase} w-[140px]`}
           placeholder="Label (optional)"
           value={newLabel}
           onChange={(e) => setNewLabel(e.target.value)}
@@ -72,7 +76,7 @@ export function RuleSourcesTab() {
         />
         <button
           type="button"
-          className="lint-settings-save"
+          className={btnPrimary}
           onClick={addSource}
           disabled={!newUrl.trim() || !isValidUrl}
           title={newUrl.trim() && !isValidUrl ? "URL must start with https://github.com/" : undefined}
@@ -81,31 +85,31 @@ export function RuleSourcesTab() {
         </button>
       </div>
       {newUrl.trim() && !isValidUrl && (
-        <p className="lint-mxcli-warning" style={{ marginTop: 0, marginBottom: 8 }}>
+        <p className={`${warningBox} mt-0 mb-2`}>
           URL must start with <code>https://github.com/</code> and point to a directory in the tree view.
         </p>
       )}
 
       {state.ruleSources.length === 0 ? (
-        <p className="lint-settings-empty">
+        <p className={settingsEmpty}>
           No rule sources added yet. Paste a GitHub tree URL above to get started.
         </p>
       ) : (
-        <div className="lint-source-list">
+        <div className="flex flex-col gap-3">
           {state.ruleSources.map((source) => {
             const status = state.ruleSourceFetchStatus[source.id];
             const isFetching = status?.fetching === true;
 
             return (
-              <div key={source.id} className="lint-source-row">
-                <div className="lint-source-info">
-                  {source.label && <span className="lint-source-label">{source.label}</span>}
-                  <code className="lint-mxcli-path">{source.url}</code>
+              <div key={source.id} className="border border-clevr-border rounded-lg p-3">
+                <div className="flex items-baseline gap-2 mb-2 flex-wrap">
+                  {source.label && <span className="font-semibold text-[12px]">{source.label}</span>}
+                  <code className="font-mono text-[12px] text-clevr-muted">{source.url}</code>
                 </div>
-                <div className="lint-source-actions">
+                <div className="flex gap-2 flex-wrap">
                   <button
                     type="button"
-                    className="lint-mxcli-browse-btn"
+                    className={btnSecondary}
                     disabled={isFetching}
                     onClick={() => fetchSource(source.id, source.url, false)}
                     title="Copy new files only — skip files that already exist"
@@ -114,7 +118,7 @@ export function RuleSourcesTab() {
                   </button>
                   <button
                     type="button"
-                    className="lint-mxcli-browse-btn"
+                    className={btnSecondary}
                     disabled={isFetching}
                     onClick={() => fetchSource(source.id, source.url, true)}
                     title="Copy all files, overwriting existing ones"
@@ -123,7 +127,7 @@ export function RuleSourcesTab() {
                   </button>
                   <button
                     type="button"
-                    className="lint-source-delete-btn"
+                    className={btnDeleteFile}
                     disabled={isFetching}
                     onClick={() => deleteSourceFiles(source.id, source.url)}
                     title="Delete the files that came from this source from your project"
@@ -132,7 +136,7 @@ export function RuleSourcesTab() {
                   </button>
                   <button
                     type="button"
-                    className="lint-source-remove-btn"
+                    className={btnSecondary}
                     disabled={isFetching}
                     onClick={() => removeSource(source.id)}
                     title="Remove this source from the list"
@@ -141,28 +145,28 @@ export function RuleSourcesTab() {
                   </button>
                 </div>
                 {status && (
-                  <div className="lint-source-status">
+                  <div className="mt-2 text-[12px]">
                     {status.fetching && (
-                      <span className="lint-source-status-fetching">
+                      <span className="text-clevr-muted italic">
                         {status.progress ?? "Fetching…"}
                       </span>
                     )}
                     {!status.fetching && status.error && (
-                      <span className="lint-source-status-error">{status.error}</span>
+                      <span className="text-sev-critical">{status.error}</span>
                     )}
                     {!status.fetching && status.lastResult && (() => {
                       const r = status.lastResult;
                       const hasFailed = r.failed > 0;
                       return (
                         <>
-                          <span className={hasFailed ? "lint-source-status-warn" : "lint-source-status-ok"}>
+                          <span className={hasFailed ? "text-sev-major" : "text-green-action"}>
                             Copied: {r.copied} · Skipped: {r.skipped}
                             {hasFailed && ` · Failed: ${r.failed}`}
                           </span>
                           {r.errors.length > 0 && (
-                            <ul className="lint-source-error-list">
+                            <ul className="mt-1 pl-4 text-sev-critical list-disc">
                               {r.errors.map((e, i) => (
-                                <li key={i} className="lint-source-status-error">{e}</li>
+                                <li key={i}>{e}</li>
                               ))}
                             </ul>
                           )}
@@ -174,15 +178,15 @@ export function RuleSourcesTab() {
                       const hasFailed = r.failed > 0;
                       return (
                         <>
-                          <span className={hasFailed ? "lint-source-status-warn" : "lint-source-status-ok"}>
+                          <span className={hasFailed ? "text-sev-major" : "text-green-action"}>
                             Deleted: {r.deleted}
                             {r.notFound > 0 && ` · Not found: ${r.notFound}`}
                             {hasFailed && ` · Failed: ${r.failed}`}
                           </span>
                           {r.errors.length > 0 && (
-                            <ul className="lint-source-error-list">
+                            <ul className="mt-1 pl-4 text-sev-critical list-disc">
                               {r.errors.map((e, i) => (
-                                <li key={i} className="lint-source-status-error">{e}</li>
+                                <li key={i}>{e}</li>
                               ))}
                             </ul>
                           )}

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useAppDispatch, useAppState } from "../context/AppContext";
 import { post } from "../hooks/useMessageBus";
+import { btnPrimary, btnSecondary, inputBase, sectionHeading, settingsDesc, settingsEmpty, tableBase, warningBox } from "../utils/classes";
 
 const SOURCE_LABELS: Record<string, string> = {
   path:       "System PATH",
@@ -9,13 +10,20 @@ const SOURCE_LABELS: Record<string, string> = {
   notFound:   "Not found",
 };
 
+const SOURCE_BADGE_COLORS: Record<string, string> = {
+  path:      "bg-[#e7eef6] text-clevr-accent",
+  clevrLint: "bg-[#d9f5e8] text-green-action",
+  custom:    "bg-[#fff3cd] text-[#856404]",
+  notFound:  "bg-[#f8d7da] text-sev-blocker",
+};
+
 export function ConfigurationTab() {
   const state    = useAppState();
   const dispatch = useAppDispatch();
   const info     = state.mxcliInfo;
 
-  const [editMode, setEditMode]   = useState(false);
-  const [editPath, setEditPath]   = useState("");
+  const [editMode, setEditMode] = useState(false);
+  const [editPath, setEditPath] = useState("");
 
   function handleDownload() {
     dispatch({ type: "MXCLI_DOWNLOAD_STARTED" });
@@ -46,9 +54,9 @@ export function ConfigurationTab() {
 
   if (info === null) {
     return (
-      <section className="lint-settings-section">
-        <h3 className="lint-settings-category">mxcli</h3>
-        <p className="lint-settings-empty">Loading mxcli information…</p>
+      <section className="mb-6">
+        <h3 className={sectionHeading}>mxcli</h3>
+        <p className={settingsEmpty}>Loading mxcli information…</p>
       </section>
     );
   }
@@ -56,78 +64,81 @@ export function ConfigurationTab() {
   const isDownloading = state.mxcliDownloading;
   const progress      = state.mxcliDownloadProgress;
   const downloadLabel = info.found ? "Download latest version" : "Download mxcli";
+  const badgeColor    = SOURCE_BADGE_COLORS[info.source] ?? "bg-clevr-card text-clevr-muted";
 
   return (
-    <section className="lint-settings-section">
-      <h3 className="lint-settings-category">mxcli</h3>
-      <p className="lint-settings-desc">
+    <section className="mb-6">
+      <h3 className={sectionHeading}>mxcli</h3>
+      <p className={settingsDesc}>
         CLEVR Lint uses mxcli, the official Mendix Labs linting tool. The version below is
         used for all scans.
       </p>
 
-      <table className="lint-settings-table lint-mxcli-table">
+      <table className={`${tableBase} mb-4`}>
         <tbody>
           <tr>
-            <th>Source</th>
-            <td>
-              <span className={`lint-mxcli-source-badge lint-mxcli-source-${info.source}`}>
+            <th className="text-left py-1.5 pr-4 text-clevr-muted font-medium text-[12px] border-b border-clevr-border w-[90px]">Source</th>
+            <td className="py-1.5 border-b border-clevr-border">
+              <span className={`inline-block px-2 py-px rounded text-[11px] font-semibold ${badgeColor}`}>
                 {SOURCE_LABELS[info.source] ?? info.source}
               </span>
             </td>
           </tr>
           <tr>
-            <th>Location</th>
-            <td className="lint-mxcli-location-cell">
+            <th className="text-left py-1.5 pr-4 text-clevr-muted font-medium text-[12px] border-b border-clevr-border">Location</th>
+            <td className="py-1.5 border-b border-clevr-border">
               {editMode ? (
-                <div className="lint-mxcli-edit-row">
+                <div className="flex gap-2 items-center">
                   <input
                     type="text"
-                    className="lint-mxcli-path-input"
+                    className={`${inputBase} flex-1 font-mono`}
                     value={editPath}
                     onChange={(e) => setEditPath(e.target.value)}
                     placeholder="C:\path\to\mxcli.exe"
                     autoFocus
                     onKeyDown={(e) => { if (e.key === "Enter") applyEdit(); if (e.key === "Escape") cancelEdit(); }}
                   />
-                  <button type="button" className="lint-mxcli-apply-btn" onClick={applyEdit} disabled={!editPath.trim()}>Apply</button>
-                  <button type="button" className="lint-mxcli-cancel-btn" onClick={cancelEdit}>Cancel</button>
+                  <button type="button" className={btnPrimary} onClick={applyEdit} disabled={!editPath.trim()}>Apply</button>
+                  <button type="button" className={btnSecondary} onClick={cancelEdit}>Cancel</button>
                 </div>
               ) : (
-                <div className="lint-mxcli-location-row">
+                <div className="flex items-center gap-3 flex-wrap">
                   {info.resolvedPath
-                    ? <code className="lint-mxcli-path">{info.resolvedPath}</code>
-                    : <span className="lint-settings-empty">—</span>}
-                  <div className="lint-mxcli-location-btns">
-                    <button type="button" className="lint-mxcli-browse-btn" title="Browse for mxcli.exe" onClick={handleBrowse}>Browse…</button>
-                    <button type="button" className="lint-mxcli-browse-btn" title="Type or paste a path" onClick={startEdit}>Set path…</button>
+                    ? <code className="font-mono text-[12px]">{info.resolvedPath}</code>
+                    : <span className={settingsEmpty}>—</span>}
+                  <div className="flex gap-2">
+                    <button type="button" className={btnSecondary} title="Browse for mxcli.exe" onClick={handleBrowse}>Browse…</button>
+                    <button type="button" className={btnSecondary} title="Type or paste a path" onClick={startEdit}>Set path…</button>
                   </div>
                 </div>
               )}
             </td>
           </tr>
           <tr>
-            <th>Version</th>
-            <td>{info.version ?? <span className="lint-settings-empty">—</span>}</td>
+            <th className="text-left py-1.5 pr-4 text-clevr-muted font-medium text-[12px] border-b border-clevr-border">Version</th>
+            <td className="py-1.5 border-b border-clevr-border">
+              {info.version ?? <span className={settingsEmpty}>—</span>}
+            </td>
           </tr>
           {info.downloadedAt && (
             <tr>
-              <th>Updated</th>
-              <td>{info.downloadedAt}</td>
+              <th className="text-left py-1.5 pr-4 text-clevr-muted font-medium text-[12px] border-b border-clevr-border">Updated</th>
+              <td className="py-1.5 border-b border-clevr-border">{info.downloadedAt}</td>
             </tr>
           )}
         </tbody>
       </table>
 
       {!info.found && (
-        <p className="lint-mxcli-warning">
+        <p className={warningBox}>
           mxcli was not found. Download it below or point to an existing installation using Browse.
         </p>
       )}
 
-      <div className="lint-mxcli-actions">
+      <div className="flex items-center gap-3 mt-3">
         <button
           type="button"
-          className="lint-settings-save"
+          className={btnPrimary}
           disabled={isDownloading}
           onClick={handleDownload}
         >
@@ -135,11 +146,14 @@ export function ConfigurationTab() {
         </button>
 
         {isDownloading && progress !== null && (
-          <div className="lint-mxcli-progress-wrap">
-            <div className="lint-mxcli-progress-bar-track">
-              <div className="lint-mxcli-progress-bar-fill" style={{ width: `${progress}%` }} />
+          <div className="flex items-center gap-3 flex-1">
+            <div className="flex-1 h-[6px] bg-clevr-border rounded-[3px] overflow-hidden">
+              <div
+                className="h-full bg-clevr-accent rounded-[3px] transition-[width] duration-150 ease-linear"
+                style={{ width: `${progress}%` }}
+              />
             </div>
-            <span className="lint-mxcli-progress-label">{progress}%</span>
+            <span className="text-[12px] text-clevr-muted tabular-nums w-[32px]">{progress}%</span>
           </div>
         )}
       </div>

@@ -1,10 +1,11 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { useAppDispatch, useAppState } from "../context/AppContext";
 import type { Violation } from "../types";
 import { post } from "../hooks/useMessageBus";
 import { copyToClipboard } from "../hooks/useClipboard";
 import { aiPromptForFinding } from "../utils/ai";
 import { ExcludeDialog } from "./dialogs/ExcludeDialog";
+import { btnPillAccent, btnPillMuted } from "../utils/classes";
 
 interface Props {
   rule: Violation;
@@ -41,35 +42,59 @@ export function ViolationInstance({ rule, v, interactive = true, isFixed = false
     post("OpenUrl", { url });
   }
 
+  const docClass = [
+    "text-[12px] text-clevr-muted leading-relaxed",
+    interactive && !isFixed ? "cursor-pointer hover:text-clevr-accent" : "",
+  ].filter(Boolean).join(" ");
+
   return (
-    <div className="lint-instance">
+    <div className="border-t border-dashed border-clevr-border py-1.5">
       <div
-        className={"lint-doc" + (interactive && !isFixed ? " lint-doc-clickable" : "")}
+        className={docClass}
         title={interactive && !isFixed ? "Open this document in Studio Pro" : undefined}
         onClick={interactive && !isFixed ? openDoc : undefined}
       >
-        <span className="doctype">{v.documentType}: </span>
-        <span className="qname">{v.documentQualifiedName}</span>
-        {v.elementName && <><span> › </span><span className="elem">{v.elementName}</span></>}
-        {isFixed && <span className="lint-fixed-badge">FIXED</span>}
-        {interactive && !isFixed && <span className="lint-open-hint"> ↗ open</span>}
+        <span className="font-medium text-clevr-fg">{v.documentType}: </span>
+        <span>{v.documentQualifiedName}</span>
+        {v.elementName && <><span> › </span><span className="font-medium">{v.elementName}</span></>}
+        {isFixed && (
+          <span className="inline-block px-[7px] py-px rounded-full text-[10px] font-bold tracking-[0.03em] bg-green-action text-white whitespace-nowrap ml-2 align-middle">
+            FIXED
+          </span>
+        )}
+        {interactive && !isFixed && (
+          <span className="text-clevr-accent text-[11px] ml-1">↗ open</span>
+        )}
       </div>
-      <div className="lint-reason">{v.reason}</div>
-      {v.suggestion && <div className="lint-suggestion">{v.suggestion}</div>}
+      <div className="my-1">{v.reason}</div>
+      {v.suggestion && (
+        <div className="text-[12px] text-clevr-muted before:content-['→_']">{v.suggestion}</div>
+      )}
       {interactive && !isFixed && (
-        <div className="lint-instance-actions">
-          <button type="button" className="lint-ai-btn" title="Generate an English prompt for AI and copy it to the clipboard" onClick={copyAiPrompt}>
+        <div className="flex gap-2 mt-1.5">
+          <button
+            type="button"
+            className={btnPillAccent}
+            title="Generate an English prompt for AI and copy it to the clipboard"
+            onClick={copyAiPrompt}
+          >
             Copy AI prompt
           </button>
-          <button type="button" className="lint-exclude-btn" title="Exclude this improvement (a reason is required)" onClick={() => setShowExclude(true)}>
+          <button
+            type="button"
+            className={btnPillMuted}
+            title="Exclude this improvement (a reason is required)"
+            onClick={() => setShowExclude(true)}
+          >
             Exclude
           </button>
         </div>
       )}
       {v.documentationUrl && (
-        <div className="lint-docslink">
+        <div className="mt-1 text-[12px]">
           <a
             href={v.documentationUrl}
+            className="text-clevr-accent hover:underline"
             target="_blank"
             rel="noreferrer"
             onClick={interactive ? (e) => openUrl(v.documentationUrl!, e) : undefined}

@@ -1,8 +1,11 @@
 import { useAppDispatch, useAppState } from "../context/AppContext";
-import { activeViolations, baselineFingerprintSet, currentFingerprintSet } from "../utils/filters";
+import { activeViolations } from "../utils/filters";
 import { isAppStoreModule } from "../utils/origins";
 import { post } from "../hooks/useMessageBus";
 import { relativeTime } from "../utils/time";
+
+const segBase = "px-3 py-0.5 text-[12px] bg-white text-clevr-muted border-r border-clevr-border last:border-r-0 cursor-pointer hover:bg-clevr-hover";
+const segActive = "bg-clevr-selected text-clevr-accent font-semibold";
 
 export function FilterBar() {
   const state = useAppState();
@@ -21,13 +24,8 @@ export function FilterBar() {
 
   const hasBaseline = state.baselines.length > 0 && state.scanHasRun;
 
-  // Baseline counts — compute with override state to get "what would show"
-  const newCount = hasBaseline
-    ? activeViolations({ ...state, baselineFilter: "new" }).length
-    : 0;
-  const fixedCount = hasBaseline
-    ? activeViolations({ ...state, baselineFilter: "fixed" }).length
-    : 0;
+  const newCount = hasBaseline ? activeViolations({ ...state, baselineFilter: "new" }).length : 0;
+  const fixedCount = hasBaseline ? activeViolations({ ...state, baselineFilter: "fixed" }).length : 0;
   const allCount = base.length;
 
   const selectedBaseline = state.baselines.find((b) => b.id === state.selectedBaselineId);
@@ -36,32 +34,38 @@ export function FilterBar() {
   if (asCount === 0 && !state.uncommittedAvailable && !hasBaseline) return null;
 
   return (
-    <div className="lint-engine-filter">
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-3 text-[12px]">
       {asCount > 0 && (
-        <label className="lint-origin-toggle" title="Marketplace/app-store modules are scanned too; toggle to show or hide them.">
+        <label
+          className="flex items-center gap-1.5 cursor-pointer select-none"
+          title="Marketplace/app-store modules are scanned too; toggle to show or hide them."
+        >
           <input
             type="checkbox"
             checked={state.appStoreVisible}
             onChange={() => dispatch({ type: "TOGGLE_APPSTORE" })}
           />
-          <span> Marketplace modules ({asCount})</span>
+          <span>Marketplace modules ({asCount})</span>
         </label>
       )}
       {state.uncommittedAvailable && (
-        <label className="lint-origin-toggle" title="Show only improvements in documents that have uncommitted Git changes.">
+        <label
+          className="flex items-center gap-1.5 cursor-pointer select-none"
+          title="Show only improvements in documents that have uncommitted Git changes."
+        >
           <input
             type="checkbox"
             checked={state.uncommittedFilterActive}
             onChange={() => dispatch({ type: "TOGGLE_UNCOMMITTED_FILTER" })}
           />
-          <span> Limit to uncommitted ({changedCount})</span>
+          <span>Limit to uncommitted ({changedCount})</span>
         </label>
       )}
       {hasBaseline && (
-        <div className="lint-baseline-filter">
-          <span className="lint-filter-label">vs baseline:</span>
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-clevr-muted whitespace-nowrap">vs baseline:</span>
           <select
-            className="lint-baseline-select"
+            className="border border-clevr-border rounded px-2 py-0.5 text-[12px] bg-white outline-none focus:border-clevr-accent"
             value={state.selectedBaselineId ?? ""}
             onChange={(e) => dispatch({ type: "SELECT_BASELINE", id: e.target.value })}
             title="Select which baseline to compare against"
@@ -75,7 +79,7 @@ export function FilterBar() {
           </select>
           <button
             type="button"
-            className="lint-baseline-delete-btn"
+            className="bg-white border border-clevr-border rounded px-1.5 py-0.5 text-[14px] text-clevr-muted cursor-pointer hover:border-sev-critical hover:text-sev-critical"
             title={`Delete baseline from ${savedAgo}`}
             onClick={() => {
               if (state.selectedBaselineId) post("DeleteBaseline", { id: state.selectedBaselineId });
@@ -83,17 +87,17 @@ export function FilterBar() {
           >
             ×
           </button>
-          <div className="lint-baseline-segs">
+          <div className="flex border border-clevr-border rounded overflow-hidden">
             <button
               type="button"
-              className={"lint-baseline-seg" + (!state.baselineFilter ? " active" : "")}
+              className={`${segBase}${!state.baselineFilter ? ` ${segActive}` : ""}`}
               onClick={() => dispatch({ type: "SET_BASELINE_FILTER", filter: null })}
             >
               All ({allCount})
             </button>
             <button
               type="button"
-              className={"lint-baseline-seg lint-baseline-new" + (state.baselineFilter === "new" ? " active" : "")}
+              className={`${segBase}${state.baselineFilter === "new" ? ` ${segActive}` : ""}`}
               onClick={() => dispatch({ type: "SET_BASELINE_FILTER", filter: "new" })}
               title="Show only violations introduced since the baseline"
             >
@@ -101,7 +105,7 @@ export function FilterBar() {
             </button>
             <button
               type="button"
-              className={"lint-baseline-seg lint-baseline-fixed" + (state.baselineFilter === "fixed" ? " active" : "")}
+              className={`${segBase}${state.baselineFilter === "fixed" ? ` ${segActive}` : ""}`}
               onClick={() => dispatch({ type: "SET_BASELINE_FILTER", filter: "fixed" })}
               title="Show violations that were in the baseline but are now resolved"
             >

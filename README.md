@@ -108,7 +108,7 @@ The React UI lives in `src/Clevr.Lint.Extension/ui/`. It is a standard Vite + Re
 |-------|-----------|
 | Framework | React 19 + TypeScript |
 | Bundler | Vite 6 |
-| Styling | Plain CSS (injected by `vite-plugin-css-injected-by-js`) |
+| Styling | Tailwind CSS v4 (utility-first; injected by `vite-plugin-css-injected-by-js`) |
 | State | Context + Reducer (`src/context/`) |
 | Bridge | `window.chrome.webview` (WebView2 in Studio Pro; shim in dev) |
 

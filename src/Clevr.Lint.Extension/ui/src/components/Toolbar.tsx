@@ -1,9 +1,10 @@
-﻿import { useAppDispatch, useAppState } from "../context/AppContext";
+import { useAppDispatch, useAppState } from "../context/AppContext";
 import { activeViolations } from "../utils/filters";
 import { excludedView } from "../utils/exclusions";
 import { post } from "../hooks/useMessageBus";
 import { buildReportHtml } from "../utils/report";
 import { relativeTime } from "../utils/time";
+import { btnPrimary, btnSecondary } from "../utils/classes";
 
 export function Toolbar() {
   const state = useAppState();
@@ -38,8 +39,11 @@ export function Toolbar() {
       : "No scan yet";
 
   return (
-    <div className="lint-toolbar">
-      <span className="lint-scan-status" title={state.scanStreaming ? "Scan in progress" : state.scanHasRun ? "Last scan result" : "Run a scan to see improvements"}>
+    <div className="flex gap-2 items-center my-2 mb-[14px] flex-wrap">
+      <span
+        className="text-[12px] text-clevr-muted mr-1"
+        title={state.scanStreaming ? "Scan in progress" : state.scanHasRun ? "Last scan result" : "Run a scan to see improvements"}
+      >
         {statusText}
       </span>
       {state.scanStreaming && (
@@ -47,7 +51,7 @@ export function Toolbar() {
           <span className="lint-spinner" aria-label="Scanning…" />
           <button
             type="button"
-            className="lint-cancel-btn"
+            className="px-3 py-1.5 text-[12px] font-medium bg-white text-sev-critical border border-sev-critical rounded-[6px] cursor-pointer hover:bg-[#fff0f0] disabled:opacity-45 disabled:cursor-not-allowed"
             title="Cancel the running scan"
             onClick={cancelScan}
           >
@@ -57,6 +61,7 @@ export function Toolbar() {
       )}
       <button
         type="button"
+        className={btnPrimary}
         disabled={state.scanStreaming}
         title="Scan: catalog rules and mxcli's own lint rules."
         onClick={() => startScan()}
@@ -64,14 +69,14 @@ export function Toolbar() {
         Scan
       </button>
       {hasAnything && !state.scanStreaming && (
-        <button type="button" onClick={exportReport}>
+        <button type="button" className={btnSecondary} onClick={exportReport}>
           Export
         </button>
       )}
       {state.scanHasRun && !state.scanStreaming && (
         <button
           type="button"
-          className="lint-baseline-save-btn"
+          className={btnSecondary}
           title="Save the current scan result as a baseline. Future scans highlight only new or fixed violations."
           onClick={() => post("SaveBaseline", { violations: state.violations, savedAt: Date.now() })}
         >
@@ -80,9 +85,9 @@ export function Toolbar() {
       )}
       <button
         type="button"
+        className={btnSecondary}
         disabled={state.scanStreaming}
         title="Rule settings — enable/disable rules and override severity"
-        className="lint-toolbar-settings"
         onClick={() => dispatch({ type: "SHOW_SETTINGS" })}
       >
         ⚙ Settings

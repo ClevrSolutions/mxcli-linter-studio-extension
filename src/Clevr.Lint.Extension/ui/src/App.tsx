@@ -1,4 +1,4 @@
-﻿import { useReducer, useEffect } from "react";
+import { useReducer, useEffect } from "react";
 import { AppContext, AppDispatch } from "./context/AppContext";
 import { appReducer, initialState } from "./context/AppReducer";
 import { useMessageBus } from "./hooks/useMessageBus";
@@ -7,6 +7,8 @@ import { FilterBar } from "./components/FilterBar";
 import { Report } from "./components/Report";
 import { Settings } from "./components/Settings";
 import { Toast } from "./components/Toast";
+import { btnSecondary } from "./utils/classes";
+
 export function App() {
   const [state, dispatch] = useReducer(appReducer, initialState);
 
@@ -35,13 +37,13 @@ export function App() {
   return (
     <AppContext.Provider value={state}>
       <AppDispatch.Provider value={dispatch}>
-        <div className="lint-root">
-          <div className="lint-header">
-            <div className="lint-brand">
-              <img className="lint-logo" src="./clevr-logo.png" alt="CLEVR" />
+        <div className="px-3.5 pb-8 pt-3">
+          <div className="flex items-baseline justify-between gap-3 mb-2">
+            <div className="flex items-center gap-3">
+              <img className="h-10 w-auto rounded-[6px] block" src="./clevr-logo.png" alt="CLEVR" />
               <div>
-                <h1 className="lint-title">CLEVR Lint Review</h1>
-                <div className="lint-subtitle">Improvements to the project, with mxcli linting rules</div>
+                <h1 className="text-[15px] font-semibold m-0">CLEVR Lint Review</h1>
+                <div className="text-[12px] text-clevr-muted">Improvements to the project, with mxcli linting rules</div>
               </div>
             </div>
           </div>
@@ -54,10 +56,10 @@ export function App() {
             <>
               {state.scanHasRun && (
                 <>
-                  <div className="lint-search-row">
+                  <div className="flex gap-2 items-center my-2">
                     <input
                       id="filter"
-                      className="lint-search"
+                      className="flex-1 border border-clevr-border rounded px-2.5 py-1.5 text-[13px] outline-none focus:border-clevr-accent"
                       type="search"
                       placeholder="Filter by rule, document, category, severity, reason…"
                       value={state.filterQuery}
@@ -65,7 +67,7 @@ export function App() {
                     />
                     <button
                       type="button"
-                      className="lint-search-reset"
+                      className={btnSecondary}
                       title="Clear all filters (category, severity, source, text)"
                       onClick={() => dispatch({ type: "RESET_FILTERS" })}
                       aria-label="Reset filters"
@@ -80,7 +82,7 @@ export function App() {
             </>
           )}
 
-          <div className="lint-footer">
+          <div className="mt-7 pt-[10px] border-t border-clevr-border text-[11px] text-clevr-muted">
             Requires Mendix Studio Pro 11 or higher (Extensibility API 11.10, .NET 10, mxcli). · CLEVR Lint
           </div>
         </div>

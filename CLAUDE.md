@@ -69,7 +69,7 @@ cd src/Clevr.Lint.Extension/ui && npm run build
 | Layer | Technology |
 |-------|-----------|
 | Extension backend | C# / .NET 10 |
-| UI | React 19 + TypeScript, Vite bundler |
+| UI | React 19 + TypeScript, Vite 6, Tailwind CSS v4 |
 | Normalization library | C# / .NET 10, zero external dependencies |
 | Mendix API | Mendix.StudioPro.ExtensionsAPI 11.10 |
 | External tool | mxcli v0.12.0 (Apache-2.0, auto-downloaded by installer) |

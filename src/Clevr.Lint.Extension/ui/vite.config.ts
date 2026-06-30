@@ -1,4 +1,5 @@
 ﻿import { defineConfig, type Plugin } from "vite";
+import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import cssInjectedByJsPlugin from "vite-plugin-css-injected-by-js";
 import { resolve } from "path";
@@ -56,7 +57,7 @@ function injectWebviewShim(): Plugin {
 }
 
 export default defineConfig({
-  plugins: [react(), cssInjectedByJsPlugin(), injectWebviewShim()],
+  plugins: [tailwindcss(), react(), cssInjectedByJsPlugin(), injectWebviewShim()],
   base: "./",
   root: "src",
   publicDir: "../public",
