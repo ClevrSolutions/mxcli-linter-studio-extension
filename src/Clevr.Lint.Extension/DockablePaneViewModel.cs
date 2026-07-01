@@ -40,6 +40,8 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
     private readonly ExclusionCoordinator _exclusionCoordinator;
     private readonly NavigationCoordinator _navigationCoordinator;
     private readonly LinterConfigCoordinator _linterConfigCoordinator;
+    private readonly SettingsCoordinator _settingsCoordinator;
+    private readonly ScanCoordinator _scanCoordinator;
     private CancellationTokenSource? _scanCts;
     private SynchronizationContext? _uiContext;
 
@@ -63,6 +65,8 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
         _exclusionCoordinator = new ExclusionCoordinator(_exclusions, _projectDirResolver);
         _navigationCoordinator = new NavigationCoordinator(getModel);
         _linterConfigCoordinator = new LinterConfigCoordinator(new LinterConfigStore(), _projectDirResolver);
+        _settingsCoordinator = new SettingsCoordinator(fileService, getProjectDir, _projectDirResolver, _ruleSourcesService);
+        _scanCoordinator = new ScanCoordinator(fileService, logService, _projectDirResolver, mendixVersion);
     }
 
     public override void InitWebView(IWebView webView)
@@ -86,8 +90,7 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
             {
                 // Synchronous (like the spike): mxcli on a project can take a few seconds.
                 // For production later: async + marshal back to the UI thread.
-                var service = new LintScanService(_fileService, _logService);
-                var json = service.RunScanAsJson(_getProjectDir());
+                var json = _scanCoordinator.RunLintScan();
                 webView.PostMessage("LintViolations", json);
             }
             else if (args.Message == "RunFullScan")
@@ -98,7 +101,11 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
                     DebugLog.Write(_getProjectDir(), "[CLEVR Lint] WARNING: SynchronizationContext.Current is null at scan start — UI posts will run on background thread");
                 _scanCts?.Dispose();
                 _scanCts = new CancellationTokenSource();
-                RunFullScan(webView, ctx, _scanCts.Token);
+                var token = _scanCts.Token;
+                // Progress<T> captures SynchronizationContext.Current at construction — here, on the
+                // UI thread — so each Report() below auto-marshals back to the UI without manual Post().
+                var progress = new Progress<ScanEvent>(ev => PostScanEvent(webView, ev));
+                _ = Task.Run(() => _scanCoordinator.RunFullScan(progress, token));
             }
             else if (args.Message == "CancelScan")
             {
@@ -156,47 +163,9 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
             {
                 SaveLinterConfig(webView, args.Data);
             }
-            else if (args.Message == "RequestMxcliInfo")
+            else if (args.Message is "RequestMxcliInfo" or "BrowseMxcliPath" or "SetMxcliPath" or "DownloadMxcli")
             {
-                _ = Task.Run(() => PostMxcliInfo(webView, _uiContext));
-            }
-            else if (args.Message == "BrowseMxcliPath")
-            {
-                // File picker must run on the UI (STA) thread — MessageReceived is already on it.
-                var settingsPath = _fileService.ResolvePath("lint-scan-settings.json");
-                var currentPath = File.Exists(settingsPath)
-                    ? LintScanSettings.Load(File.ReadAllText(settingsPath), null).MxcliPath
-                    : null;
-                var picked = NativeFileDialog.ShowExePicker("Select mxcli.exe", currentPath);
-                if (picked != null)
-                    ApplyMxcliPath(webView, picked);
-            }
-            else if (args.Message == "SetMxcliPath")
-            {
-                // Set a manually typed path from the UI.
-                var path = args.Data?["path"]?.GetValue<string>()?.Trim() ?? "";
-                if (!string.IsNullOrEmpty(path))
-                    ApplyMxcliPath(webView, path);
-            }
-            else if (args.Message == "DownloadMxcli")
-            {
-                var ctx = _uiContext;
-                _ = Task.Run(async () =>
-                {
-                    try
-                    {
-                        var info = await MxcliService.DownloadLatestAsync(
-                            _fileService,
-                            pct => PostBackground(ctx, webView, "MxcliDownloadProgress", pct.ToString()),
-                            default);
-                        PostBackground(ctx, webView, "MxcliInfo", JsonSerializer.Serialize(info, LintScanService.JsonOut));
-                    }
-                    catch (Exception ex)
-                    {
-                        _logService.Error("[CLEVR Lint] mxcli download failed", ex);
-                        PostBackground(ctx, webView, "MxcliDownloadError", ex.Message);
-                    }
-                });
+                _ = DispatchMxcliMessageAsync(webView, args.Message, args.Data);
             }
             else if (args.Message == "RequestModules")
             {
@@ -214,68 +183,10 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
             {
                 DeleteBaseline(webView, args.Data);
             }
-            else if (args.Message == "RequestRuleSources")
+            else if (args.Message is "RequestRuleSources" or "SaveRuleSources"
+                     or "FetchRuleSource" or "DeleteRuleSourceFiles")
             {
-                PostRuleSources(webView);
-            }
-            else if (args.Message == "SaveRuleSources")
-            {
-                SaveRuleSources(webView, args.Data);
-            }
-            else if (args.Message == "DeleteRuleSourceFiles")
-            {
-                var id  = args.Data?["id"]?.GetValue<string>()  ?? "";
-                var url = args.Data?["url"]?.GetValue<string>() ?? "";
-                var ctx = _uiContext;
-                _ = Task.Run(async () =>
-                {
-                    PostBackground(ctx, webView, "RuleSourceFetchStarted", JsonSerializer.Serialize(new { id }, LintScanService.JsonOut));
-                    try
-                    {
-                        var projectDir = _projectDirResolver.Resolve();
-                        var result = await _ruleSourcesService.DeleteRuleSourceFilesAsync(
-                            url, projectDir ?? "",
-                            msg => PostBackground(ctx, webView, "RuleSourceFetchProgress", JsonSerializer.Serialize(new { id, message = msg }, LintScanService.JsonOut)),
-                            default);
-                        var payload = JsonSerializer.Serialize(
-                            new { id, deleted = result.Deleted, notFound = result.NotFound, failed = result.Failed, errors = result.Errors },
-                            LintScanService.JsonOut);
-                        PostBackground(ctx, webView, "RuleSourceFilesDeleted", payload);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logService.Error("[CLEVR Lint] DeleteRuleSourceFiles failed", ex);
-                        PostBackground(ctx, webView, "RuleSourceFetchError", JsonSerializer.Serialize(new { id, error = ex.Message }, LintScanService.JsonOut));
-                    }
-                });
-            }
-            else if (args.Message == "FetchRuleSource")
-            {
-                var id  = args.Data?["id"]?.GetValue<string>()  ?? "";
-                var url = args.Data?["url"]?.GetValue<string>() ?? "";
-                var replace = args.Data?["replaceExisting"]?.GetValue<bool>() ?? false;
-                var ctx = _uiContext;
-                _ = Task.Run(async () =>
-                {
-                    PostBackground(ctx, webView, "RuleSourceFetchStarted", JsonSerializer.Serialize(new { id }, LintScanService.JsonOut));
-                    try
-                    {
-                        var projectDir = _projectDirResolver.Resolve();
-                        var result = await _ruleSourcesService.FetchRuleSourceAsync(
-                            url, projectDir ?? "", replace,
-                            msg => PostBackground(ctx, webView, "RuleSourceFetchProgress", JsonSerializer.Serialize(new { id, message = msg }, LintScanService.JsonOut)),
-                            default);
-                        var payload = JsonSerializer.Serialize(
-                            new { id, copied = result.Copied, skipped = result.Skipped, failed = result.Failed, errors = result.Errors },
-                            LintScanService.JsonOut);
-                        PostBackground(ctx, webView, "RuleSourceFetched", payload);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logService.Error("[CLEVR Lint] FetchRuleSource failed", ex);
-                        PostBackground(ctx, webView, "RuleSourceFetchError", JsonSerializer.Serialize(new { id, error = ex.Message }, LintScanService.JsonOut));
-                    }
-                });
+                _ = DispatchRuleSourcesMessageAsync(webView, args.Message, args.Data);
             }
         };
     }
@@ -402,88 +313,20 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
         }
     }
 
-    /// <summary>
-    /// Scan behind the "Scan" button. Runs mxcli lint + the CLEVR native rules on a background thread
-    /// (UI stays responsive). Progress + results are marshaled to the UI thread via the captured
-    /// <paramref name="uiContext"/>. Every outcome is posted: LintViolations, ScanProgress, ScanFinished.
-    /// </summary>
-    private void RunFullScan(IWebView webView, SynchronizationContext? uiContext, CancellationToken ct = default)
+    /// <summary>Translates a <see cref="ScanEvent"/> from <see cref="ScanCoordinator.RunFullScan"/>
+    /// into the WebView message it corresponds to. The only place scan events touch the WebView.</summary>
+    private void PostScanEvent(IWebView webView, ScanEvent ev)
     {
-        // One canonical project directory for BOTH steps (same resolution as exclusions/scan:
-        // settings.ProjectPath → its directory, otherwise the open app). This ensures the export
-        // refreshes exactly the model source that the mxcli/expression rules read afterwards.
-        var projectDir = _projectDirResolver.Resolve();
-        DebugLog.Write(projectDir, $"=== Full scan (one button) started === projectDir='{projectDir}', UI context present={uiContext != null}");
-        _logService.Info($"[CLEVR Lint] full scan started (projectDir='{projectDir}')");
-
-        void Post(string message, string data)
+        var message = ev.Kind switch
         {
-            if (uiContext != null) uiContext.Post(_ => SafePost(webView, projectDir, message, data), null);
-            else SafePost(webView, projectDir, message, data);
-        }
-
-        _ = Task.Run(() =>
-        {
-            try
-            {
-                Post("ScanProgress", "Analyzing with mxcli…");
-
-                // Resolve project settings so the changed-files resolver uses the same .mpr as the scan.
-                var settingsPath = _fileService.ResolvePath("lint-scan-settings.json");
-                var settings = LintScanSettings.Load(
-                    File.Exists(settingsPath) ? File.ReadAllText(settingsPath) : null, projectDir);
-                var (resolvedDir, mprFileName, resolveErr) = LintScanService.ResolveProject(settings.ProjectPath);
-
-                // Start changed-files detection in parallel — finishes well before mxcli does on any real project.
-                var changedTask = (resolveErr == null && !string.IsNullOrEmpty(mprFileName) && !string.IsNullOrEmpty(resolvedDir))
-                    ? Task.Run(() => new ChangedElementsResolver(
-                          settings.MxcliPath, resolvedDir, mprFileName, _logService, _mendixVersion).Resolve())
-                    : Task.FromResult(new ChangedScanResult
-                          { Status = ChangedScanStatus.Error, Message = "project not resolved" });
-
-                try
-                {
-                    new LintScanService(_fileService, _logService)
-                        .RunScanStreaming(projectDir, batchJson => Post("LintViolations", batchJson), ct);
-                }
-                catch (Exception ex)
-                {
-                    DebugLog.Write(projectDir, $"full scan: mxcli step ERROR: {ex}");
-                    Post("LintViolations", LintScanService.ErrorJson($"Unexpected error during mxcli scan: {ex.Message}"));
-                }
-
-                var changedResult = changedTask.GetAwaiter().GetResult();
-                DebugLog.Write(projectDir,
-                    $"[changed-files] status={changedResult.Status} message=\"{changedResult.Message}\" " +
-                    $"microflows={changedResult.Microflows.Count} entities={changedResult.Entities.Count}");
-                if (changedResult.Microflows.Count > 0)
-                    DebugLog.Write(projectDir, $"[changed-files] microflows: {string.Join(", ", changedResult.Microflows)}");
-                if (changedResult.Entities.Count > 0)
-                    DebugLog.Write(projectDir, $"[changed-files] entities: {string.Join(", ", changedResult.Entities)}");
-
-                var gitPayload = JsonSerializer.Serialize(new
-                {
-                    status         = changedResult.Status.ToString(),
-                    available      = changedResult.Status == ChangedScanStatus.Ok,
-                    qualifiedNames = changedResult.Microflows.Concat(changedResult.Entities).ToArray(),
-                    documentIds    = Array.Empty<string>(),
-                }, LintScanService.JsonOut);
-                Post("UncommittedDocuments", gitPayload);
-
-                DebugLog.Write(projectDir, "=== Full scan DONE ===");
-            }
-            catch (Exception ex)
-            {
-                DebugLog.Write(projectDir, $"Full scan ERROR (orchestration): {ex}");
-                _logService.Error("[CLEVR Lint] full scan failed", ex);
-                Post("ScanError", ex.Message);
-            }
-            finally
-            {
-                // ALWAYS re-enable the button + hide the spinner, regardless of outcome.
-                Post("ScanFinished", "");
-            }
-        });
+            ScanEventKind.Progress => "ScanProgress",
+            ScanEventKind.Violations => "LintViolations",
+            ScanEventKind.UncommittedDocuments => "UncommittedDocuments",
+            ScanEventKind.Error => "ScanError",
+            ScanEventKind.Finished => "ScanFinished",
+            _ => throw new InvalidOperationException($"Unhandled scan event kind: {ev.Kind}"),
+        };
+        SafePost(webView, _getProjectDir(), message, ev.Data);
     }
 
     private static Dictionary<string, string> LoadStarContent(string? projectDir)
@@ -691,23 +534,69 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
         }
     }
 
+    // ---- mxcli location: resolve/browse/set/download, all behind SettingsCoordinator ----------
+
+    private async Task DispatchMxcliMessageAsync(IWebView webView, string message, JsonObject? data)
+    {
+        var ctx = _uiContext;
+        switch (message)
+        {
+            case "RequestMxcliInfo":
+                // GetMxcliInfo() shells out (where.exe / mxcli --version) — keep it off the UI thread.
+                await Task.Run(() =>
+                {
+                    try
+                    {
+                        var info = _settingsCoordinator.GetMxcliInfo();
+                        PostBackground(ctx, webView, "MxcliInfo", JsonSerializer.Serialize(info, LintScanService.JsonOut));
+                    }
+                    catch (Exception ex)
+                    {
+                        _logService.Warn($"[CLEVR Lint] RequestMxcliInfo failed: {ex.Message}");
+                    }
+                });
+                break;
+
+            case "BrowseMxcliPath":
+            {
+                // File picker must run on the UI (STA) thread — MessageReceived is already on it.
+                var current = _settingsCoordinator.CurrentMxcliPath();
+                var picked = NativeFileDialog.ShowExePicker("Select mxcli.exe", current);
+                if (picked != null) await ApplyMxcliPathAsync(webView, ctx, picked);
+                break;
+            }
+
+            case "SetMxcliPath":
+            {
+                var path = data?["path"]?.GetValue<string>()?.Trim() ?? "";
+                if (!string.IsNullOrEmpty(path)) await ApplyMxcliPathAsync(webView, ctx, path);
+                break;
+            }
+
+            case "DownloadMxcli":
+                try
+                {
+                    var info = await _settingsCoordinator.DownloadMxcliAsync(
+                        pct => PostBackground(ctx, webView, "MxcliDownloadProgress", pct.ToString()), default);
+                    PostBackground(ctx, webView, "MxcliInfo", JsonSerializer.Serialize(info, LintScanService.JsonOut));
+                }
+                catch (Exception ex)
+                {
+                    _logService.Error("[CLEVR Lint] mxcli download failed", ex);
+                    PostBackground(ctx, webView, "MxcliDownloadError", ex.Message);
+                }
+                break;
+        }
+    }
+
     /// <summary>Saves a user-selected mxcli path to settings and posts back the updated MxcliInfo.</summary>
-    private void ApplyMxcliPath(IWebView webView, string path)
+    private async Task ApplyMxcliPathAsync(IWebView webView, SynchronizationContext? ctx, string path)
     {
         try
         {
-            var settingsPath = _fileService.ResolvePath("lint-scan-settings.json");
-            LintScanSettings existing;
-            if (File.Exists(settingsPath))
-                existing = LintScanSettings.Load(File.ReadAllText(settingsPath), null);
-            else
-                existing = new LintScanSettings();
-
-            existing.MxcliPath = path;
-            File.WriteAllText(settingsPath, JsonSerializer.Serialize(existing, SettingsJson.WriteOptions), System.Text.Encoding.UTF8);
-
-            // Resolve and broadcast the updated state.
-            _ = Task.Run(() => PostMxcliInfo(webView, _uiContext));
+            // ApplyMxcliPath re-resolves (shells out) after saving — keep it off the UI thread.
+            var info = await Task.Run(() => _settingsCoordinator.ApplyMxcliPath(path));
+            PostBackground(ctx, webView, "MxcliInfo", JsonSerializer.Serialize(info, LintScanService.JsonOut));
         }
         catch (Exception ex)
         {
@@ -716,66 +605,87 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
         }
     }
 
-    private void PostRuleSources(IWebView webView)
+    // ---- rule sources: list/save/fetch-from-GitHub/delete-fetched-files, all behind SettingsCoordinator
+
+    private async Task DispatchRuleSourcesMessageAsync(IWebView webView, string message, JsonObject? data)
     {
-        try
+        var ctx = _uiContext;
+        switch (message)
         {
-            var settingsPath = _fileService.ResolvePath("lint-scan-settings.json");
-            var settingsJson = File.Exists(settingsPath) ? File.ReadAllText(settingsPath) : null;
-            var settings = LintScanSettings.Load(settingsJson, null);
-            var payload = JsonSerializer.Serialize(settings.RuleSources, LintScanService.JsonOut);
-            webView.PostMessage("RuleSources", payload);
-        }
-        catch (Exception ex)
-        {
-            _logService.Error("[CLEVR Lint] loading rule sources failed", ex);
-            webView.PostMessage("RuleSourcesError", ex.Message);
-        }
-    }
+            case "RequestRuleSources":
+                try
+                {
+                    var sources = _settingsCoordinator.GetRuleSources();
+                    webView.PostMessage("RuleSources", JsonSerializer.Serialize(sources, LintScanService.JsonOut));
+                }
+                catch (Exception ex)
+                {
+                    _logService.Error("[CLEVR Lint] loading rule sources failed", ex);
+                    webView.PostMessage("RuleSourcesError", ex.Message);
+                }
+                break;
 
-    private void SaveRuleSources(IWebView webView, JsonObject? data)
-    {
-        try
-        {
-            var sourcesNode = data?["sources"];
-            var sources = sourcesNode is null
-                ? []
-                : JsonSerializer.Deserialize<List<RuleSource>>(sourcesNode.ToJsonString(), LintScanService.JsonOut) ?? [];
+            case "SaveRuleSources":
+                try
+                {
+                    var sourcesNode = data?["sources"];
+                    var sources = sourcesNode is null
+                        ? []
+                        : JsonSerializer.Deserialize<List<RuleSource>>(sourcesNode.ToJsonString(), LintScanService.JsonOut) ?? [];
+                    _settingsCoordinator.SaveRuleSources(sources);
+                    webView.PostMessage("RuleSourcesSaved", "{}");
+                }
+                catch (Exception ex)
+                {
+                    _logService.Error("[CLEVR Lint] saving rule sources failed", ex);
+                    webView.PostMessage("RuleSourcesError", ex.Message);
+                }
+                break;
 
-            var settingsPath = _fileService.ResolvePath("lint-scan-settings.json");
-            var existing = File.Exists(settingsPath)
-                ? LintScanSettings.Load(File.ReadAllText(settingsPath), null)
-                : new LintScanSettings();
+            case "FetchRuleSource":
+            {
+                var id = data?["id"]?.GetValue<string>() ?? "";
+                var url = data?["url"]?.GetValue<string>() ?? "";
+                var replace = data?["replaceExisting"]?.GetValue<bool>() ?? false;
+                PostBackground(ctx, webView, "RuleSourceFetchStarted", JsonSerializer.Serialize(new { id }, LintScanService.JsonOut));
+                try
+                {
+                    var result = await _settingsCoordinator.FetchRuleSourceAsync(url, replace,
+                        msg => PostBackground(ctx, webView, "RuleSourceFetchProgress", JsonSerializer.Serialize(new { id, message = msg }, LintScanService.JsonOut)),
+                        default);
+                    PostBackground(ctx, webView, "RuleSourceFetched", JsonSerializer.Serialize(
+                        new { id, copied = result.Copied, skipped = result.Skipped, failed = result.Failed, errors = result.Errors },
+                        LintScanService.JsonOut));
+                }
+                catch (Exception ex)
+                {
+                    _logService.Error("[CLEVR Lint] FetchRuleSource failed", ex);
+                    PostBackground(ctx, webView, "RuleSourceFetchError", JsonSerializer.Serialize(new { id, error = ex.Message }, LintScanService.JsonOut));
+                }
+                break;
+            }
 
-            existing.RuleSources = sources;
-            File.WriteAllText(settingsPath, JsonSerializer.Serialize(existing, SettingsJson.WriteOptions), System.Text.Encoding.UTF8);
-
-            webView.PostMessage("RuleSourcesSaved", "{}");
-        }
-        catch (Exception ex)
-        {
-            _logService.Error("[CLEVR Lint] saving rule sources failed", ex);
-            webView.PostMessage("RuleSourcesError", ex.Message);
-        }
-    }
-
-    private void PostMxcliInfo(IWebView webView, SynchronizationContext? uiContext)
-    {
-        try
-        {
-            var settingsPath = _fileService.ResolvePath("lint-scan-settings.json");
-            var settingsJson = File.Exists(settingsPath) ? File.ReadAllText(settingsPath) : null;
-            var info = MxcliService.Resolve(settingsJson, _getProjectDir());
-            var payload = JsonSerializer.Serialize(info, LintScanService.JsonOut);
-            var projectDir = _getProjectDir();
-            if (uiContext != null)
-                uiContext.Post(_ => SafePost(webView, projectDir, "MxcliInfo", payload), null);
-            else
-                SafePost(webView, projectDir, "MxcliInfo", payload);
-        }
-        catch (Exception ex)
-        {
-            _logService.Warn($"[CLEVR Lint] PostMxcliInfo failed: {ex.Message}");
+            case "DeleteRuleSourceFiles":
+            {
+                var id = data?["id"]?.GetValue<string>() ?? "";
+                var url = data?["url"]?.GetValue<string>() ?? "";
+                PostBackground(ctx, webView, "RuleSourceFetchStarted", JsonSerializer.Serialize(new { id }, LintScanService.JsonOut));
+                try
+                {
+                    var result = await _settingsCoordinator.DeleteRuleSourceFilesAsync(url,
+                        msg => PostBackground(ctx, webView, "RuleSourceFetchProgress", JsonSerializer.Serialize(new { id, message = msg }, LintScanService.JsonOut)),
+                        default);
+                    PostBackground(ctx, webView, "RuleSourceFilesDeleted", JsonSerializer.Serialize(
+                        new { id, deleted = result.Deleted, notFound = result.NotFound, failed = result.Failed, errors = result.Errors },
+                        LintScanService.JsonOut));
+                }
+                catch (Exception ex)
+                {
+                    _logService.Error("[CLEVR Lint] DeleteRuleSourceFiles failed", ex);
+                    PostBackground(ctx, webView, "RuleSourceFetchError", JsonSerializer.Serialize(new { id, error = ex.Message }, LintScanService.JsonOut));
+                }
+                break;
+            }
         }
     }
 

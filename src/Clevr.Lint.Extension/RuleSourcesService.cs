@@ -8,7 +8,7 @@ namespace Clevr.Lint.Extension;
 public sealed record RuleSourceFetchResult(int Copied, int Skipped, int Failed, string[] Errors);
 public sealed record RuleSourceDeleteResult(int Deleted, int NotFound, int Failed, string[] Errors);
 
-internal sealed class RuleSourcesService
+public sealed class RuleSourcesService
 {
     // Matches: https://github.com/{owner}/{repo}/tree/{branch}/{path}
     // The path segment is optional (root of repo).

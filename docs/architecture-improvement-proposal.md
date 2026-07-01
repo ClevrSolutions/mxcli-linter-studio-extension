@@ -17,7 +17,7 @@ it disappear (pass-through, not earning its keep).
 
 | # | Candidate | Strength | Status |
 |---|-----------|----------|--------|
-| 1 | Collapse the message dispatcher into per-domain coordinators | Strong | **Partially implemented** — `ExclusionCoordinator` (commit `30a1d96`), `NavigationCoordinator`, and `LinterConfigCoordinator` done. `SettingsCoordinator`, `ScanCoordinator` remain. |
+| 1 | Collapse the message dispatcher into per-domain coordinators | Strong | **Implemented** — `ExclusionCoordinator` (commit `30a1d96`), `NavigationCoordinator`, `LinterConfigCoordinator`, `SettingsCoordinator`, and `ScanCoordinator` all done (2026-07-01). |
 | 2 | Give rule suppression one seam instead of two | Strong | **Resolved** — see below, no `FilterPolicy` built |
 | 3 | Split the AppState bucket into domain slices | Strong | **Implemented** |
 | 4 | Give ChangedElementsResolver a pure diff-planning seam | Worth exploring | Not started |
@@ -174,28 +174,91 @@ because they touch different stores/files and share no validation logic
   toggled a module checkbox, clicked Save, confirmed `lint-config.yaml` was
   written with the correct `excludeModules:` YAML key and the harness log
   showed the real `SaveLinterConfig` dispatch; zero console errors.
-- `SettingsCoordinator` — not started. Wraps `lint-scan-settings.json`
-  directly (mxcli path) and `RuleSourcesService` (async fetch/delete of rule
-  `.star` files). Messages: `RequestMxcliInfo`, `BrowseMxcliPath`,
-  `SetMxcliPath`, `DownloadMxcli`, `RequestRuleSources`, `SaveRuleSources`,
-  `FetchRuleSource`, `DeleteRuleSourceFiles`. This one needs the
-  async-coordinator shape (decision #3 above) since fetch/download are
-  genuinely async. Depends on `ProjectDirResolver` (already extracted).
+- `SettingsCoordinator` — ✅ implemented
+  (`src/Clevr.Lint.Extension/SettingsCoordinator.cs`). Wraps
+  `lint-scan-settings.json` directly (mxcli path) and `RuleSourcesService`
+  (async fetch/delete of rule `.star` files) — there was never a separate
+  store type for this state, so the coordinator owns the file IO itself
+  rather than delegating to one, same as `LinterConfigCoordinator`'s "thin
+  wrapper" shape. Interface: `GetMxcliInfo()`, `CurrentMxcliPath()`,
+  `ApplyMxcliPath(path)`, `DownloadMxcliAsync(onProgress, ct)`,
+  `GetRuleSources()`, `SaveRuleSources(sources)`,
+  `FetchRuleSourceAsync(url, replaceExisting, onProgress, ct)`,
+  `DeleteRuleSourceFilesAsync(url, onProgress, ct)`. `RuleSourcesService`
+  was widened from `internal` to `public` so the coordinator (constructed in
+  both `DockablePaneViewModel` and the test harness) can hold a reference to
+  it. Messages: `RequestMxcliInfo`, `BrowseMxcliPath`, `SetMxcliPath`,
+  `DownloadMxcli`, `RequestRuleSources`, `SaveRuleSources`, `FetchRuleSource`,
+  `DeleteRuleSourceFiles` — routed through two dispatcher methods
+  (`DispatchMxcliMessageAsync`, `DispatchRuleSourcesMessageAsync`) since the
+  two families don't share an error-message shape. Per decision #3, the
+  genuinely-async coordinator calls (`DownloadMxcliAsync`,
+  `FetchRuleSourceAsync`, `DeleteRuleSourceFilesAsync`) are awaited directly
+  by the dispatcher with no extra `Task.Run` wrapper; the synchronous-but-
+  blocking ones (`GetMxcliInfo`/`ApplyMxcliPath` shell out to `mxcli
+  --version`/`where.exe`) keep a `Task.Run` since they aren't `async Task`
+  themselves. `BrowseMxcliPath`'s native file dialog (`NativeFileDialog`)
+  stays in the dispatcher, same rationale as `TryOpenEditor` staying out of
+  `NavigationCoordinator` — it needs no coordinator state and calling it is
+  a UI concern, not a settings concern. The test harness had no prior
+  dispatch logic at all for these eight messages (not a duplicate-to-fix
+  like Exclusion/LinterConfig, just a gap) — closed as part of this slice by
+  wiring `SettingsCoordinator` into `Program.cs` alongside the other
+  coordinators, so "verify via the harness" now actually exercises mxcli
+  info and rule-source fetch/save, not just scan+exclusions+config.
 
-**`ScanCoordinator`** — not started, **last** in the rollout order (highest
-blast radius: threading, streaming, cancellation). `RunFullScan` doesn't fit
+**`ScanCoordinator`** — ✅ implemented
+(`src/Clevr.Lint.Extension/ScanCoordinator.cs`). `RunFullScan` doesn't fit
 the single-request/single-result shape the other coordinators use — it posts
 a *sequence* of messages over time (`ScanProgress`, `LintViolations`
 batches, `UncommittedDocuments`, then `ScanError`/`ScanFinished`), runs on a
-background thread, supports cancellation. Decision from grilling: keep the
-"no `IWebView` in the coordinator" rule even here, via a streaming shape:
-`ScanCoordinator.RunAsync(projectDir, IProgress<ScanEvent> progress, CancellationToken ct)`.
-`IProgress<ScanEvent>` was chosen over `IAsyncEnumerable` because the
-codebase already has a callback-streaming habit
-(`RunScanStreaming(projectDir, batchJson => ...)` in `LintScanService`) — a
-test can assert on the emitted `ScanEvent` sequence with a fake
-`IProgress<T>`, no WebView, no thread marshaling inside the coordinator.
-Messages: `RunLintScan`, `RunFullScan`, `CancelScan`.
+background thread, supports cancellation. Kept the "no `IWebView` in the
+coordinator" rule via the streaming shape decided during grilling:
+`ScanCoordinator.RunFullScan(IProgress<ScanEvent> progress, CancellationToken ct)`,
+where `ScanEvent { Kind, Data }` is a `ScanEventKind` enum
+(`Progress`/`Violations`/`UncommittedDocuments`/`Error`/`Finished`) plus the
+raw string payload — the same "return the outcome as data" shape used by
+`NavigationCoordinator`'s `Resolution`. `IProgress<T>` over
+`IAsyncEnumerable` was chosen for the reason anticipated in the original
+proposal (matches `LintScanService`'s existing callback-streaming habit,
+easy to fake in a test) — and it turned out to have a second benefit found
+during implementation: `Progress<T>` captures `SynchronizationContext.Current`
+at *construction* time and auto-marshals every `Report()` back onto it, so
+`DockablePaneViewModel`'s dispatcher no longer needs the hand-rolled
+`Post()`/`uiContext.Post(...)` closure the old `RunFullScan` method had —
+constructing `new Progress<ScanEvent>(ev => PostScanEvent(webView, ev))` on
+the UI thread (where `MessageReceived` fires) is enough. The one place scan
+events touch the WebView is `PostScanEvent`, a `ScanEventKind → message
+name` switch, mirroring the routing-table decision (#4) used everywhere
+else. Also exposes `RunLintScan()` (the older single-shot "Scan" button,
+mxcli only, no streaming) so both `RunLintScan` and `RunFullScan` sit behind
+one coordinator; `CancelScan` stayed a one-line `_scanCts?.Cancel()` in the
+dispatcher since there's no coordinator state to touch. Messages:
+`RunLintScan`, `RunFullScan`, `CancelScan`.
+
+Like `ExclusionCoordinator`/`LinterConfigCoordinator`, the test harness
+(`Program.cs`) had its own **independent copy** of the `RunFullScan`
+orchestration (git-diff task + mxcli streaming + JSON payload shape) that
+never touched the real coordinator — fixed as part of this slice: the
+harness now builds one `ScanCoordinator` and routes `RunFullScan` through it
+via a small `SyncProgress<T> : IProgress<T>` adapter (`Progress<T>` itself
+needs a `SynchronizationContext` to marshal onto, which this console app
+doesn't have — `SyncProgress<T>` just invokes the callback synchronously and
+in order, which is correct here since `DispatchMessage` already runs on its
+own background thread). This also fixed a latent inconsistency: the
+harness's old inline `UncommittedDocuments` payload used a bare
+`JsonSerializerOptions { PropertyNamingPolicy = CamelCase }` (no enum
+converter, no null-suppression), whereas the real extension path used
+`LintScanService.JsonOut` (adds both) — now that both paths go through
+`ScanCoordinator`, they serialize identically.
+
+Verified for both coordinators: `dotnet build` clean across all three
+projects (Extension, TestHarness, Normalizer.Tests), 25 Normalizer tests
+green, `Pack-Dist.ps1` → harness smoke pass via Playwright — ran a full
+scan (199 improvements rendered, zero console errors), opened Settings →
+Configuration (mxcli source/path/version resolved via `SettingsCoordinator`,
+no longer stuck on "Loading mxcli information…"), opened Settings → Sources
+(rule-sources list loaded, empty-state rendered correctly).
 
 **Also decided:** `RunCommand` (the original `cmd /c echo test` spike that
 proves the message bus) doesn't fit any coordinator and should be **deleted
@@ -215,8 +278,14 @@ harness, before starting the next:
 
 1. ✅ `ExclusionCoordinator` — done, commit `30a1d96`.
 2. ✅ `NavigationCoordinator` — done (2026-07-01).
-3. ✅ `LinterConfigCoordinator` — done (2026-07-01). `SettingsCoordinator` next.
-4. `ScanCoordinator` — last; only one with threading/streaming/cancellation.
+3. ✅ `LinterConfigCoordinator` — done (2026-07-01).
+4. ✅ `SettingsCoordinator` — done (2026-07-01).
+5. ✅ `ScanCoordinator` — done (2026-07-01). Only one with threading/streaming/cancellation.
+
+All five coordinators from candidate #1 are now implemented. `RunCommand`
+(the spike, see "Also decided" above) is still present in
+`DockablePaneViewModel.cs` — deleting it was decided but deferred, not part
+of this candidate's coordinator work.
 
 Each step should stay buildable (`dotnet build`) and get a manual smoke pass
 in the harness (`dotnet run --project src/Clevr.Lint.TestHarness -- --serve
@@ -414,12 +483,16 @@ then.
 
 ## Continuing this work
 
-Next session: implement `SettingsCoordinator` (rollout order step 3, second
-half), following the same general shape (see "Design decisions" under
-candidate #1) — coordinator returns plain values, no `IWebView`, dispatcher
-does one `try/catch` + routing. It needs the async-coordinator shape
-(decision #3) since rule-source fetch/mxcli download are genuinely async.
-`ScanCoordinator` is last (rollout step 4) and is the only one needing the
-streaming `IProgress<ScanEvent>` shape — resume the grilling loop
-(`/grilling`) on its exact `ScanEvent` union before implementing it, since
-that part wasn't designed in detail yet.
+Candidate #1 (the coordinator decomposition) is now fully implemented — all
+five coordinators land, `DockablePaneViewModel.cs` only routes messages and
+translates results to `PostMessage` calls. Remaining work from this doc, in
+order of what the "Top recommendation" reasoning would suggest next:
+
+- Delete `RunCommand` (the spike) from `DockablePaneViewModel.cs` — decided,
+  never executed (see candidate #1's "Also decided").
+- Candidate #4 (`ChangedElementsResolver` pure diff-planning seam) — not
+  started, not yet designed via grilling.
+- Candidate #6 (generic `ProjectStore<T>`) — speculative; revisit now that
+  `SettingsCoordinator` has landed and turned out to wrap
+  `lint-scan-settings.json` directly rather than adding a fourth store, so
+  the "wait for a fourth store" trigger condition has not fired.

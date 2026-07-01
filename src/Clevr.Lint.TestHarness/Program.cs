@@ -132,6 +132,8 @@ static async Task RunServeModeAsync(string? projectDir, string extensionDir)
     var projectDirResolver = new ProjectDirResolver(fileService, () => projectDir);
     var exclusionCoordinator = new ExclusionCoordinator(new ExclusionStore(), projectDirResolver);
     var linterConfigCoordinator = new LinterConfigCoordinator(new LinterConfigStore(), projectDirResolver);
+    var scanCoordinator = new ScanCoordinator(fileService, logService, projectDirResolver);
+    var settingsCoordinator = new SettingsCoordinator(fileService, () => projectDir, projectDirResolver, new RuleSourcesService());
     var wwwroot      = Path.Combine(AppContext.BaseDirectory, "wwwroot");
 
     // Each connected SSE client gets its own channel so push() fans out to all of them.
@@ -177,7 +179,7 @@ static async Task RunServeModeAsync(string? projectDir, string extensionDir)
             try
             {
                 await HandleRequestAsync(ctx, projectDir, fileService, logService,
-                    exclusionCoordinator, linterConfigCoordinator, wwwroot, Push, clients);
+                    exclusionCoordinator, linterConfigCoordinator, scanCoordinator, settingsCoordinator, wwwroot, Push, clients);
             }
             catch (Exception ex) { Console.Error.WriteLine($"[serve] request error: {ex.Message}"); }
         }, cts.Token);
@@ -194,6 +196,8 @@ static async Task HandleRequestAsync(
     HarnessLogService logService,
     ExclusionCoordinator exclusionCoordinator,
     LinterConfigCoordinator linterConfigCoordinator,
+    ScanCoordinator scanCoordinator,
+    SettingsCoordinator settingsCoordinator,
     string wwwroot,
     Action<string, string> push,
     ConcurrentDictionary<Guid, Channel<SseEvent>> clients)
@@ -267,7 +271,7 @@ static async Task HandleRequestAsync(
         var body = await reader.ReadToEndAsync();
 
         _ = Task.Run(() => DispatchMessage(body, projectDir, fileService, logService,
-            exclusionCoordinator, linterConfigCoordinator, push));
+            exclusionCoordinator, linterConfigCoordinator, scanCoordinator, settingsCoordinator, push));
 
         resp.StatusCode = 204;
         resp.Close();
@@ -315,6 +319,8 @@ static void DispatchMessage(
     HarnessLogService logService,
     ExclusionCoordinator exclusionCoordinator,
     LinterConfigCoordinator linterConfigCoordinator,
+    ScanCoordinator scanCoordinator,
+    SettingsCoordinator settingsCoordinator,
     Action<string, string> push)
 {
     JsonObject? data;
@@ -340,35 +346,8 @@ static void DispatchMessage(
             break;
 
         case "RunFullScan":
-        {
-            push("ScanProgress", "Analyzing with mxcli…");
-            var settingsPath = fileService.ResolvePath("lint-scan-settings.json");
-            var settings = LintScanSettings.Load(
-                File.Exists(settingsPath) ? File.ReadAllText(settingsPath) : null, projectDir);
-            var (resolvedDir, mprFileName, resolveErr) = ResolveProject(settings.ProjectPath);
-            var changedTask = (resolveErr == null && !string.IsNullOrEmpty(mprFileName) && !string.IsNullOrEmpty(resolvedDir))
-                ? Task.Run(() => new ChangedElementsResolver(settings.MxcliPath, resolvedDir, mprFileName, logService).Resolve())
-                : Task.FromResult(new ChangedScanResult { Status = ChangedScanStatus.Error, Message = "project not resolved" });
-            try
-            {
-                new LintScanService(fileService, logService)
-                    .RunScanStreaming(projectDir, batchJson => push("LintViolations", batchJson));
-            }
-            catch (Exception ex)
-            {
-                push("LintViolations", LintScanService.ErrorJson($"Unexpected error: {ex.Message}"));
-            }
-            var changedResult = changedTask.GetAwaiter().GetResult();
-            push("UncommittedDocuments", JsonSerializer.Serialize(new
-            {
-                status         = changedResult.Status.ToString(),
-                available      = changedResult.Status == ChangedScanStatus.Ok,
-                qualifiedNames = changedResult.Microflows.Concat(changedResult.Entities).ToArray(),
-                documentIds    = Array.Empty<string>(),
-            }, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }));
-            push("ScanFinished", "");
+            scanCoordinator.RunFullScan(new SyncProgress<ScanEvent>(ev => push(ScanMessageName(ev.Kind), ev.Data)));
             break;
-        }
 
         case "RequestExclusions":
         case "AddExclusion":
@@ -510,11 +489,108 @@ static void DispatchMessage(
             break;
         }
 
+        case "RequestMxcliInfo":
+            try
+            {
+                var info = settingsCoordinator.GetMxcliInfo();
+                push("MxcliInfo", JsonSerializer.Serialize(info, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }));
+            }
+            catch (Exception ex) { Console.Error.WriteLine($"[serve] RequestMxcliInfo failed: {ex.Message}"); }
+            break;
+
+        case "SetMxcliPath":
+        {
+            var path = data?["path"]?.GetValue<string>()?.Trim() ?? "";
+            if (string.IsNullOrEmpty(path)) break;
+            try
+            {
+                var info = settingsCoordinator.ApplyMxcliPath(path);
+                push("MxcliInfo", JsonSerializer.Serialize(info, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }));
+            }
+            catch (Exception ex) { push("MxcliPathError", ex.Message); }
+            break;
+        }
+
+        case "DownloadMxcli":
+            try
+            {
+                var info = settingsCoordinator.DownloadMxcliAsync(
+                    pct => push("MxcliDownloadProgress", pct.ToString())).GetAwaiter().GetResult();
+                push("MxcliInfo", JsonSerializer.Serialize(info, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }));
+            }
+            catch (Exception ex) { push("MxcliDownloadError", ex.Message); }
+            break;
+
+        case "RequestRuleSources":
+            try
+            {
+                var sources = settingsCoordinator.GetRuleSources();
+                push("RuleSources", JsonSerializer.Serialize(sources, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }));
+            }
+            catch (Exception ex) { push("RuleSourcesError", ex.Message); }
+            break;
+
+        case "SaveRuleSources":
+            try
+            {
+                var sourcesNode = data?["sources"];
+                var sources = sourcesNode is null
+                    ? []
+                    : JsonSerializer.Deserialize<List<RuleSource>>(sourcesNode.ToJsonString()) ?? [];
+                settingsCoordinator.SaveRuleSources(sources);
+                push("RuleSourcesSaved", "{}");
+            }
+            catch (Exception ex) { push("RuleSourcesError", ex.Message); }
+            break;
+
+        case "FetchRuleSource":
+        {
+            var id = data?["id"]?.GetValue<string>() ?? "";
+            var url = data?["url"]?.GetValue<string>() ?? "";
+            var replace = data?["replaceExisting"]?.GetValue<bool>() ?? false;
+            push("RuleSourceFetchStarted", JsonSerializer.Serialize(new { id }));
+            try
+            {
+                var result = settingsCoordinator.FetchRuleSourceAsync(url, replace,
+                    msg => push("RuleSourceFetchProgress", JsonSerializer.Serialize(new { id, message = msg }))).GetAwaiter().GetResult();
+                push("RuleSourceFetched", JsonSerializer.Serialize(
+                    new { id, copied = result.Copied, skipped = result.Skipped, failed = result.Failed, errors = result.Errors }));
+            }
+            catch (Exception ex) { push("RuleSourceFetchError", JsonSerializer.Serialize(new { id, error = ex.Message })); }
+            break;
+        }
+
+        case "DeleteRuleSourceFiles":
+        {
+            var id = data?["id"]?.GetValue<string>() ?? "";
+            var url = data?["url"]?.GetValue<string>() ?? "";
+            push("RuleSourceFetchStarted", JsonSerializer.Serialize(new { id }));
+            try
+            {
+                var result = settingsCoordinator.DeleteRuleSourceFilesAsync(url,
+                    msg => push("RuleSourceFetchProgress", JsonSerializer.Serialize(new { id, message = msg }))).GetAwaiter().GetResult();
+                push("RuleSourceFilesDeleted", JsonSerializer.Serialize(
+                    new { id, deleted = result.Deleted, notFound = result.NotFound, failed = result.Failed, errors = result.Errors }));
+            }
+            catch (Exception ex) { push("RuleSourceFetchError", JsonSerializer.Serialize(new { id, error = ex.Message })); }
+            break;
+        }
+
         default:
             Console.Error.WriteLine($"[serve] unhandled message: {message}");
             break;
     }
 }
+
+static string ScanMessageName(ScanEventKind kind) => kind switch
+{
+    ScanEventKind.Progress => "ScanProgress",
+    ScanEventKind.Violations => "LintViolations",
+    ScanEventKind.UncommittedDocuments => "UncommittedDocuments",
+    ScanEventKind.Error => "ScanError",
+    ScanEventKind.Finished => "ScanFinished",
+    _ => throw new InvalidOperationException($"Unhandled scan event kind: {kind}"),
+};
 
 static ExclusionRequest ParseExclusionRequest(JsonObject? data) => new(
     Fingerprint: data?["fingerprint"]?.GetValue<string>() ?? "",
@@ -579,22 +655,14 @@ static string ChromeWebViewShimJs() => """
     })();
     """;
 
-static (string projectDir, string mprFileName, string? error) ResolveProject(string projectPath)
-{
-    if (string.IsNullOrWhiteSpace(projectPath))
-        return ("", "", "No project path.");
-    if (File.Exists(projectPath) && projectPath.EndsWith(".mpr", StringComparison.OrdinalIgnoreCase))
-        return (Path.GetDirectoryName(projectPath) ?? "", Path.GetFileName(projectPath), null);
-    if (Directory.Exists(projectPath))
-    {
-        var mprs = Directory.GetFiles(projectPath, "*.mpr", SearchOption.TopDirectoryOnly);
-        if (mprs.Length == 1) return (projectPath, Path.GetFileName(mprs[0]), null);
-        return ("", "", mprs.Length == 0 ? "No .mpr found." : "Multiple .mpr files found.");
-    }
-    return ("", "", $"Path does not exist: {projectPath}");
-}
-
 record SseEvent(string Message, string Data);
+
+// Progress<T> marshals via SynchronizationContext, which this console app doesn't have —
+// report events synchronously and in order instead.
+sealed class SyncProgress<T>(Action<T> report) : IProgress<T>
+{
+    public void Report(T value) => report(value);
+}
 
 // ── stubs ─────────────────────────────────────────────────────────────────────
 
