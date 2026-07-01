@@ -36,6 +36,8 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
     private readonly ExclusionStore _exclusions = new();
     private readonly BaselineStore _baselines = new();
     private readonly RuleSourcesService _ruleSourcesService = new();
+    private readonly ProjectDirResolver _projectDirResolver;
+    private readonly ExclusionCoordinator _exclusionCoordinator;
     private CancellationTokenSource? _scanCts;
     private SynchronizationContext? _uiContext;
 
@@ -55,6 +57,8 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
         _getModel = getModel;
         _dockingWindowService = dockingWindowService;
         _mendixVersion = mendixVersion;
+        _projectDirResolver = new ProjectDirResolver(fileService, getProjectDir);
+        _exclusionCoordinator = new ExclusionCoordinator(_exclusions, _projectDirResolver);
     }
 
     public override void InitWebView(IWebView webView)
@@ -131,25 +135,10 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
                 // Phase 4 (b): open the documentation URL of a rule in the default browser.
                 OpenUrl(webView, args.Data);
             }
-            else if (args.Message == "RequestExclusions")
+            else if (args.Message is "RequestExclusions" or "AddExclusion" or "AddExclusions"
+                     or "RemoveExclusion" or "RemoveExclusions")
             {
-                PostExclusions(webView);
-            }
-            else if (args.Message == "AddExclusion")
-            {
-                AddExclusion(webView, args.Data);
-            }
-            else if (args.Message == "AddExclusions")
-            {
-                AddExclusions(webView, args.Data);
-            }
-            else if (args.Message == "RemoveExclusion")
-            {
-                RemoveExclusion(webView, args.Data);
-            }
-            else if (args.Message == "RemoveExclusions")
-            {
-                RemoveExclusions(webView, args.Data);
+                DispatchExclusionMessage(webView, args.Message, args.Data);
             }
             else if (args.Message == "RequestRulesCatalog")
             {
@@ -239,7 +228,7 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
                     PostBackground(ctx, webView, "RuleSourceFetchStarted", JsonSerializer.Serialize(new { id }, LintScanService.JsonOut));
                     try
                     {
-                        var projectDir = ExclusionsProjectDir();
+                        var projectDir = _projectDirResolver.Resolve();
                         var result = await _ruleSourcesService.DeleteRuleSourceFilesAsync(
                             url, projectDir ?? "",
                             msg => PostBackground(ctx, webView, "RuleSourceFetchProgress", JsonSerializer.Serialize(new { id, message = msg }, LintScanService.JsonOut)),
@@ -267,7 +256,7 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
                     PostBackground(ctx, webView, "RuleSourceFetchStarted", JsonSerializer.Serialize(new { id }, LintScanService.JsonOut));
                     try
                     {
-                        var projectDir = ExclusionsProjectDir();
+                        var projectDir = _projectDirResolver.Resolve();
                         var result = await _ruleSourcesService.FetchRuleSourceAsync(
                             url, projectDir ?? "", replace,
                             msg => PostBackground(ctx, webView, "RuleSourceFetchProgress", JsonSerializer.Serialize(new { id, message = msg }, LintScanService.JsonOut)),
@@ -288,187 +277,44 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
     }
 
     // ---- Exclusions (Phase 6, spec section 3): suppress WITH mandatory reason. Stored in
-    // $project/.clevr-lint/exclusions.json (included in version control). The render layer filters
-    // on fingerprint; C# saves the file and sends back the current list.
+    // $project/.clevr-lint/exclusions.json (included in version control). All validation,
+    // stamping (who/when), and persistence live behind ExclusionCoordinator's seam; this
+    // dispatcher only translates WebView JSON into ExclusionRequest values and posts results.
 
-    private void PostExclusions(IWebView webView)
+    private void DispatchExclusionMessage(IWebView webView, string message, JsonObject? data)
     {
         try
         {
-            webView.PostMessage("Exclusions", _exclusions.LoadJson(ExclusionsProjectDir()));
-        }
-        catch (Exception ex)
-        {
-            _logService.Error("[CLEVR Lint] loading exclusions failed", ex);
-            webView.PostMessage("ExclusionError", ex.Message);
-        }
-    }
-
-    private void AddExclusion(IWebView webView, JsonObject? data)
-    {
-        try
-        {
-            var reason = data?["reason"]?.GetValue<string>()?.Trim() ?? "";
-            if (string.IsNullOrWhiteSpace(reason))
+            var updated = message switch
             {
-                // Server-side safeguard: never a silent exclusion without a reason.
-                webView.PostMessage("ExclusionError", "A reason is required to exclude an improvement.");
-                return;
-            }
-            var fingerprint = data?["fingerprint"]?.GetValue<string>() ?? "";
-            if (string.IsNullOrWhiteSpace(fingerprint))
-            {
-                webView.PostMessage("ExclusionError", "Missing fingerprint for the exclusion.");
-                return;
-            }
-            var exclusion = new Exclusion
-            {
-                Fingerprint = fingerprint,
-                RuleId = data?["ruleId"]?.GetValue<string>() ?? "",
-                DocumentQualifiedName = data?["documentQualifiedName"]?.GetValue<string>() ?? "",
-                ElementName = data?["elementName"]?.GetValue<string>() ?? "",
-                Reason = reason,
-                ExcludedBy = Environment.UserName,
-                Date = DateTime.Now.ToString("yyyy-MM-dd"),
+                "RequestExclusions" => _exclusionCoordinator.List(),
+                "AddExclusion" => _exclusionCoordinator.Add(
+                    ParseExclusionRequest(data), data?["reason"]?.GetValue<string>() ?? ""),
+                "AddExclusions" => _exclusionCoordinator.AddMany(
+                    (data?["items"] as JsonArray)?.OfType<JsonObject>().Select(ParseExclusionRequest)
+                        ?? Enumerable.Empty<ExclusionRequest>(),
+                    data?["reason"]?.GetValue<string>() ?? ""),
+                "RemoveExclusion" => _exclusionCoordinator.Remove(
+                    data?["fingerprint"]?.GetValue<string>() ?? ""),
+                "RemoveExclusions" => _exclusionCoordinator.RemoveMany(
+                    (data?["fingerprints"] as JsonArray)?.Select(n => n?.GetValue<string>() ?? "")
+                        ?? Enumerable.Empty<string>()),
+                _ => throw new InvalidOperationException($"Unhandled exclusion message: {message}"),
             };
-            _exclusions.Add(ExclusionsProjectDir(), exclusion);
-            PostExclusions(webView);
+            webView.PostMessage("Exclusions", ExclusionsJson.Serialize(updated));
         }
         catch (Exception ex)
         {
-            _logService.Error("[CLEVR Lint] adding exclusion failed", ex);
+            _logService.Error($"[CLEVR Lint] {message} failed", ex);
             webView.PostMessage("ExclusionError", ex.Message);
         }
     }
 
-    /// <summary>
-    /// Batch-exclude (Phase 6 extension, "Exclude rule"): excludes all supplied items with
-    /// THE SAME reason, in a single file write. The render layer already sends one entry per unique
-    /// fingerprint; AddMany additionally performs an upsert (dedup) as a safeguard.
-    /// </summary>
-    private void AddExclusions(IWebView webView, JsonObject? data)
-    {
-        try
-        {
-            var reason = data?["reason"]?.GetValue<string>()?.Trim() ?? "";
-            if (string.IsNullOrWhiteSpace(reason))
-            {
-                webView.PostMessage("ExclusionError", "A reason is required to exclude a rule.");
-                return;
-            }
-            var date = DateTime.Now.ToString("yyyy-MM-dd");
-            var by = Environment.UserName;
-            var toAdd = new List<Exclusion>();
-            if (data?["items"] is JsonArray items)
-            {
-                foreach (var node in items)
-                {
-                    if (node is not JsonObject o) continue;
-                    var fp = o["fingerprint"]?.GetValue<string>() ?? "";
-                    if (string.IsNullOrWhiteSpace(fp)) continue;
-                    toAdd.Add(new Exclusion
-                    {
-                        Fingerprint = fp,
-                        RuleId = o["ruleId"]?.GetValue<string>() ?? "",
-                        DocumentQualifiedName = o["documentQualifiedName"]?.GetValue<string>() ?? "",
-                        ElementName = o["elementName"]?.GetValue<string>() ?? "",
-                        Reason = reason,
-                        ExcludedBy = by,
-                        Date = date,
-                    });
-                }
-            }
-            if (toAdd.Count == 0)
-            {
-                webView.PostMessage("ExclusionError", "No findings to exclude for this rule.");
-                return;
-            }
-            _exclusions.AddMany(ExclusionsProjectDir(), toAdd);
-            PostExclusions(webView);
-        }
-        catch (Exception ex)
-        {
-            _logService.Error("[CLEVR Lint] adding exclusions (batch) failed", ex);
-            webView.PostMessage("ExclusionError", ex.Message);
-        }
-    }
-
-    private void RemoveExclusion(IWebView webView, JsonObject? data)
-    {
-        try
-        {
-            var fingerprint = data?["fingerprint"]?.GetValue<string>() ?? "";
-            if (string.IsNullOrWhiteSpace(fingerprint))
-            {
-                webView.PostMessage("ExclusionError", "Missing fingerprint for the exclusion.");
-                return;
-            }
-            _exclusions.Remove(ExclusionsProjectDir(), fingerprint);
-            PostExclusions(webView);
-        }
-        catch (Exception ex)
-        {
-            _logService.Error("[CLEVR Lint] removing exclusion failed", ex);
-            webView.PostMessage("ExclusionError", ex.Message);
-        }
-    }
-
-    /// <summary>
-    /// Batch-un-exclude (Phase 6 extension, "Remove rule exclusion"): restores all supplied
-    /// fingerprints in one go (single file write). May include stale entries.
-    /// </summary>
-    private void RemoveExclusions(IWebView webView, JsonObject? data)
-    {
-        try
-        {
-            var fingerprints = new List<string>();
-            if (data?["fingerprints"] is JsonArray arr)
-            {
-                foreach (var node in arr)
-                {
-                    var fp = node?.GetValue<string>() ?? "";
-                    if (!string.IsNullOrWhiteSpace(fp)) fingerprints.Add(fp);
-                }
-            }
-            if (fingerprints.Count == 0)
-            {
-                webView.PostMessage("ExclusionError", "No exclusions to remove for this rule.");
-                return;
-            }
-            _exclusions.RemoveMany(ExclusionsProjectDir(), fingerprints);
-            PostExclusions(webView);
-        }
-        catch (Exception ex)
-        {
-            _logService.Error("[CLEVR Lint] removing exclusions (batch) failed", ex);
-            webView.PostMessage("ExclusionError", ex.Message);
-        }
-    }
-
-    /// <summary>
-    /// The project directory in which .clevr-lint/exclusions.json resides — THE SAME directory
-    /// the scan uses (lint-scan-settings.json → projectPath; .mpr → its containing directory;
-    /// otherwise the open app). This ensures exclusions belong to the project that produced the violations.
-    /// </summary>
-    private string? ExclusionsProjectDir()
-    {
-        try
-        {
-            var settingsPath = _fileService.ResolvePath("lint-scan-settings.json");
-            var json = File.Exists(settingsPath) ? File.ReadAllText(settingsPath) : null;
-            var settings = LintScanSettings.Load(json, _getProjectDir());
-            var p = settings.ProjectPath;
-            if (string.IsNullOrWhiteSpace(p)) return _getProjectDir();
-            if (File.Exists(p) && p.EndsWith(".mpr", StringComparison.OrdinalIgnoreCase))
-                return Path.GetDirectoryName(p);
-            if (Directory.Exists(p)) return p;
-            return _getProjectDir();
-        }
-        catch
-        {
-            return _getProjectDir();
-        }
-    }
+    private static ExclusionRequest ParseExclusionRequest(JsonObject? data) => new(
+        Fingerprint: data?["fingerprint"]?.GetValue<string>() ?? "",
+        RuleId: data?["ruleId"]?.GetValue<string>() ?? "",
+        DocumentQualifiedName: data?["documentQualifiedName"]?.GetValue<string>() ?? "",
+        ElementName: data?["elementName"]?.GetValue<string>() ?? "");
 
     /// <summary>
     /// Opens the document an improvement refers to in Studio Pro. Strategy:
@@ -699,7 +545,7 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
         // One canonical project directory for BOTH steps (same resolution as exclusions/scan:
         // settings.ProjectPath → its directory, otherwise the open app). This ensures the export
         // refreshes exactly the model source that the mxcli/expression rules read afterwards.
-        var projectDir = ExclusionsProjectDir();
+        var projectDir = _projectDirResolver.Resolve();
         DebugLog.Write(projectDir, $"=== Full scan (one button) started === projectDir='{projectDir}', UI context present={uiContext != null}");
         _logService.Info($"[CLEVR Lint] full scan started (projectDir='{projectDir}')");
 
@@ -810,7 +656,7 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
                 ruleNames = result.Value.ruleNames,
                 ruleCategories = result.Value.ruleCategories,
                 ruleDescriptions = result.Value.ruleDescriptions,
-                ruleStarContent = LoadStarContent(ExclusionsProjectDir()),
+                ruleStarContent = LoadStarContent(_projectDirResolver.Resolve()),
             }, LintScanService.JsonOut);
 
             var projectDir = _getProjectDir();
@@ -832,7 +678,7 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
     {
         try
         {
-            var list = _baselines.Load(ExclusionsProjectDir());
+            var list = _baselines.Load(_projectDirResolver.Resolve());
             webView.PostMessage("BaselinesLoaded", JsonSerializer.Serialize(list, LintScanService.JsonOut));
         }
         catch (Exception ex)
@@ -846,7 +692,7 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
     {
         try
         {
-            var projectDir = ExclusionsProjectDir();
+            var projectDir = _projectDirResolver.Resolve();
             if (string.IsNullOrWhiteSpace(projectDir))
             {
                 webView.PostMessage("BaselineError", "No project folder available to save the baseline.");
@@ -875,7 +721,7 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
     {
         try
         {
-            var projectDir = ExclusionsProjectDir();
+            var projectDir = _projectDirResolver.Resolve();
             if (string.IsNullOrWhiteSpace(projectDir))
             {
                 webView.PostMessage("BaselineError", "No project folder available.");
@@ -899,7 +745,7 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
     {
         try
         {
-            var projectDir = ExclusionsProjectDir();
+            var projectDir = _projectDirResolver.Resolve();
             var config = _linterConfig.Load(projectDir ?? "");
             var payload = JsonSerializer.Serialize(new
             {
@@ -921,7 +767,7 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
     {
         try
         {
-            var projectDir = ExclusionsProjectDir() ?? "";
+            var projectDir = _projectDirResolver.Resolve() ?? "";
             var rulesNode = data?["rules"]?.AsObject();
             var rules = new Dictionary<string, LinterConfigRule>();
             if (rulesNode is not null)

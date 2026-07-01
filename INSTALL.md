@@ -180,7 +180,6 @@ CLEVR-Lint-extension/
 │  ├─ Clevr.Lint.Normalizer.dll
 │  ├─ YamlDotNet.dll          ← required at runtime; copy the whole folder, not individual DLLs
 │  ├─ manifest.json
-│  ├─ rules.json
 │  └─ wwwroot/                ← panel UI + CLEVR logo
 ├─ Install-ClevrLint.ps1      ← installer (recommended); writes lint-scan-settings.json
 └─ README.md                 ← this guide

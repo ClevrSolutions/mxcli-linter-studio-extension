@@ -6,7 +6,7 @@
 //
 //   projectDir   : path to a Mendix project directory or .mpr file
 //                  (omit to use the mxcli default / lint-scan-settings.json)
-//   extensionDir : where rules.json and lint-scan-settings.json live
+//   extensionDir : where lint-scan-settings.json lives
 //                  (defaults to the extension's Debug build output)
 //
 // Scan results (JSON) go to stdout; progress/log lines go to stderr.
@@ -129,7 +129,8 @@ static async Task RunServeModeAsync(string? projectDir, string extensionDir)
 
     var fileService  = new HarnessFileService(extensionDir);
     var logService   = new HarnessLogService();
-    var exclusions   = new ExclusionStore();
+    var projectDirResolver = new ProjectDirResolver(fileService, () => projectDir);
+    var exclusionCoordinator = new ExclusionCoordinator(new ExclusionStore(), projectDirResolver);
     var wwwroot      = Path.Combine(AppContext.BaseDirectory, "wwwroot");
 
     // Each connected SSE client gets its own channel so push() fans out to all of them.
@@ -175,7 +176,7 @@ static async Task RunServeModeAsync(string? projectDir, string extensionDir)
             try
             {
                 await HandleRequestAsync(ctx, projectDir, fileService, logService,
-                    exclusions, wwwroot, Push, clients);
+                    exclusionCoordinator, wwwroot, Push, clients);
             }
             catch (Exception ex) { Console.Error.WriteLine($"[serve] request error: {ex.Message}"); }
         }, cts.Token);
@@ -190,7 +191,7 @@ static async Task HandleRequestAsync(
     string? projectDir,
     HarnessFileService fileService,
     HarnessLogService logService,
-    ExclusionStore exclusions,
+    ExclusionCoordinator exclusionCoordinator,
     string wwwroot,
     Action<string, string> push,
     ConcurrentDictionary<Guid, Channel<SseEvent>> clients)
@@ -264,7 +265,7 @@ static async Task HandleRequestAsync(
         var body = await reader.ReadToEndAsync();
 
         _ = Task.Run(() => DispatchMessage(body, projectDir, fileService, logService,
-            exclusions, push));
+            exclusionCoordinator, push));
 
         resp.StatusCode = 204;
         resp.Close();
@@ -310,7 +311,7 @@ static void DispatchMessage(
     string? projectDir,
     HarnessFileService fileService,
     HarnessLogService logService,
-    ExclusionStore exclusions,
+    ExclusionCoordinator exclusionCoordinator,
     Action<string, string> push)
 {
     JsonObject? data;
@@ -367,89 +368,32 @@ static void DispatchMessage(
         }
 
         case "RequestExclusions":
-            try { push("Exclusions", exclusions.LoadJson(projectDir)); }
-            catch (Exception ex) { push("ExclusionError", ex.Message); }
-            break;
-
         case "AddExclusion":
-        {
-            var reason = data?["reason"]?.GetValue<string>()?.Trim() ?? "";
-            if (string.IsNullOrWhiteSpace(reason)) { push("ExclusionError", "A reason is required to exclude an improvement."); break; }
-            var fp = data?["fingerprint"]?.GetValue<string>() ?? "";
-            if (string.IsNullOrWhiteSpace(fp)) { push("ExclusionError", "Missing fingerprint for the exclusion."); break; }
+        case "AddExclusions":
+        case "RemoveExclusion":
+        case "RemoveExclusions":
             try
             {
-                exclusions.Add(projectDir, new Exclusion
+                var updated = message switch
                 {
-                    Fingerprint = fp,
-                    RuleId = data?["ruleId"]?.GetValue<string>() ?? "",
-                    DocumentQualifiedName = data?["documentQualifiedName"]?.GetValue<string>() ?? "",
-                    ElementName = data?["elementName"]?.GetValue<string>() ?? "",
-                    Reason = reason,
-                    ExcludedBy = Environment.UserName,
-                    Date = DateTime.Now.ToString("yyyy-MM-dd"),
-                });
-                push("Exclusions", exclusions.LoadJson(projectDir));
+                    "RequestExclusions" => exclusionCoordinator.List(),
+                    "AddExclusion" => exclusionCoordinator.Add(
+                        ParseExclusionRequest(data), data?["reason"]?.GetValue<string>() ?? ""),
+                    "AddExclusions" => exclusionCoordinator.AddMany(
+                        (data?["items"] as JsonArray)?.OfType<JsonObject>().Select(ParseExclusionRequest)
+                            ?? Enumerable.Empty<ExclusionRequest>(),
+                        data?["reason"]?.GetValue<string>() ?? ""),
+                    "RemoveExclusion" => exclusionCoordinator.Remove(
+                        data?["fingerprint"]?.GetValue<string>() ?? ""),
+                    "RemoveExclusions" => exclusionCoordinator.RemoveMany(
+                        (data?["fingerprints"] as JsonArray)?.Select(n => n?.GetValue<string>() ?? "")
+                            ?? Enumerable.Empty<string>()),
+                    _ => throw new InvalidOperationException($"Unhandled exclusion message: {message}"),
+                };
+                push("Exclusions", ExclusionsJson.Serialize(updated));
             }
             catch (Exception ex) { push("ExclusionError", ex.Message); }
             break;
-        }
-
-        case "AddExclusions":
-        {
-            var reason = data?["reason"]?.GetValue<string>()?.Trim() ?? "";
-            if (string.IsNullOrWhiteSpace(reason)) { push("ExclusionError", "A reason is required to exclude a rule."); break; }
-            var date = DateTime.Now.ToString("yyyy-MM-dd");
-            var by   = Environment.UserName;
-            var toAdd = new List<Exclusion>();
-            if (data?["items"] is JsonArray items)
-            {
-                foreach (var node in items)
-                {
-                    if (node is not JsonObject o) continue;
-                    var fp = o["fingerprint"]?.GetValue<string>() ?? "";
-                    if (string.IsNullOrWhiteSpace(fp)) continue;
-                    toAdd.Add(new Exclusion
-                    {
-                        Fingerprint = fp,
-                        RuleId = o["ruleId"]?.GetValue<string>() ?? "",
-                        DocumentQualifiedName = o["documentQualifiedName"]?.GetValue<string>() ?? "",
-                        ElementName = o["elementName"]?.GetValue<string>() ?? "",
-                        Reason = reason,
-                        ExcludedBy = by,
-                        Date = date,
-                    });
-                }
-            }
-            if (toAdd.Count == 0) { push("ExclusionError", "No findings to exclude for this rule."); break; }
-            try { exclusions.AddMany(projectDir, toAdd); push("Exclusions", exclusions.LoadJson(projectDir)); }
-            catch (Exception ex) { push("ExclusionError", ex.Message); }
-            break;
-        }
-
-        case "RemoveExclusion":
-        {
-            var fp = data?["fingerprint"]?.GetValue<string>() ?? "";
-            if (string.IsNullOrWhiteSpace(fp)) { push("ExclusionError", "Missing fingerprint for the exclusion."); break; }
-            try { exclusions.Remove(projectDir, fp); push("Exclusions", exclusions.LoadJson(projectDir)); }
-            catch (Exception ex) { push("ExclusionError", ex.Message); }
-            break;
-        }
-
-        case "RemoveExclusions":
-        {
-            var fingerprints = new List<string>();
-            if (data?["fingerprints"] is JsonArray arr)
-                foreach (var node in arr)
-                {
-                    var fp = node?.GetValue<string>() ?? "";
-                    if (!string.IsNullOrWhiteSpace(fp)) fingerprints.Add(fp);
-                }
-            if (fingerprints.Count == 0) { push("ExclusionError", "No exclusions to remove for this rule."); break; }
-            try { exclusions.RemoveMany(projectDir, fingerprints); push("Exclusions", exclusions.LoadJson(projectDir)); }
-            catch (Exception ex) { push("ExclusionError", ex.Message); }
-            break;
-        }
 
         case "RequestRulesCatalog":
             _ = Task.Run(() =>
@@ -570,6 +514,12 @@ static void DispatchMessage(
             break;
     }
 }
+
+static ExclusionRequest ParseExclusionRequest(JsonObject? data) => new(
+    Fingerprint: data?["fingerprint"]?.GetValue<string>() ?? "",
+    RuleId: data?["ruleId"]?.GetValue<string>() ?? "",
+    DocumentQualifiedName: data?["documentQualifiedName"]?.GetValue<string>() ?? "",
+    ElementName: data?["elementName"]?.GetValue<string>() ?? "");
 
 static async Task ServeTextAsync(HttpListenerResponse resp, string content, string contentType)
 {

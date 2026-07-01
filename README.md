@@ -63,7 +63,7 @@ This starts an HTTP server on `http://localhost:5174/` and opens the browser aut
 
 All features work the same as in Studio Pro: run scans, add/remove exclusions, export HTML reports, open URLs. The only limitation is that "Open Document" is unavailable — the harness prints a message instead.
 
-The `extensionDir` argument (where `rules.json` and `lint-scan-settings.json` live) defaults to the extension's Debug build output. Provide it as a second argument to override:
+The `extensionDir` argument (where `lint-scan-settings.json` lives) defaults to the extension's Debug build output. Provide it as a second argument to override:
 
 ```powershell
 dotnet run --project src/Clevr.Lint.TestHarness -- --serve "C:\Mendix\YourProject" "C:\path\to\extensionDir"

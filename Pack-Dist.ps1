@@ -5,7 +5,7 @@
 .DESCRIPTION
     Run this script whenever you want to refresh the distributable package in dist\.
     It always uses Release configuration and replaces the DLLs, PDBs, deps.json,
-    manifest.json, rules.json, and wwwroot assets. It never touches
+    manifest.json, and wwwroot assets. It never touches
     lint-scan-settings.json (that is written by Install-ClevrLint.ps1 at install time).
 
 .EXAMPLE

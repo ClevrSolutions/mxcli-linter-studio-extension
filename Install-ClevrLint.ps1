@@ -215,7 +215,7 @@ $json = ($settingsObj | ConvertTo-Json)
 Write-Host ("Wrote settings: {0}" -f $settingsFile) -ForegroundColor Green
 
 # --- Verify the critical files landed ---------------------------------------------------------
-$required = @('Clevr.Lint.Extension.dll', 'Clevr.Lint.Normalizer.dll', 'manifest.json', 'rules.json', 'lint-scan-settings.json', 'wwwroot\index.html', 'wwwroot\main.js', 'wwwroot\clevr-logo.png')
+$required = @('Clevr.Lint.Extension.dll', 'Clevr.Lint.Normalizer.dll', 'manifest.json', 'lint-scan-settings.json', 'wwwroot\index.html', 'wwwroot\main.js', 'wwwroot\clevr-logo.png')
 $missing = @()
 foreach ($f in $required) { if (-not (Test-Path (Join-Path $targetDir $f))) { $missing += $f } }
 if ($missing.Count -gt 0) {
