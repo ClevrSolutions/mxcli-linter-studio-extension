@@ -17,7 +17,7 @@ it disappear (pass-through, not earning its keep).
 
 | # | Candidate | Strength | Status |
 |---|-----------|----------|--------|
-| 1 | Collapse the message dispatcher into per-domain coordinators | Strong | **Partially implemented** — `ExclusionCoordinator` done (commit `30a1d96`). `NavigationCoordinator`, `LinterConfigCoordinator`, `SettingsCoordinator`, `ScanCoordinator` remain. |
+| 1 | Collapse the message dispatcher into per-domain coordinators | Strong | **Partially implemented** — `ExclusionCoordinator` (commit `30a1d96`) and `NavigationCoordinator` done. `LinterConfigCoordinator`, `SettingsCoordinator`, `ScanCoordinator` remain. |
 | 2 | Give rule suppression one seam instead of two | Strong | **Resolved** — see below, no `FilterPolicy` built |
 | 3 | Split the AppState bucket into domain slices | Strong | **Implemented** |
 | 4 | Give ChangedElementsResolver a pure diff-planning seam | Worth exploring | Not started |
@@ -119,16 +119,30 @@ slice: the harness now builds its own `ExclusionCoordinator` +
 `ProjectDirResolver` and routes through them, so "verify via the harness"
 (per `CLAUDE.md`) actually exercises the real code path.
 
-**`NavigationCoordinator`** — not started. Wraps `OpenDocument`/`ResolveUnit`
-(`DockablePaneViewModel.cs` lines ~479–667 in the pre-refactor file — see
-candidate #5 below for the detailed shape). Returns a
-`Resolution { Unit, Focus, Route, Reason }` value. Decision from grilling:
-`DebugLog.Write` calls must NOT live inside the coordinator — they're file
-IO mixed into otherwise-pure resolution logic, which is exactly what blocks
-a plain unit test. Instead the coordinator returns `Reason` as data, and the
-dispatcher does `DebugLog.Write(projectDir, resolution.Reason)` once, in one
-place (also fixes the duplication where nearly every branch hand-wrote its
-own log string).
+**`NavigationCoordinator`** — ✅ implemented (`src/Clevr.Lint.Extension/NavigationCoordinator.cs`).
+Interface: `Resolve(documentId, qualifiedName, documentType) → Resolution`, where
+`Resolution { Unit, Focus, Route, Reason, IsEnumeration }` and `Route` is a
+`NavigationRoute` enum (`Opened`, `NoModel`, `ProjectSecurity`, `Snippet`,
+`NotFound`) — the same "return the outcome as data" shape used for
+project-security/snippet/not-found in the pre-refactor code, now made
+explicit instead of implicit in `if (unit == null)` branches. Per the
+grilling decision, `DebugLog.Write` does NOT live inside the coordinator;
+`ResolveUnit` (private, static) accumulates a `List<string>` of per-step
+route reasons (GUID-OK/MISS/EMPTY, then the name-route outcome) and joins
+them into `Resolution.Reason`, and `DockablePaneViewModel.OpenDocument`
+calls `DebugLog.Write(projectDir, $"OpenDocument: {resolution.Reason}")`
+exactly once. `IsEntity`/`IsDomainModelElement`/`IsProjectSecurity`/
+`IsSnippet`/`IsEnumeration`/`FindDocument` all moved into the coordinator as
+private statics — the dispatcher now only does message translation
+(`switch` over `NavigationRoute` → `PostMessage`) and the one exception
+catch. Verified: `dotnet build` clean, `Pack-Dist.ps1` →
+`Install-ClevrLint.ps1` → harness smoke pass (scan runs, filters/settings
+work, zero console errors). The harness's own `OpenDocument` handler already
+stubs the message with `"...not available in the test harness."`
+(`Program.cs` — no real Studio Pro model there), so it doesn't exercise
+`NavigationCoordinator`'s resolution logic itself; unlike the
+`ExclusionCoordinator` slice, there was no second copy of this logic to
+deduplicate.
 
 **`LinterConfigCoordinator`** and **`SettingsCoordinator`** — not started.
 The original candidate proposed one "Config" coordinator; grilling split it
@@ -176,9 +190,7 @@ that, each coordinator should land as its own change, verified in the
 harness, before starting the next:
 
 1. ✅ `ExclusionCoordinator` — done, commit `30a1d96`.
-2. `NavigationCoordinator` — no threading, but the largest case tree (7
-   nested cases: project security, snippet, GUID lookup, name fallback ×
-   entity/domain-model-element/document).
+2. ✅ `NavigationCoordinator` — done (this session, 2026-07-01).
 3. `LinterConfigCoordinator`, then `SettingsCoordinator`.
 4. `ScanCoordinator` — last; only one with threading/streaming/cancellation.
 
@@ -341,9 +353,9 @@ domain-model-element, document lookup), each a separate boolean helper, with
 resolution logic itself.
 
 **Solution:** this candidate is **absorbed into candidate #1's
-`NavigationCoordinator`** — see the detailed design above (returns
-`Resolution { Unit, Focus, Route, Reason }`, no `DebugLog.Write` inside the
-coordinator). Not a separate implementation step.
+`NavigationCoordinator`** — ✅ done, see the detailed design above (returns
+`Resolution { Unit, Focus, Route, Reason, IsEnumeration }`, no
+`DebugLog.Write` inside the coordinator). Not a separate implementation step.
 
 ---
 
@@ -378,12 +390,13 @@ then.
 
 ## Continuing this work
 
-Next session: implement `NavigationCoordinator` per the shape above, then
-resume the grilling loop (`/grilling`) if any part of that shape needs
-re-deriving in more detail (e.g. the exact `Resolution` record fields, or
-how `TryOpenEditor` interacts with the returned `Resolution`). The
-`codebase-design` skill's vocabulary and this doc's "Design decisions"
-section for candidate #1 should carry over unchanged to each remaining
-coordinator — the open questions are `NavigationCoordinator`'s exact record
-shape and `ScanCoordinator`'s exact `ScanEvent` union, not the overall
-pattern.
+Next session: implement `LinterConfigCoordinator`, then `SettingsCoordinator`
+(rollout order step 3), following the same general shape (see "Design
+decisions" under candidate #1) — coordinators return plain values, no
+`IWebView`, dispatcher does one `try/catch` + routing. `SettingsCoordinator`
+needs the async-coordinator shape (decision #3) since rule-source
+fetch/mxcli download are genuinely async. `ScanCoordinator` is last
+(rollout step 4) and is the only one needing the streaming
+`IProgress<ScanEvent>` shape — resume the grilling loop (`/grilling`) on its
+exact `ScanEvent` union before implementing it, since that part wasn't
+designed in detail yet.

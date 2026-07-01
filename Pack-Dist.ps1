@@ -3,10 +3,10 @@
     Builds the extension in Release mode and updates dist\clevrlint with the output.
 
 .DESCRIPTION
-    Run this script whenever you want to refresh the distributable package in dist\.
+    Run this script whenever you want to refresh dist\clevrlint for local testing.
     It always uses Release configuration and replaces the DLLs, PDBs, deps.json,
-    manifest.json, and wwwroot assets. It never touches
-    lint-scan-settings.json (that is written by Install-ClevrLint.ps1 at install time).
+    manifest.json, and wwwroot assets. It never touches lint-scan-settings.json.
+    End users install the extension from the Mendix Marketplace, not from dist\.
 
 .EXAMPLE
     .\Pack-Dist.ps1
@@ -59,11 +59,6 @@ Get-ChildItem $distDir -File | Where-Object { $_.Name -notin $filesToCopy -and $
     Write-Warning "Removing stale file: $($_.Name)"
     Remove-Item $_.FullName -Force
 }
-
-# Copy installer and end-user docs into the dist package root
-$distRoot = Join-Path $repoRoot 'dist'
-Copy-Item (Join-Path $repoRoot 'Install-ClevrLint.ps1') $distRoot -Force
-Copy-Item (Join-Path $repoRoot 'INSTALL.md') (Join-Path $distRoot 'README.md') -Force
 
 Write-Host "dist updated:" -ForegroundColor Green
 Get-ChildItem (Join-Path $repoRoot 'dist') -Recurse | Select-Object -ExpandProperty FullName

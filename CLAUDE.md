@@ -9,10 +9,10 @@ src/
   Clevr.Lint.Extension/     ← Extension backend (C# .NET 10) + React UI
   Clevr.Lint.Normalizer/    ← Pure normalization library + 232 unit tests
   Clevr.Lint.TestHarness/   ← Standalone CLI for debugging the normalizer
-dist/                       ← Pre-built end-user package (installer + bundle)
+dist/                       ← Dev/test build output (Pack-Dist.ps1); read directly by TestHarness
 docs/                       ← Architecture, rules inventory
 .github/workflows/          ← CI: build + test on every push/PR
-Pack-Dist.ps1               ← Builds UI + extension, assembles dist/
+Pack-Dist.ps1               ← Builds UI + extension (Release), assembles dist/clevrlint
 ```
 
 ## Architecture flow
@@ -72,7 +72,9 @@ cd src/Clevr.Lint.Extension/ui && npm run build
 | UI | React 19 + TypeScript, Vite 6, Tailwind CSS v4 |
 | Normalization library | C# / .NET 10, zero external dependencies |
 | Mendix API | Mendix.StudioPro.ExtensionsAPI 11.10 |
-| External tool | mxcli v0.12.0 (Apache-2.0, auto-downloaded by installer) |
+| External tool | mxcli v0.12.0 (Apache-2.0, auto-detected/downloaded at runtime by `MxcliService.cs`) |
+
+End users install CLEVR Lint from the **Mendix Marketplace** (not from this repo's `dist/` folder or any install script). `dist/` exists only so `Clevr.Lint.TestHarness` has a Release build to load during local dev/testing.
 
 ## After completing any code change
 
@@ -82,19 +84,14 @@ Run these steps in order after every prompt that changes C# or UI source:
 # 1. Verify tests still pass
 dotnet test src/Clevr.Lint.Normalizer/Clevr.Lint.Normalizer.Tests/Clevr.Lint.Normalizer.Tests.csproj
 
-# 2. Full rebuild (UI + C# Release) and update dist/
+# 2. Full rebuild (UI + C# Release) and update dist/clevrlint
 .\Pack-Dist.ps1
 
-# 3. Push updated extension into the test Mendix project
-Push-Location dist
-.\Install-ClevrLint.ps1 -ProjectPath "C:\Mendix\AcrToLintTest-main"
-Pop-Location
-
-# 4. Relaunch the test harness in serve mode (opens browser automatically)
+# 3. Relaunch the test harness in serve mode (opens browser automatically)
 dotnet run --project src/Clevr.Lint.TestHarness -- --serve "C:\Mendix\AcrToLintTest-main"
 ```
 
-Steps 3 and 4 require `C:\Mendix\AcrToLintTest-main` to exist on this machine. The test harness reads the extension DLLs from `dist\clevrlint` (Release build written by `Pack-Dist.ps1`) when a projectDir is passed. If the harness is already running, stop it with Ctrl+C before relaunching.
+Step 3 requires `C:\Mendix\AcrToLintTest-main` to exist on this machine. The test harness reads the extension DLLs straight from `dist\clevrlint` (Release build written by `Pack-Dist.ps1`) when a projectDir is passed — no install step needed. If the harness is already running, stop it with Ctrl+C before relaunching.
 
 ## Validating UI changes with Playwright
 
@@ -106,7 +103,7 @@ cd src/Clevr.Lint.Extension/ui
 npm install -D playwright
 npx playwright install chromium
 
-# 1. Rebuild + repack + install (see "After completing any code change" above), then
+# 1. Rebuild + repack (see "After completing any code change" above), then
 #    start the harness in the background and wait for it to be ready
 dotnet run --project src/Clevr.Lint.TestHarness -- --serve "C:\Mendix\AcrToLintTest-main"
 #   (from another shell) poll http://localhost:5174/index until it responds
@@ -126,9 +123,9 @@ Playwright must run from inside `src/Clevr.Lint.Extension/ui` (not repo root) so
 
 **Add a new rule:** implement the rule logic in `Clevr.Lint.Normalizer` (pure C#, no Mendix dependency), add a unit test, then wire the result into `LintScanService`. The UI renders any `Violation[]` automatically — no UI changes needed for a new rule.
 
-**Update mxcli version:** update the expected version + sha256 in `Install-ClevrLint.ps1`, then rebuild and repack with `Pack-Dist.ps1`.
+**Update mxcli version:** nothing to do here — `MxcliService.cs` always resolves the latest GitHub release at runtime and verifies its sha256 before use.
 
-**Rebuild and install after a change:** run `Pack-Dist.ps1`, then run `Install-ClevrLint.ps1` in the target project. Restart Studio Pro. Changes apply to new scans only.
+**Rebuild for local testing:** run `Pack-Dist.ps1`, then relaunch `Clevr.Lint.TestHarness --serve` (it reads `dist\clevrlint` directly). For testing inside Studio Pro itself, copy `dist\clevrlint` into `<project>\extensions\clevrlint` and restart Studio Pro — changes apply to new scans only.
 
 **Debug log:** `<project>\.clevr-lint\mxlint-debug.log`
 

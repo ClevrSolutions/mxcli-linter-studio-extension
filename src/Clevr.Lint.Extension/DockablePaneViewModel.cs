@@ -38,6 +38,7 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
     private readonly RuleSourcesService _ruleSourcesService = new();
     private readonly ProjectDirResolver _projectDirResolver;
     private readonly ExclusionCoordinator _exclusionCoordinator;
+    private readonly NavigationCoordinator _navigationCoordinator;
     private CancellationTokenSource? _scanCts;
     private SynchronizationContext? _uiContext;
 
@@ -59,6 +60,7 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
         _mendixVersion = mendixVersion;
         _projectDirResolver = new ProjectDirResolver(fileService, getProjectDir);
         _exclusionCoordinator = new ExclusionCoordinator(_exclusions, _projectDirResolver);
+        _navigationCoordinator = new NavigationCoordinator(getModel);
     }
 
     public override void InitWebView(IWebView webView)
@@ -317,67 +319,52 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
         ElementName: data?["elementName"]?.GetValue<string>() ?? "");
 
     /// <summary>
-    /// Opens the document an improvement refers to in Studio Pro. Strategy:
-    ///   1. via the stable GUID (documentId, populated by mxcli/Lint) → TryGetAbstractUnitById;
-    ///   2. otherwise (no GUID) via name walk: module → DomainModel/folders/documents.
-    /// Navigates at DOCUMENT LEVEL (elementToFocus = null).
+    /// Opens the document an improvement refers to in Studio Pro. Resolution (GUID lookup, name
+    /// walk, the project-security/snippet/enumeration API boundaries) all live behind
+    /// <see cref="NavigationCoordinator"/>; this dispatcher only logs the trace once and
+    /// translates the <see cref="Resolution"/> into a WebView message.
     /// </summary>
     private void OpenDocument(IWebView webView, JsonObject? data)
     {
         var projectDir = _getProjectDir();
+        var documentId = data?["documentId"]?.GetValue<string>();
+        var qualifiedName = data?["documentQualifiedName"]?.GetValue<string>() ?? "";
+        var documentType = data?["documentType"]?.GetValue<string>() ?? "";
+        DebugLog.Write(projectDir, $"=== OpenDocument === documentId='{documentId}' qn='{qualifiedName}' type='{documentType}'");
+
         try
         {
-            var model = _getModel();
-            if (model == null)
+            var resolution = _navigationCoordinator.Resolve(documentId, qualifiedName, documentType);
+            DebugLog.Write(projectDir, $"OpenDocument: {resolution.Reason}");
+
+            switch (resolution.Route)
             {
-                DebugLog.Write(projectDir, "OpenDocument: NO app open in Studio Pro.");
-                webView.PostMessage("DocumentOpenError", "No app open in Studio Pro.");
-                return;
-            }
-
-            var documentId = data?["documentId"]?.GetValue<string>();
-            var qualifiedName = data?["documentQualifiedName"]?.GetValue<string>() ?? "";
-            var documentType = data?["documentType"]?.GetValue<string>() ?? "";
-
-            DebugLog.Write(projectDir, $"=== OpenDocument === documentId='{documentId}' qn='{qualifiedName}' type='{documentType}'");
-
-            // Project security is a project-level artifact, NOT a module document. The
-            // Extensibility API 11.10 offers no method to open the project security editor
-            // (no ISecurity type, no open method, IProjectDocument has no name to match on).
-            // Honest message instead of a misleading "not found".
-            if (IsProjectSecurity(documentType))
-            {
-                DebugLog.Write(projectDir, "OpenDocument: route=PROJECT-SECURITY → API boundary (no open method in 11.10)");
-                webView.PostMessage("DocumentOpenError", "Project security cannot be opened directly via the Extensibility API (11.10).");
-                return;
-            }
-
-            var (unit, focus) = ResolveUnit(model, documentId, qualifiedName, documentType, projectDir);
-            if (unit == null)
-            {
-                // Snippets are NOT exposed as units by the 11.10 ExtensionsAPI
-                // (no ISnippet type, no documentId from mxcli, not in GetDocuments()).
-                // Honest message instead of a misleading "not found".
-                if (IsSnippet(documentType))
-                {
-                    DebugLog.Write(projectDir, $"OpenDocument: route=SNIPPET → API boundary (snippets not exposed as units in 11.10) (qn='{qualifiedName}')");
+                case NavigationRoute.NoModel:
+                    webView.PostMessage("DocumentOpenError", resolution.Reason);
+                    return;
+                case NavigationRoute.ProjectSecurity:
+                    // Honest message instead of a misleading "not found": the Extensibility API
+                    // 11.10 offers no method to open the project security editor.
+                    webView.PostMessage("DocumentOpenError", "Project security cannot be opened directly via the Extensibility API (11.10).");
+                    return;
+                case NavigationRoute.Snippet:
+                    // Honest message: snippets are not exposed as documents by the 11.10 API.
                     webView.PostMessage("DocumentOpenError", "Snippets are not exposed as documents by the Studio Pro Extensibility API (11.10) and therefore cannot be opened directly.");
                     return;
-                }
-                DebugLog.Write(projectDir, $"OpenDocument: RESULT not found (qn='{qualifiedName}', type='{documentType}')");
-                _logService.Info($"[CLEVR Lint] OpenDocument: not found (id='{documentId}', qn='{qualifiedName}', type='{documentType}')");
-                webView.PostMessage("DocumentOpenError", $"Document not found: {qualifiedName}");
-                return;
+                case NavigationRoute.NotFound:
+                    _logService.Info($"[CLEVR Lint] OpenDocument: not found (id='{documentId}', qn='{qualifiedName}', type='{documentType}')");
+                    webView.PostMessage("DocumentOpenError", $"Document not found: {qualifiedName}");
+                    return;
             }
 
-            _dockingWindowService.TryOpenEditor(unit, focus);
-            DebugLog.Write(projectDir, $"OpenDocument: OPENED unit.Id='{unit.Id}' focus={(focus != null ? "yes" : "no")} (qn='{qualifiedName}')");
+            _dockingWindowService.TryOpenEditor(resolution.Unit!, resolution.Focus);
+            DebugLog.Write(projectDir, $"OpenDocument: OPENED unit.Id='{resolution.Unit!.Id}' focus={(resolution.Focus != null ? "yes" : "no")} (qn='{qualifiedName}')");
 
             // Enumerations are a unit (TryOpenEditor succeeds technically), but Studio Pro
             // shows them as a dialog — not always visible from an extension. Honest message.
-            if (IsEnumeration(documentType))
+            if (resolution.IsEnumeration)
                 webView.PostMessage("DocumentOpened", $"{qualifiedName} (enumeration — opens as a dialog in Studio Pro; may not appear as a tab)");
-            else if (focus != null)
+            else if (resolution.Focus != null)
                 webView.PostMessage("DocumentOpened", $"{qualifiedName} (entity focused in the domain model)");
             else
                 webView.PostMessage("DocumentOpened", qualifiedName);
@@ -388,128 +375,6 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
             _logService.Error("[CLEVR Lint] OpenDocument failed", ex);
             webView.PostMessage("DocumentOpenError", ex.Message);
         }
-    }
-
-    /// <summary>
-    /// Looks up the unit to open + LOGS which route is chosen (GUID / name) and why.
-    ///   1. GUID (TryGetAbstractUnitById) — works for real units (microflow, page, domain model
-    ///      document). Entities either have no GUID, or an element GUID that is NOT a unit id
-    ///      → this step fails and we fall back to the name route.
-    ///   2. Name route: find module, then:
-    ///      - entity/attribute/association/domain model → the DOMAIN MODEL of the module (an
-    ///        entity is not a standalone unit but lives in the domain model — hence the earlier
-    ///        "Document not found" error);
-    ///      - otherwise → the document by name (recursively through folders).
-    /// </summary>
-    private (IAbstractUnit? unit, IElement? focus) ResolveUnit(IModel model, string? documentId, string qualifiedName, string documentType, string? projectDir)
-    {
-        // 1) GUID — stable, no name parsing. Works for real units (microflow, page,
-        //    enumeration, domain model document). An entity GUID is NOT a unit id → fails here.
-        if (!string.IsNullOrWhiteSpace(documentId))
-        {
-            if (model.TryGetAbstractUnitById(documentId, out var byId) && byId != null)
-            {
-                DebugLog.Write(projectDir, $"OpenDocument: route=GUID-OK id='{documentId}'");
-                return (byId, null);
-            }
-            DebugLog.Write(projectDir, $"OpenDocument: route=GUID-MISS id='{documentId}' → name fallback");
-        }
-        else
-        {
-            DebugLog.Write(projectDir, "OpenDocument: route=GUID-EMPTY → name fallback");
-        }
-
-        // 2) Name route. qualifiedName = "Module.Document" (our normalizer delivers the module
-        //    as the first segment). Defensive: strip a double module prefix should one
-        //    accidentally still be present ("Module.Module.X" → "Module.X").
-        if (string.IsNullOrWhiteSpace(qualifiedName))
-        {
-            DebugLog.Write(projectDir, "OpenDocument: name route with empty qualifiedName → not found");
-            return (null, null);
-        }
-
-        var dot = qualifiedName.IndexOf('.');
-        if (dot <= 0)
-        {
-            DebugLog.Write(projectDir, $"OpenDocument: name route, qn without module separator ('{qualifiedName}') → not found");
-            return (null, null);
-        }
-        var moduleName = qualifiedName[..dot];
-        var localName = qualifiedName[(dot + 1)..];
-        if (localName.StartsWith(moduleName + ".", StringComparison.Ordinal))
-            localName = localName[(moduleName.Length + 1)..]; // defensive de-dup
-
-        var module = model.Root.GetModules().FirstOrDefault(m => m.Name == moduleName);
-        if (module == null)
-        {
-            DebugLog.Write(projectDir, $"OpenDocument: name route, module '{moduleName}' not found → not found");
-            return (null, null);
-        }
-
-        // Entity → open the domain model AND FOCUS the entity (IEntity is an IElement, so
-        // usable as elementToFocus). If the match fails, open only the domain model.
-        if (IsEntity(documentType))
-        {
-            var dm = module.DomainModel;
-            var entity = dm.GetEntities().FirstOrDefault(e => e.Name == localName);
-            DebugLog.Write(projectDir, entity != null
-                ? $"OpenDocument: route=NAME entity '{localName}' focused in domain model '{moduleName}'"
-                : $"OpenDocument: route=NAME entity '{localName}' NOT found in domain model '{moduleName}' → open domain model only");
-            return (dm, entity);
-        }
-
-        // Attribute/association/domain model → the DOMAIN MODEL of the module (without focus:
-        // the exact sub-element cannot be reliably resolved from the mxcli data).
-        if (IsDomainModelElement(documentType))
-        {
-            DebugLog.Write(projectDir, $"OpenDocument: route=NAME type='{documentType}' → module '{moduleName}' DomainModel (no focus)");
-            return (module.DomainModel, null);
-        }
-
-        var doc = FindDocument(module, localName);
-        DebugLog.Write(projectDir, doc != null
-            ? $"OpenDocument: route=NAME document '{localName}' found in module '{moduleName}'"
-            : $"OpenDocument: route=NAME document '{localName}' NOT found in module '{moduleName}' (searched recursively)");
-        return (doc, null);
-    }
-
-    private static bool IsEntity(string documentType)
-        => documentType.Equals("Entity", StringComparison.OrdinalIgnoreCase);
-
-    /// <summary>
-    /// Document types that are NOT standalone public units but live in the domain model
-    /// (entity/attribute/association), plus the domain model itself. Case-insensitive.
-    /// </summary>
-    private static bool IsDomainModelElement(string documentType)
-        => documentType.Equals("Entity", StringComparison.OrdinalIgnoreCase)
-        || documentType.Equals("Attribute", StringComparison.OrdinalIgnoreCase)
-        || documentType.Equals("Association", StringComparison.OrdinalIgnoreCase)
-        || documentType.Equals("DomainModel", StringComparison.OrdinalIgnoreCase);
-
-    /// <summary>Project-level security artifact (not a module document, no open API in 11.10).</summary>
-    private static bool IsProjectSecurity(string documentType)
-        => documentType.Equals("ProjectSecurity", StringComparison.OrdinalIgnoreCase)
-        || documentType.Equals("Security", StringComparison.OrdinalIgnoreCase);
-
-    private static bool IsEnumeration(string documentType)
-        => documentType.Equals("Enumeration", StringComparison.OrdinalIgnoreCase);
-
-    /// <summary>Snippet: not modeled as a unit in the 11.10 ExtensionsAPI (no open handle).</summary>
-    private static bool IsSnippet(string documentType)
-        => documentType.Equals("Snippet", StringComparison.OrdinalIgnoreCase);
-
-    /// <summary>Finds a document by name within a module + (recursively) its subfolders.</summary>
-    private static IAbstractUnit? FindDocument(IFolderBase container, string documentName)
-    {
-        var direct = container.GetDocuments().FirstOrDefault(d => d.Name == documentName);
-        if (direct != null) return direct;
-
-        foreach (var folder in container.GetFolders())
-        {
-            var found = FindDocument(folder, documentName);
-            if (found != null) return found;
-        }
-        return null;
     }
 
     /// <summary>Opens a (documentation) URL in the default browser — same pattern as opening a report.</summary>

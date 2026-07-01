@@ -76,7 +76,7 @@ Exclusions are stored as a set of fingerprints. A violation is hidden if its fin
 
 ## Scan
 
-A single **Scan** button runs `mxcli lint --format json` and streams results to the UI. Cold start is slower (~55s) because mxcli rebuilds `catalog.db` on first run; subsequent scans are ~17s.
+A single **Scan** button first runs `mxcli -c "REFRESH CATALOG FULL"` (best-effort — a failure just falls back to mxcli's default catalog), then `mxcli lint --format json`, and streams results to the UI. The FULL catalog is required for SEC010/SEC019, which otherwise silently return zero findings (see rule source comments in `rules/`). Cold start is slower (~55s) because mxcli rebuilds `catalog.db` on first run; subsequent scans are ~17s.
 
 `LintScanService.RunScanStreaming(emit)` emits one `Violation[]` batch with `phase: "fast"` and `final: true`. The `SCAN_DESCRIBE_BATCH` reducer path in the UI is wired for future use (see Roadmap below) but is currently never triggered.
 

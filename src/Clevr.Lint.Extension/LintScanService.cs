@@ -8,13 +8,15 @@ namespace Clevr.Lint.Extension;
 /// <summary>
 /// Connects the mxcli engine to the normalizer.
 /// Chain: load settings → run mxcli → parse JSON (MxcliOutputParser)
-/// → normalize (MxcliNormalizer) → JSON for the webview.
+/// → normalize (MxcliNormalizer) → filter excluded modules → JSON for the webview.
 ///
-/// Contains ONLY IO and wiring; no normalization logic. Which rules/modules
-/// are reported is not this class's concern either — mxcli reads
-/// lint-config.yaml directly from the project directory (its working
-/// directory) and applies rule/module filtering itself before this class
-/// ever sees the output.
+/// Contains ONLY IO and wiring; no normalization logic. Rule filtering is mxcli's
+/// own concern (it reads lint-config.yaml from the project directory directly).
+/// Module exclusion, however, needs a backstop here: project-scoped rules (e.g.
+/// ARCH004, which analyzes cross-module dependencies for the whole project) attach
+/// a module to their violations without being tied to scanning a document owned by
+/// that module, and mxcli does not scrub those from its output even when the module
+/// is excluded.
 /// </summary>
 public sealed class LintScanService
 {
@@ -131,6 +133,12 @@ public sealed class LintScanService
         // even if the user has never opened Settings.
         new LinterConfigStore().Load(projectDir);
 
+        // Some custom rules (SEC010, SEC019) need mxcli's FULL catalog to see
+        // permission/attribute/activity data; without it they silently return
+        // zero findings instead of erroring. Best-effort: a failed/timed-out
+        // refresh just falls back to today's default-catalog behavior.
+        RefreshCatalogFull(settings.MxcliPath, mprFileName, projectDir, ct);
+
         var arguments = $"lint -p \"{mprFileName}\" --format json";
         var commandLine = $"\"{settings.MxcliPath}\" {arguments}";
         _log.Info($"[CLEVR Lint] {commandLine}  (cwd: {projectDir})");
@@ -151,6 +159,19 @@ public sealed class LintScanService
         catch (Exception parseEx) { return (null, Diagnostic($"Could not parse mxcli JSON: {parseEx.Message}", commandLine, projectDir, proc)); }
 
         var violations = MxcliNormalizer.Normalize(raw).ToList();
+
+        var linterConfig = new LinterConfigStore().Load(projectDir);
+        if (linterConfig.ExcludedModules.Count > 0)
+        {
+            var excluded = new HashSet<string>(linterConfig.ExcludedModules, StringComparer.Ordinal);
+            violations = violations.Where(v =>
+            {
+                var qn = v.DocumentQualifiedName;
+                var dot = qn.IndexOf('.');
+                var moduleName = dot > 0 ? qn[..dot] : qn;
+                return !excluded.Contains(moduleName);
+            }).ToList();
+        }
 
         var catalog = LoadRuleCatalog(settings.MxcliPath, mprFileName, projectDir, ct);
         var ruleNames = catalog.ToDictionary(kv => kv.Key, kv => kv.Value.Name, StringComparer.Ordinal);
@@ -241,6 +262,20 @@ public sealed class LintScanService
         }
 
         return ("", "", $"projectPath does not exist: {projectPath}");
+    }
+
+    private void RefreshCatalogFull(string mxcliPath, string mprFileName, string projectDir, CancellationToken ct)
+    {
+        try
+        {
+            var proc = ProcessRunner.Run(mxcliPath, $"-p \"{mprFileName}\" -c \"REFRESH CATALOG FULL\"", projectDir, timeoutMs: 300_000, ct);
+            _log.Info($"[CLEVR Lint] REFRESH CATALOG FULL exit={proc.ExitCode}");
+            DebugLog.Write(projectDir, $"[catalog] REFRESH CATALOG FULL exit={proc.ExitCode}; stderr={proc.StdErr}");
+        }
+        catch (Exception ex)
+        {
+            _log.Warn($"[CLEVR Lint] REFRESH CATALOG FULL failed (continuing with existing catalog): {ex.Message}");
+        }
     }
 
     private LintScanSettings LoadSettings(string? fallbackProjectDir)
