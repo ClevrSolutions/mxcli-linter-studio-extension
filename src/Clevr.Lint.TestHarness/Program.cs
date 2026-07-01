@@ -131,6 +131,7 @@ static async Task RunServeModeAsync(string? projectDir, string extensionDir)
     var logService   = new HarnessLogService();
     var projectDirResolver = new ProjectDirResolver(fileService, () => projectDir);
     var exclusionCoordinator = new ExclusionCoordinator(new ExclusionStore(), projectDirResolver);
+    var linterConfigCoordinator = new LinterConfigCoordinator(new LinterConfigStore(), projectDirResolver);
     var wwwroot      = Path.Combine(AppContext.BaseDirectory, "wwwroot");
 
     // Each connected SSE client gets its own channel so push() fans out to all of them.
@@ -176,7 +177,7 @@ static async Task RunServeModeAsync(string? projectDir, string extensionDir)
             try
             {
                 await HandleRequestAsync(ctx, projectDir, fileService, logService,
-                    exclusionCoordinator, wwwroot, Push, clients);
+                    exclusionCoordinator, linterConfigCoordinator, wwwroot, Push, clients);
             }
             catch (Exception ex) { Console.Error.WriteLine($"[serve] request error: {ex.Message}"); }
         }, cts.Token);
@@ -192,6 +193,7 @@ static async Task HandleRequestAsync(
     HarnessFileService fileService,
     HarnessLogService logService,
     ExclusionCoordinator exclusionCoordinator,
+    LinterConfigCoordinator linterConfigCoordinator,
     string wwwroot,
     Action<string, string> push,
     ConcurrentDictionary<Guid, Channel<SseEvent>> clients)
@@ -265,7 +267,7 @@ static async Task HandleRequestAsync(
         var body = await reader.ReadToEndAsync();
 
         _ = Task.Run(() => DispatchMessage(body, projectDir, fileService, logService,
-            exclusionCoordinator, push));
+            exclusionCoordinator, linterConfigCoordinator, push));
 
         resp.StatusCode = 204;
         resp.Close();
@@ -312,6 +314,7 @@ static void DispatchMessage(
     HarnessFileService fileService,
     HarnessLogService logService,
     ExclusionCoordinator exclusionCoordinator,
+    LinterConfigCoordinator linterConfigCoordinator,
     Action<string, string> push)
 {
     JsonObject? data;
@@ -457,8 +460,7 @@ static void DispatchMessage(
         {
             try
             {
-                var store  = new LinterConfigStore();
-                var config = store.Load(projectDir ?? "");
+                var config = linterConfigCoordinator.Load();
                 var payload = JsonSerializer.Serialize(new
                 {
                     rules = config.Rules.ToDictionary(
@@ -480,7 +482,6 @@ static void DispatchMessage(
         {
             try
             {
-                var store     = new LinterConfigStore();
                 var rulesNode = data?["rules"]?.AsObject();
                 var rules     = new Dictionary<string, LinterConfigRule>();
                 if (rulesNode is not null)
@@ -502,7 +503,7 @@ static void DispatchMessage(
                         var name = item?.GetValue<string>();
                         if (!string.IsNullOrWhiteSpace(name)) excludedModules.Add(name);
                     }
-                store.Save(projectDir ?? "", new LinterConfig { Rules = rules, ExcludedModules = excludedModules });
+                linterConfigCoordinator.Save(new LinterConfig { Rules = rules, ExcludedModules = excludedModules });
                 push("LinterConfigSaved", "{}");
             }
             catch (Exception ex) { push("LinterConfigError", ex.Message); }

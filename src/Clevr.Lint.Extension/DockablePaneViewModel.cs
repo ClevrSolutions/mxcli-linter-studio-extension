@@ -39,6 +39,7 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
     private readonly ProjectDirResolver _projectDirResolver;
     private readonly ExclusionCoordinator _exclusionCoordinator;
     private readonly NavigationCoordinator _navigationCoordinator;
+    private readonly LinterConfigCoordinator _linterConfigCoordinator;
     private CancellationTokenSource? _scanCts;
     private SynchronizationContext? _uiContext;
 
@@ -61,6 +62,7 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
         _projectDirResolver = new ProjectDirResolver(fileService, getProjectDir);
         _exclusionCoordinator = new ExclusionCoordinator(_exclusions, _projectDirResolver);
         _navigationCoordinator = new NavigationCoordinator(getModel);
+        _linterConfigCoordinator = new LinterConfigCoordinator(new LinterConfigStore(), _projectDirResolver);
     }
 
     public override void InitWebView(IWebView webView)
@@ -604,14 +606,11 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
         }
     }
 
-    private readonly LinterConfigStore _linterConfig = new();
-
     private void PostLinterConfig(IWebView webView)
     {
         try
         {
-            var projectDir = _projectDirResolver.Resolve();
-            var config = _linterConfig.Load(projectDir ?? "");
+            var config = _linterConfigCoordinator.Load();
             var payload = JsonSerializer.Serialize(new
             {
                 rules = config.Rules.ToDictionary(
@@ -632,7 +631,6 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
     {
         try
         {
-            var projectDir = _projectDirResolver.Resolve() ?? "";
             var rulesNode = data?["rules"]?.AsObject();
             var rules = new Dictionary<string, LinterConfigRule>();
             if (rulesNode is not null)
@@ -656,8 +654,7 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
                     if (!string.IsNullOrWhiteSpace(name)) excludedModules.Add(name);
                 }
             }
-            var config = new LinterConfig { Rules = rules, ExcludedModules = excludedModules };
-            _linterConfig.Save(projectDir, config);
+            _linterConfigCoordinator.Save(new LinterConfig { Rules = rules, ExcludedModules = excludedModules });
             webView.PostMessage("LinterConfigSaved", "{}");
         }
         catch (Exception ex)

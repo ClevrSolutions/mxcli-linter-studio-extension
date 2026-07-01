@@ -17,7 +17,7 @@ it disappear (pass-through, not earning its keep).
 
 | # | Candidate | Strength | Status |
 |---|-----------|----------|--------|
-| 1 | Collapse the message dispatcher into per-domain coordinators | Strong | **Partially implemented** — `ExclusionCoordinator` (commit `30a1d96`) and `NavigationCoordinator` done. `LinterConfigCoordinator`, `SettingsCoordinator`, `ScanCoordinator` remain. |
+| 1 | Collapse the message dispatcher into per-domain coordinators | Strong | **Partially implemented** — `ExclusionCoordinator` (commit `30a1d96`), `NavigationCoordinator`, and `LinterConfigCoordinator` done. `SettingsCoordinator`, `ScanCoordinator` remain. |
 | 2 | Give rule suppression one seam instead of two | Strong | **Resolved** — see below, no `FilterPolicy` built |
 | 3 | Split the AppState bucket into domain slices | Strong | **Implemented** |
 | 4 | Give ChangedElementsResolver a pure diff-planning seam | Worth exploring | Not started |
@@ -135,28 +135,52 @@ exactly once. `IsEntity`/`IsDomainModelElement`/`IsProjectSecurity`/
 `IsSnippet`/`IsEnumeration`/`FindDocument` all moved into the coordinator as
 private statics — the dispatcher now only does message translation
 (`switch` over `NavigationRoute` → `PostMessage`) and the one exception
-catch. Verified: `dotnet build` clean, `Pack-Dist.ps1` →
-`Install-ClevrLint.ps1` → harness smoke pass (scan runs, filters/settings
-work, zero console errors). The harness's own `OpenDocument` handler already
+catch. Verified: `dotnet build` clean, `Pack-Dist.ps1` → harness smoke pass
+(scan runs, filters/settings work, zero console errors). The harness's own
+`OpenDocument` handler already
 stubs the message with `"...not available in the test harness."`
 (`Program.cs` — no real Studio Pro model there), so it doesn't exercise
 `NavigationCoordinator`'s resolution logic itself; unlike the
 `ExclusionCoordinator` slice, there was no second copy of this logic to
 deduplicate.
 
-**`LinterConfigCoordinator`** and **`SettingsCoordinator`** — not started.
-The original candidate proposed one "Config" coordinator; grilling split it
-in two because they touch different stores/files and share no validation
-logic (bundling them would recreate a mini god-object):
-- `LinterConfigCoordinator` — wraps `LinterConfigStore` (rule enable/severity,
-  excluded modules). Messages: `RequestLinterConfig`, `SaveLinterConfig`.
-- `SettingsCoordinator` — wraps `lint-scan-settings.json` directly (mxcli
-  path) and `RuleSourcesService` (async fetch/delete of rule `.star` files).
-  Messages: `RequestMxcliInfo`, `BrowseMxcliPath`, `SetMxcliPath`,
-  `DownloadMxcli`, `RequestRuleSources`, `SaveRuleSources`, `FetchRuleSource`,
-  `DeleteRuleSourceFiles`. This one needs the async-coordinator shape
-  (decision #3 above) since fetch/download are genuinely async.
-- Both depend on `ProjectDirResolver` (already extracted).
+**`LinterConfigCoordinator`** and **`SettingsCoordinator`** — the original
+candidate proposed one "Config" coordinator; grilling split it in two
+because they touch different stores/files and share no validation logic
+(bundling them would recreate a mini god-object):
+- `LinterConfigCoordinator` — ✅ implemented
+  (`src/Clevr.Lint.Extension/LinterConfigCoordinator.cs`). Interface:
+  `Load() → LinterConfig`, `Save(LinterConfig)`. `LinterConfig`/
+  `LinterConfigRule` (in `LinterConfigStore.cs`) were already plain C#
+  records free of `System.Text.Json` types, so this coordinator is a thin
+  wrapper — no validation of its own (any rule-override dictionary or
+  module list is valid), the seam exists purely to keep project-dir
+  resolution and persistence out of the dispatcher, matching every other
+  coordinator. `DockablePaneViewModel.PostLinterConfig`/`SaveLinterConfig`
+  now only translate `JsonObject` ⇄ `LinterConfig` and call the coordinator;
+  `_linterConfig`/`LinterConfigStore` field was removed (replaced by the
+  coordinator, constructed once in the constructor from a fresh
+  `LinterConfigStore()` + the shared `_projectDirResolver`). Messages:
+  `RequestLinterConfig`, `SaveLinterConfig`.
+  Like `ExclusionCoordinator`, the test harness (`Program.cs`) had its own
+  independent copy of this dispatch logic (`new LinterConfigStore()` called
+  directly in the `RequestLinterConfig`/`SaveLinterConfig` cases) that never
+  touched the real coordinator — fixed as part of this slice: the harness
+  now builds one `LinterConfigCoordinator` (threaded through
+  `RunServeModeAsync` → `HandleRequestAsync` → `DispatchMessage`, same
+  wiring path as `exclusionCoordinator`) and routes both messages through
+  it. Verified: `dotnet build` clean (both projects), 25 Normalizer tests
+  green, `Pack-Dist.ps1` → harness smoke pass — opened Settings > Modules,
+  toggled a module checkbox, clicked Save, confirmed `lint-config.yaml` was
+  written with the correct `excludeModules:` YAML key and the harness log
+  showed the real `SaveLinterConfig` dispatch; zero console errors.
+- `SettingsCoordinator` — not started. Wraps `lint-scan-settings.json`
+  directly (mxcli path) and `RuleSourcesService` (async fetch/delete of rule
+  `.star` files). Messages: `RequestMxcliInfo`, `BrowseMxcliPath`,
+  `SetMxcliPath`, `DownloadMxcli`, `RequestRuleSources`, `SaveRuleSources`,
+  `FetchRuleSource`, `DeleteRuleSourceFiles`. This one needs the
+  async-coordinator shape (decision #3 above) since fetch/download are
+  genuinely async. Depends on `ProjectDirResolver` (already extracted).
 
 **`ScanCoordinator`** — not started, **last** in the rollout order (highest
 blast radius: threading, streaming, cancellation). `RunFullScan` doesn't fit
@@ -190,8 +214,8 @@ that, each coordinator should land as its own change, verified in the
 harness, before starting the next:
 
 1. ✅ `ExclusionCoordinator` — done, commit `30a1d96`.
-2. ✅ `NavigationCoordinator` — done (this session, 2026-07-01).
-3. `LinterConfigCoordinator`, then `SettingsCoordinator`.
+2. ✅ `NavigationCoordinator` — done (2026-07-01).
+3. ✅ `LinterConfigCoordinator` — done (2026-07-01). `SettingsCoordinator` next.
 4. `ScanCoordinator` — last; only one with threading/streaming/cancellation.
 
 Each step should stay buildable (`dotnet build`) and get a manual smoke pass
@@ -390,13 +414,12 @@ then.
 
 ## Continuing this work
 
-Next session: implement `LinterConfigCoordinator`, then `SettingsCoordinator`
-(rollout order step 3), following the same general shape (see "Design
-decisions" under candidate #1) — coordinators return plain values, no
-`IWebView`, dispatcher does one `try/catch` + routing. `SettingsCoordinator`
-needs the async-coordinator shape (decision #3) since rule-source
-fetch/mxcli download are genuinely async. `ScanCoordinator` is last
-(rollout step 4) and is the only one needing the streaming
-`IProgress<ScanEvent>` shape — resume the grilling loop (`/grilling`) on its
-exact `ScanEvent` union before implementing it, since that part wasn't
-designed in detail yet.
+Next session: implement `SettingsCoordinator` (rollout order step 3, second
+half), following the same general shape (see "Design decisions" under
+candidate #1) — coordinator returns plain values, no `IWebView`, dispatcher
+does one `try/catch` + routing. It needs the async-coordinator shape
+(decision #3) since rule-source fetch/mxcli download are genuinely async.
+`ScanCoordinator` is last (rollout step 4) and is the only one needing the
+streaming `IProgress<ScanEvent>` shape — resume the grilling loop
+(`/grilling`) on its exact `ScanEvent` union before implementing it, since
+that part wasn't designed in detail yet.
