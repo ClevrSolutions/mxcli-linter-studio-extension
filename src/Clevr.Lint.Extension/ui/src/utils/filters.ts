@@ -41,21 +41,21 @@ export function passesFilters(
 }
 
 export function allDisplayViolations(state: AppState): Violation[] {
-  return state.violations;
+  return state.scan.violations;
 }
 
 export function baseViolations(state: AppState): Violation[] {
   let vs = allDisplayViolations(state)
-    .filter((v) => state.appStoreVisible || !isAppStoreModule(v, state.appStoreModules));
-  if (state.savedExcludedModules.includes("Project")) {
-    const knownModules = new Set(state.modules.map((m) => m.name).filter((n) => n !== "Project"));
+    .filter((v) => state.filters.appStoreVisible || !isAppStoreModule(v, state.scan.appStoreModules));
+  if (state.config.excludedModules.saved.includes("Project")) {
+    const knownModules = new Set(state.config.modules.map((m) => m.name).filter((n) => n !== "Project"));
     vs = vs.filter((v) => knownModules.has(moduleOf(v)));
   }
   return vs;
 }
 
 function selectedBaselineViolations(state: AppState): Violation[] {
-  const b = state.baselines.find((x) => x.id === state.selectedBaselineId);
+  const b = state.baseline.baselines.find((x) => x.id === state.baseline.selectedBaselineId);
   return b?.violations ?? [];
 }
 
@@ -64,11 +64,11 @@ export function baselineFingerprintSet(state: AppState): Set<string> {
 }
 
 export function currentFingerprintSet(state: AppState): Set<string> {
-  return new Set(state.violations.map((v) => v.fingerprint));
+  return new Set(state.scan.violations.map((v) => v.fingerprint));
 }
 
 export function activeViolations(state: AppState): Violation[] {
-  if (state.baselineFilter === "fixed" && state.selectedBaselineId) {
+  if (state.filters.baselineFilter === "fixed" && state.baseline.selectedBaselineId) {
     // Use scoped current fingerprints — same view the user sees (app store + Project exclusion applied).
     const scopedCurrentFps = new Set(baseViolations(state).map((v) => v.fingerprint));
 
@@ -77,35 +77,36 @@ export function activeViolations(state: AppState): Violation[] {
     let baselineVs = selectedBaselineViolations(state);
 
     // 1. App-store visibility
-    baselineVs = baselineVs.filter((v) => state.appStoreVisible || !isAppStoreModule(v, state.appStoreModules));
+    baselineVs = baselineVs.filter((v) => state.filters.appStoreVisible || !isAppStoreModule(v, state.scan.appStoreModules));
 
     // 2. Module scan scope — mirrors baseViolations + general excluded modules
-    if (state.savedExcludedModules.includes("Project")) {
-      const knownModules = new Set(state.modules.map((m) => m.name).filter((n) => n !== "Project"));
+    const savedExcludedModules = state.config.excludedModules.saved;
+    if (savedExcludedModules.includes("Project")) {
+      const knownModules = new Set(state.config.modules.map((m) => m.name).filter((n) => n !== "Project"));
       baselineVs = baselineVs.filter((v) => knownModules.has(moduleOf(v)));
     }
-    const otherExcluded = new Set(state.savedExcludedModules.filter((m) => m !== "Project"));
+    const otherExcluded = new Set(savedExcludedModules.filter((m) => m !== "Project"));
     if (otherExcluded.size > 0) {
       baselineVs = baselineVs.filter((v) => !otherExcluded.has(moduleOf(v)));
     }
 
     // 3. Rule scan scope — disabled rules were not evaluated, so their violations are not "fixed"
-    baselineVs = baselineVs.filter((v) => state.linterConfig[v.ruleId]?.enabled !== false);
+    baselineVs = baselineVs.filter((v) => state.config.linterConfig.saved[v.ruleId]?.enabled !== false);
 
     return baselineVs.filter((v) => !scopedCurrentFps.has(v.fingerprint));
   }
 
-  const ex = excludedFingerprintSet(state.exclusions);
+  const ex = excludedFingerprintSet(state.config.exclusions);
   let vs = baseViolations(state).filter((v) => !ex.has(v.fingerprint));
-  if (state.uncommittedFilterActive && state.uncommittedAvailable) {
+  if (state.filters.uncommittedFilterActive && state.filters.uncommittedAvailable) {
     vs = vs.filter((v) => {
-      const qnMatch = state.uncommittedQualifiedNames.size > 0
-        && state.uncommittedQualifiedNames.has(v.documentQualifiedName.toLowerCase());
-      const idMatch = !!v.documentId && state.uncommittedDocumentIds.has(v.documentId.toLowerCase());
+      const qnMatch = state.filters.uncommittedQualifiedNames.size > 0
+        && state.filters.uncommittedQualifiedNames.has(v.documentQualifiedName.toLowerCase());
+      const idMatch = !!v.documentId && state.filters.uncommittedDocumentIds.has(v.documentId.toLowerCase());
       return qnMatch || idMatch;
     });
   }
-  if (state.baselineFilter === "new" && state.selectedBaselineId) {
+  if (state.filters.baselineFilter === "new" && state.baseline.selectedBaselineId) {
     const baselineFps = baselineFingerprintSet(state);
     vs = vs.filter((v) => !baselineFps.has(v.fingerprint));
   }

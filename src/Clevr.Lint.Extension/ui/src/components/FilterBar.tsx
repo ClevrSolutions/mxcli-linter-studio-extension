@@ -11,27 +11,27 @@ export function FilterBar() {
   const state = useAppState();
   const dispatch = useAppDispatch();
 
-  const base = activeViolations({ ...state, baselineFilter: null });
-  const asCount = base.filter((v) => isAppStoreModule(v, state.appStoreModules)).length;
-  const changedCount = state.uncommittedAvailable
+  const base = activeViolations({ ...state, filters: { ...state.filters, baselineFilter: null } });
+  const asCount = base.filter((v) => isAppStoreModule(v, state.scan.appStoreModules)).length;
+  const changedCount = state.filters.uncommittedAvailable
     ? base.filter((v) => {
-        const qnMatch = state.uncommittedQualifiedNames.size > 0
-          && state.uncommittedQualifiedNames.has(v.documentQualifiedName.toLowerCase());
-        const idMatch = !!v.documentId && state.uncommittedDocumentIds.has(v.documentId.toLowerCase());
+        const qnMatch = state.filters.uncommittedQualifiedNames.size > 0
+          && state.filters.uncommittedQualifiedNames.has(v.documentQualifiedName.toLowerCase());
+        const idMatch = !!v.documentId && state.filters.uncommittedDocumentIds.has(v.documentId.toLowerCase());
         return qnMatch || idMatch;
       }).length
     : 0;
 
-  const hasBaseline = state.baselines.length > 0 && state.scanHasRun;
+  const hasBaseline = state.baseline.baselines.length > 0 && state.scan.scanHasRun;
 
-  const newCount = hasBaseline ? activeViolations({ ...state, baselineFilter: "new" }).length : 0;
-  const fixedCount = hasBaseline ? activeViolations({ ...state, baselineFilter: "fixed" }).length : 0;
+  const newCount = hasBaseline ? activeViolations({ ...state, filters: { ...state.filters, baselineFilter: "new" } }).length : 0;
+  const fixedCount = hasBaseline ? activeViolations({ ...state, filters: { ...state.filters, baselineFilter: "fixed" } }).length : 0;
   const allCount = base.length;
 
-  const selectedBaseline = state.baselines.find((b) => b.id === state.selectedBaselineId);
+  const selectedBaseline = state.baseline.baselines.find((b) => b.id === state.baseline.selectedBaselineId);
   const savedAgo = selectedBaseline ? relativeTime(new Date(selectedBaseline.savedAt).getTime()) : "";
 
-  if (asCount === 0 && !state.uncommittedAvailable && !hasBaseline) return null;
+  if (asCount === 0 && !state.filters.uncommittedAvailable && !hasBaseline) return null;
 
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-3 text-[12px]">
@@ -42,20 +42,20 @@ export function FilterBar() {
         >
           <input
             type="checkbox"
-            checked={state.appStoreVisible}
+            checked={state.filters.appStoreVisible}
             onChange={() => dispatch({ type: "TOGGLE_APPSTORE" })}
           />
           <span>Marketplace modules ({asCount})</span>
         </label>
       )}
-      {state.uncommittedAvailable && (
+      {state.filters.uncommittedAvailable && (
         <label
           className="flex items-center gap-1.5 cursor-pointer select-none"
           title="Show only improvements in documents that have uncommitted Git changes."
         >
           <input
             type="checkbox"
-            checked={state.uncommittedFilterActive}
+            checked={state.filters.uncommittedFilterActive}
             onChange={() => dispatch({ type: "TOGGLE_UNCOMMITTED_FILTER" })}
           />
           <span>Limit to uncommitted ({changedCount})</span>
@@ -66,11 +66,11 @@ export function FilterBar() {
           <span className="text-clevr-muted whitespace-nowrap">vs baseline:</span>
           <select
             className="border border-clevr-border rounded px-2 py-0.5 text-[12px] bg-white outline-none focus:border-clevr-accent"
-            value={state.selectedBaselineId ?? ""}
+            value={state.baseline.selectedBaselineId ?? ""}
             onChange={(e) => dispatch({ type: "SELECT_BASELINE", id: e.target.value })}
             title="Select which baseline to compare against"
           >
-            {state.baselines.map((b) => (
+            {state.baseline.baselines.map((b) => (
               <option key={b.id} value={b.id}>
                 {relativeTime(new Date(b.savedAt).getTime())}
                 {b.gitRevision ? ` (${b.gitRevision})` : ""}
@@ -82,7 +82,7 @@ export function FilterBar() {
             className="bg-white border border-clevr-border rounded px-1.5 py-0.5 text-[14px] text-clevr-muted cursor-pointer hover:border-sev-critical hover:text-sev-critical"
             title={`Delete baseline from ${savedAgo}`}
             onClick={() => {
-              if (state.selectedBaselineId) post("DeleteBaseline", { id: state.selectedBaselineId });
+              if (state.baseline.selectedBaselineId) post("DeleteBaseline", { id: state.baseline.selectedBaselineId });
             }}
           >
             ×
@@ -90,14 +90,14 @@ export function FilterBar() {
           <div className="flex border border-clevr-border rounded overflow-hidden">
             <button
               type="button"
-              className={`${segBase}${!state.baselineFilter ? ` ${segActive}` : ""}`}
+              className={`${segBase}${!state.filters.baselineFilter ? ` ${segActive}` : ""}`}
               onClick={() => dispatch({ type: "SET_BASELINE_FILTER", filter: null })}
             >
               All ({allCount})
             </button>
             <button
               type="button"
-              className={`${segBase}${state.baselineFilter === "new" ? ` ${segActive}` : ""}`}
+              className={`${segBase}${state.filters.baselineFilter === "new" ? ` ${segActive}` : ""}`}
               onClick={() => dispatch({ type: "SET_BASELINE_FILTER", filter: "new" })}
               title="Show only violations introduced since the baseline"
             >
@@ -105,7 +105,7 @@ export function FilterBar() {
             </button>
             <button
               type="button"
-              className={`${segBase}${state.baselineFilter === "fixed" ? ` ${segActive}` : ""}`}
+              className={`${segBase}${state.filters.baselineFilter === "fixed" ? ` ${segActive}` : ""}`}
               onClick={() => dispatch({ type: "SET_BASELINE_FILTER", filter: "fixed" })}
               title="Show violations that were in the baseline but are now resolved"
             >

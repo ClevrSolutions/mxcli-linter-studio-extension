@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useAppDispatch, useAppState } from "../context/AppContext";
 
 export function Toast() {
-  const { toast } = useAppState();
+  const { ui: { toast } } = useAppState();
   const dispatch = useAppDispatch();
   const [visible, setVisible] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);

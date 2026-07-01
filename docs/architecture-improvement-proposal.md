@@ -19,7 +19,7 @@ it disappear (pass-through, not earning its keep).
 |---|-----------|----------|--------|
 | 1 | Collapse the message dispatcher into per-domain coordinators | Strong | **Partially implemented** — `ExclusionCoordinator` done (commit `30a1d96`). `NavigationCoordinator`, `LinterConfigCoordinator`, `SettingsCoordinator`, `ScanCoordinator` remain. |
 | 2 | Give rule suppression one seam instead of two | Strong | **Resolved** — see below, no `FilterPolicy` built |
-| 3 | Split the AppState bucket into domain slices | Strong | Not started |
+| 3 | Split the AppState bucket into domain slices | Strong | **Implemented** |
 | 4 | Give ChangedElementsResolver a pure diff-planning seam | Worth exploring | Not started |
 | 5 | Make document-type resolution compositional | Worth exploring | Not started (folds into candidate #1's `NavigationCoordinator`) |
 | 6 | Replace three copy-pasted stores with one generic project store | Speculative | Not started |
@@ -255,15 +255,58 @@ per field instead of once (`linterConfig`/`pendingConfig` vs.
 `savedExcludedModules`/`pendingExcludedModules` each have their own ad hoc
 "has this changed" logic).
 
-**Solution:** split `AppState` into slices (`ScanState`, `ConfigState`,
-`FilterState`, `UIState`), each with its own reducer, plus a shared
-`Draft<T>` abstraction for the saved/pending pattern so "is this changed" /
-"commit" / "reset" are written once instead of per-field.
+**Solution, as implemented (2026-07-01, resolved via grilling):** `AppState`
+is now `{ scan: ScanState, config: ConfigState, filters: FilterState,
+baseline: BaselineState, ui: UIState }` — five slices, not four; grilling
+surfaced that `baselines`/`selectedBaselineId` (list + selection + filter
+interaction) didn't force-fit into Scan or Filters without becoming a
+sub-concern of a slice it isn't really about, so it got its own
+`BaselineState`. `exclusions` landed in `ConfigState` (same lifecycle as
+`linterConfig` — loaded once, edited via Settings). `appStoreVisible` and the
+`uncommitted*` fields landed in `FilterState` (same family as
+`categoryEnabled`/`severityEnabled` — visibility toggles that gate which
+violations show).
 
-**Not yet designed via grilling.** This is independent of the C#-side
-candidates (#1, #2) and could be tackled in parallel by a different session,
-though landing `LinterConfigCoordinator` first would clarify the C#-side
-config shape this slice needs to mirror.
+Key design decisions from grilling:
+- **One React Context, not four.** `useAppState()`/`useAppDispatch()` are
+  unchanged; `AppState` is just nested now. A four-Context split was
+  considered and rejected — nothing in this codebase needs selective
+  re-rendering, and `filters.ts`'s `activeViolations()`/`baseViolations()`
+  already read across every slice's fields in one call, which would have
+  meant threading multiple hooks through those functions for no payoff.
+- **One composed reducer, not four Contexts' worth of reducers.** Each slice
+  lives in its own file under `context/slices/` (`scanSlice.ts`,
+  `configSlice.ts`, `filterSlice.ts`, `baselineSlice.ts`, `uiSlice.ts`) with
+  its own `State` type, initial state, action union, and reducer function.
+  `AppReducer.ts` shrank to the composed `AppState`/`AppAction` types and a
+  ~15-line top-level `appReducer` that calls all five sub-reducers per
+  action (combineReducers-style) — each sub-reducer no-ops (returns the same
+  state) on action types it doesn't own.
+- **Cross-slice actions are handled independently in each owning
+  sub-reducer**, not specially routed. A handful of actions touch two slices
+  (`SCAN_FINISHED` sets Scan's streaming/progress AND triggers Baseline's
+  auto-select; `SCAN_ERROR` clears Scan's progress AND sets UI's toast;
+  `SHOW_SETTINGS`/`HIDE_SETTINGS` toggle UI's `settingsVisible` AND start/cancel
+  Config's drafts; `SELECT_BASELINE` sets Baseline's `selectedBaselineId` AND
+  clears Filter's `baselineFilter`). None of these needed one slice to read
+  another slice's data to compute its own update, so no cross-slice
+  coordination layer was needed beyond "both sub-reducers see the action."
+- **`Draft<T> = { saved: T; pending: T }`** (`context/draft.ts`) plus four
+  free functions (`startEdit`, `cancelEdit`, `commit`, `editPending`) —
+  deliberately not a higher-order reducer, since generic action dispatch
+  would have needed a field-targeting mechanism this codebase's action
+  design doesn't otherwise have. `ConfigState.linterConfig` and
+  `ConfigState.excludedModules` are now `Draft<...>` instead of four
+  separate saved/pending fields with hand-rolled show/hide/commit logic
+  duplicated per field.
+- **Migration was one atomic change, not incremental with a shim.** Changing
+  `AppState`'s shape made `tsc` fail loudly on every stale flat-field access
+  across the 14 consumer components; each was fixed until the build was
+  green, with no temporary flattening shim. Given this reducer has zero
+  automated test coverage, the compiler was the safety net.
+
+Fields kept as-is without further cleanup during this pass: `scanStartMs`
+(dead — set but never read, pre-existing, out of scope for this candidate).
 
 ---
 

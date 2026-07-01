@@ -52,8 +52,8 @@ export function Settings() {
   }, []);
 
   const hasChanges = isPendingChanged(
-    state.pendingConfig, state.linterConfig,
-    state.pendingExcludedModules, state.savedExcludedModules,
+    state.config.linterConfig.pending, state.config.linterConfig.saved,
+    state.config.excludedModules.pending, state.config.excludedModules.saved,
   );
 
   function updateRule(ruleId: string, patch: Partial<LinterConfigRule>) {
@@ -69,7 +69,7 @@ export function Settings() {
   }
 
   function deselectAllModules() {
-    dispatch({ type: "SET_EXCLUDED_MODULES", modules: state.modules.map((m) => m.name) });
+    dispatch({ type: "SET_EXCLUDED_MODULES", modules: state.config.modules.map((m) => m.name) });
   }
 
   function excludeAllMarketplace() {
@@ -90,7 +90,7 @@ export function Settings() {
 
   function save() {
     const rules: Record<string, LinterConfigRule> = {};
-    for (const [ruleId, cfg] of Object.entries(state.pendingConfig)) {
+    for (const [ruleId, cfg] of Object.entries(state.config.linterConfig.pending)) {
       if (cfg.enabled === false || (cfg.severity && cfg.severity !== "inherit")) {
         rules[ruleId] = {
           enabled: cfg.enabled === false ? false : undefined,
@@ -98,15 +98,15 @@ export function Settings() {
         };
       }
     }
-    post("SaveLinterConfig", { rules, excludedModules: state.pendingExcludedModules });
-    dispatch({ type: "SET_LINTER_CONFIG", config: state.pendingConfig, excludedModules: state.pendingExcludedModules });
+    post("SaveLinterConfig", { rules, excludedModules: state.config.excludedModules.pending });
+    dispatch({ type: "SET_LINTER_CONFIG", config: state.config.linterConfig.pending, excludedModules: state.config.excludedModules.pending });
   }
 
-  const ruleIds = Object.keys(state.ruleNames).sort();
+  const ruleIds = Object.keys(state.scan.ruleNames).sort();
 
   const byCategory = new Map<string, string[]>();
   for (const ruleId of ruleIds) {
-    const cat = displayCategory(ruleId, state.ruleCategories);
+    const cat = displayCategory(ruleId, state.scan.ruleCategories);
     if (!byCategory.has(cat)) byCategory.set(cat, []);
     byCategory.get(cat)!.push(ruleId);
   }
@@ -116,10 +116,10 @@ export function Settings() {
     ...(byCategory.has("Other") ? ["Other"] : []),
   ];
 
-  const isConfigTab = state.settingsActiveTab === "configuration" || state.settingsActiveTab === "sources" || state.settingsActiveTab === "about";
+  const isConfigTab = state.ui.settingsActiveTab === "configuration" || state.ui.settingsActiveTab === "sources" || state.ui.settingsActiveTab === "about";
 
   const tabBtn = (tab: string, label: string) => {
-    const active = state.settingsActiveTab === tab;
+    const active = state.ui.settingsActiveTab === tab;
     return (
       <button
         key={tab}
@@ -144,7 +144,7 @@ export function Settings() {
         Excluded modules are skipped on the next scan. Changes are written to{" "}
         <code>lint-config.yaml</code> in your project directory.
       </p>
-      {state.modules.length === 0 ? (
+      {state.config.modules.length === 0 ? (
         <p className={settingsEmpty}>No modules found — open a project in Studio Pro.</p>
       ) : (
         <table className={tableBase}>
@@ -154,9 +154,9 @@ export function Settings() {
               <th className={`${thCell} w-[80px]`}>
                 <div className="flex items-center gap-1">
                   <span>Marketplace</span>
-                  {state.modules.some((m) => m.fromMarketplace) && (
+                  {state.config.modules.some((m) => m.fromMarketplace) && (
                     <div className="flex items-center gap-1 ml-1 text-[11px]">
-                      {state.modules.filter((m) => m.fromMarketplace).every((m) => state.pendingExcludedModules.includes(m.name))
+                      {state.config.modules.filter((m) => m.fromMarketplace).every((m) => state.config.excludedModules.pending.includes(m.name))
                         ? <button type="button" className={bulkBtn} onClick={includeAllMarketplace}>Include all</button>
                         : <button type="button" className={bulkBtn} onClick={excludeAllMarketplace}>Exclude all</button>
                       }
@@ -177,8 +177,8 @@ export function Settings() {
             </tr>
           </thead>
           <tbody>
-            {state.modules.map((module) => {
-              const isExcluded = state.pendingExcludedModules.includes(module.name);
+            {state.config.modules.map((module) => {
+              const isExcluded = state.config.excludedModules.pending.includes(module.name);
               return (
                 <tr key={module.name} className={`cursor-pointer select-none hover:bg-clevr-hover ${isExcluded ? "opacity-50" : ""}`} onClick={() => toggleModule(module.name)}>
                   <td className={`${tdCell} font-medium`}>{module.name}</td>
@@ -248,8 +248,8 @@ export function Settings() {
               </thead>
               <tbody>
                 {rules.map((ruleId) => {
-                  const name = state.ruleNames[ruleId] ?? "";
-                  const cfg = state.pendingConfig[ruleId] ?? {};
+                  const name = state.scan.ruleNames[ruleId] ?? "";
+                  const cfg = state.config.linterConfig.pending[ruleId] ?? {};
                   const isEnabled = cfg.enabled !== false;
                   const severity = cfg.severity ?? "inherit";
 
@@ -333,18 +333,18 @@ export function Settings() {
         {tabBtn("about", "About")}
       </div>
 
-      {state.settingsActiveTab === "modules" && moduleSection}
-      {state.settingsActiveTab === "rules" && rulesContent}
-      {state.settingsActiveTab === "configuration" && <ConfigurationTab />}
-      {state.settingsActiveTab === "sources" && <RuleSourcesTab />}
-      {state.settingsActiveTab === "about" && <AboutTab />}
+      {state.ui.settingsActiveTab === "modules" && moduleSection}
+      {state.ui.settingsActiveTab === "rules" && rulesContent}
+      {state.ui.settingsActiveTab === "configuration" && <ConfigurationTab />}
+      {state.ui.settingsActiveTab === "sources" && <RuleSourcesTab />}
+      {state.ui.settingsActiveTab === "about" && <AboutTab />}
 
       {infoRuleId && (
         <RuleInfoDialog
           ruleId={infoRuleId}
-          name={state.ruleNames[infoRuleId] ?? ""}
-          description={state.ruleDescriptions[infoRuleId] ?? ""}
-          starContent={state.ruleStarContent[infoRuleId]}
+          name={state.scan.ruleNames[infoRuleId] ?? ""}
+          description={state.scan.ruleDescriptions[infoRuleId] ?? ""}
+          starContent={state.scan.ruleStarContent[infoRuleId]}
           onClose={() => setInfoRuleId(null)}
         />
       )}

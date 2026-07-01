@@ -6,7 +6,7 @@ import { LINT_CATEGORIES } from "../constants";
 import { excludedView } from "./exclusions";
 
 function projectName(state: AppState): string {
-  const wd = (state.meta.workingDirectory ?? "").replace(/[\\/]+$/, "");
+  const wd = (state.scan.meta.workingDirectory ?? "").replace(/[\\/]+$/, "");
   const seg = wd.split(/[\\/]/).filter(Boolean);
   return seg.length ? seg[seg.length - 1]! : "Mendix project";
 }
@@ -19,14 +19,14 @@ export function buildReportHtml(state: AppState): string {
   const proj = projectName(state);
 
   const categoryRows = LINT_CATEGORIES.map((c) => {
-    const count = reportViolations.filter((v) => displayCategory(v, state.ruleCategories) === c).length;
+    const count = reportViolations.filter((v) => displayCategory(v, state.scan.ruleCategories) === c).length;
     return `<div class="lint-countrow"><span class="label">${c}</span><span class="count">${count}</span></div>`;
   }).join("\n");
 
   const catHtml = `<div class="lint-card"><h3>Improvements per category</h3>${categoryRows}<div class="lint-countrow lint-total"><span class="label">Total</span><span class="count">${reportViolations.length}</span></div></div>`;
 
-  const logoHtml = state.logoDataUri
-    ? `<img class="lint-logo" src="${state.logoDataUri}" alt="CLEVR" />`
+  const logoHtml = state.ui.logoDataUri
+    ? `<img class="lint-logo" src="${state.ui.logoDataUri}" alt="CLEVR" />`
     : "";
 
   return `<!doctype html>
@@ -52,7 +52,7 @@ body { margin: 16px; max-width: 1200px; }
 </div>
 <div class="lint-summary lint-summary-3">${catHtml}</div>
 ${LINT_CATEGORIES.map((c) => {
-  const items = reportViolations.filter((v) => displayCategory(v, state.ruleCategories) === c);
+  const items = reportViolations.filter((v) => displayCategory(v, state.scan.ruleCategories) === c);
   if (!items.length) return "";
   return buildCategoryHtml(c, items, state);
 }).join("\n")}
@@ -79,7 +79,7 @@ function buildCategoryHtml(category: string, items: Violation[], state: AppState
 
   const rulesHtml = rules.map(({ rule, vs }) => {
     const sev = rule.severity ?? "";
-    const name = state.ruleNames[rule.ruleId] ?? "";
+    const name = state.scan.ruleNames[rule.ruleId] ?? "";
 const instancesHtml = vs.map((v) => {
       const where = v.elementName
         ? `${esc(v.documentType)}: <span class="qname">${esc(v.documentQualifiedName)}</span> › <span class="elem">${esc(v.elementName)}</span>`
@@ -113,7 +113,7 @@ function buildExcludedHtml(state: AppState): string {
   const ev = excludedView(state);
   if (!ev.groups.length) return "";
   const groupsHtml = ev.groups.map((g) => {
-    const name = state.ruleNames[g.ruleId] ?? "";
+    const name = state.scan.ruleNames[g.ruleId] ?? "";
     const entriesHtml = g.entries.map((e) => {
       const where = e.exclusion.elementName
         ? `${esc(e.exclusion.documentQualifiedName)} › ${esc(e.exclusion.elementName)}`

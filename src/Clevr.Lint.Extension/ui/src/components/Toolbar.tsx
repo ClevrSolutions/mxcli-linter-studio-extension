@@ -30,23 +30,23 @@ export function Toolbar() {
     post("ExportHtml", { html });
   }
 
-  if (state.settingsVisible) return null;
+  if (state.ui.settingsVisible) return null;
 
-  const statusText = state.scanStreaming
-    ? (state.scanProgress ? `${state.scanProgress.label}` : "Analyzing…")
-    : state.scanHasRun
-      ? `${state.violations.length} improvement${state.violations.length !== 1 ? "s" : ""} · ${relativeTime(state.scanCompletedAt!)}`
+  const statusText = state.scan.scanStreaming
+    ? (state.scan.scanProgress ? `${state.scan.scanProgress.label}` : "Analyzing…")
+    : state.scan.scanHasRun
+      ? `${state.scan.violations.length} improvement${state.scan.violations.length !== 1 ? "s" : ""} · ${relativeTime(state.scan.scanCompletedAt!)}`
       : "No scan yet";
 
   return (
     <div className="flex gap-2 items-center my-2 mb-[14px] flex-wrap">
       <span
         className="text-[12px] text-clevr-muted mr-1"
-        title={state.scanStreaming ? "Scan in progress" : state.scanHasRun ? "Last scan result" : "Run a scan to see improvements"}
+        title={state.scan.scanStreaming ? "Scan in progress" : state.scan.scanHasRun ? "Last scan result" : "Run a scan to see improvements"}
       >
         {statusText}
       </span>
-      {state.scanStreaming && (
+      {state.scan.scanStreaming && (
         <>
           <span className="lint-spinner" aria-label="Scanning…" />
           <button
@@ -62,23 +62,23 @@ export function Toolbar() {
       <button
         type="button"
         className={btnPrimary}
-        disabled={state.scanStreaming}
+        disabled={state.scan.scanStreaming}
         title="Scan: catalog rules and mxcli's own lint rules."
         onClick={() => startScan()}
       >
         Scan
       </button>
-      {hasAnything && !state.scanStreaming && (
+      {hasAnything && !state.scan.scanStreaming && (
         <button type="button" className={btnSecondary} onClick={exportReport}>
           Export
         </button>
       )}
-      {state.scanHasRun && !state.scanStreaming && (
+      {state.scan.scanHasRun && !state.scan.scanStreaming && (
         <button
           type="button"
           className={btnSecondary}
           title="Save the current scan result as a baseline. Future scans highlight only new or fixed violations."
-          onClick={() => post("SaveBaseline", { violations: state.violations, savedAt: Date.now() })}
+          onClick={() => post("SaveBaseline", { violations: state.scan.violations, savedAt: Date.now() })}
         >
           Save Baseline
         </button>
@@ -87,7 +87,7 @@ export function Toolbar() {
       <button
         type="button"
         className={btnSecondary}
-        disabled={state.scanStreaming}
+        disabled={state.scan.scanStreaming}
         title="Rule settings — enable/disable rules and override severity"
         onClick={() => dispatch({ type: "SHOW_SETTINGS" })}
       >

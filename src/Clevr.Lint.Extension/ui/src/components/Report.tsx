@@ -7,11 +7,11 @@ import { ExcludedSection } from "./ExcludedSection";
 
 export function Report() {
   const state = useAppState();
-  const q = state.filterQuery.trim().toLowerCase();
-  const isFixed = state.baselineFilter === "fixed";
+  const q = state.filters.filterQuery.trim().toLowerCase();
+  const isFixed = state.filters.baselineFilter === "fixed";
 
   const all = activeViolations(state).filter((v) =>
-    passesFilters(v, q, state.categoryEnabled, state.severityEnabled, state.moduleFilterEnabled, state.ruleNames, state.ruleCategories)
+    passesFilters(v, q, state.filters.categoryEnabled, state.filters.severityEnabled, state.filters.moduleFilterEnabled, state.scan.ruleNames, state.scan.ruleCategories)
   );
 
   return (
@@ -19,17 +19,17 @@ export function Report() {
       <SummaryCards />
       {all.length === 0 ? (
         <div className="text-clevr-muted italic py-4">
-          {state.scanStreaming
+          {state.scan.scanStreaming
             ? "Scanning — results will appear as they are found…"
-            : !state.scanHasRun
+            : !state.scan.scanHasRun
               ? "Run a scan to see improvements."
-              : state.violations.length === 0
+              : state.scan.violations.length === 0
                 ? "No improvements found — great work!"
                 : "No improvements match the current filter."}
         </div>
       ) : (
         LINT_CATEGORIES.map((c) => {
-          const items = all.filter((v) => displayCategory(v, state.ruleCategories) === c);
+          const items = all.filter((v) => displayCategory(v, state.scan.ruleCategories) === c);
           return items.length ? <CategoryGroup key={c} category={c} items={items} isFixed={isFixed} /> : null;
         })
       )}

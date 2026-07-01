@@ -96,6 +96,32 @@ dotnet run --project src/Clevr.Lint.TestHarness -- --serve "C:\Mendix\AcrToLintT
 
 Steps 3 and 4 require `C:\Mendix\AcrToLintTest-main` to exist on this machine. The test harness reads the extension DLLs from `dist\clevrlint` (Release build written by `Pack-Dist.ps1`) when a projectDir is passed. If the harness is already running, stop it with Ctrl+C before relaunching.
 
+## Validating UI changes with Playwright
+
+For React/reducer changes, don't stop at `tsc`/`npm run build` passing — that only proves the types line up, not that the app renders or behaves correctly. Drive the actual UI with Playwright against the test harness:
+
+```powershell
+# One-time setup (already installed as a devDependency in ui/)
+cd src/Clevr.Lint.Extension/ui
+npm install -D playwright
+npx playwright install chromium
+
+# 1. Rebuild + repack + install (see "After completing any code change" above), then
+#    start the harness in the background and wait for it to be ready
+dotnet run --project src/Clevr.Lint.TestHarness -- --serve "C:\Mendix\AcrToLintTest-main"
+#   (from another shell) poll http://localhost:5174/index until it responds
+
+# 2. From src/Clevr.Lint.Extension/ui, run a Playwright script (plain Node, not @playwright/test)
+#    that launches chromium, navigates to http://localhost:5174/index, drives the flow
+#    that touches your change (click Scan, toggle filters, open Settings/tabs, toggle a
+#    rule or module checkbox), and asserts on rendered content — plus logs every
+#    `console` "error" event and `pageerror`. Zero console errors is the bar to clear.
+#
+# 3. Stop the harness (Ctrl+C, or kill the background process) when done.
+```
+
+Playwright must run from inside `src/Clevr.Lint.Extension/ui` (not repo root) so Node resolves the locally installed `playwright` package. There's no committed test file for this — write a throwaway script per session scoped to whatever you changed (e.g. if you touched the reducer/AppState shape, exercise every slice: a scan, a filter toggle, and a Settings save/cancel).
+
 ## Common tasks
 
 **Add a new rule:** implement the rule logic in `Clevr.Lint.Normalizer` (pure C#, no Mendix dependency), add a unit test, then wire the result into `LintScanService`. The UI renders any `Violation[]` automatically — no UI changes needed for a new rule.

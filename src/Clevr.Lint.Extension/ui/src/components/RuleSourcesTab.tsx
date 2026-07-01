@@ -21,7 +21,7 @@ export function RuleSourcesTab() {
       url: trimmedUrl,
       label: newLabel.trim() || undefined,
     };
-    const updated = [...state.ruleSources, source];
+    const updated = [...state.config.ruleSources, source];
     dispatch({ type: "ADD_RULE_SOURCE", source });
     post("SaveRuleSources", { sources: updated });
     setNewUrl("");
@@ -30,7 +30,7 @@ export function RuleSourcesTab() {
   }
 
   function removeSource(id: string) {
-    const updated = state.ruleSources.filter((s) => s.id !== id);
+    const updated = state.config.ruleSources.filter((s) => s.id !== id);
     dispatch({ type: "REMOVE_RULE_SOURCE", id });
     post("SaveRuleSources", { sources: updated });
   }
@@ -90,14 +90,14 @@ export function RuleSourcesTab() {
         </p>
       )}
 
-      {state.ruleSources.length === 0 ? (
+      {state.config.ruleSources.length === 0 ? (
         <p className={settingsEmpty}>
           No rule sources added yet. Paste a GitHub tree URL above to get started.
         </p>
       ) : (
         <div className="flex flex-col gap-3">
-          {state.ruleSources.map((source) => {
-            const status = state.ruleSourceFetchStatus[source.id];
+          {state.config.ruleSources.map((source) => {
+            const status = state.config.ruleSourceFetchStatus[source.id];
             const isFetching = status?.fetching === true;
 
             return (

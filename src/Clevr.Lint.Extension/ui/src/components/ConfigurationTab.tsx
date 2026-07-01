@@ -20,7 +20,7 @@ const SOURCE_BADGE_COLORS: Record<string, string> = {
 export function ConfigurationTab() {
   const state    = useAppState();
   const dispatch = useAppDispatch();
-  const info     = state.mxcliInfo;
+  const info     = state.config.mxcliInfo;
 
   const [editMode, setEditMode] = useState(false);
   const [editPath, setEditPath] = useState("");
@@ -61,8 +61,8 @@ export function ConfigurationTab() {
     );
   }
 
-  const isDownloading = state.mxcliDownloading;
-  const progress      = state.mxcliDownloadProgress;
+  const isDownloading = state.config.mxcliDownloading;
+  const progress      = state.config.mxcliDownloadProgress;
   const downloadLabel = info.found ? "Download latest version" : "Download mxcli";
   const badgeColor    = SOURCE_BADGE_COLORS[info.source] ?? "bg-clevr-card text-clevr-muted";
 

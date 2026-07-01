@@ -51,7 +51,7 @@ const badge = "inline-block px-2 py-px rounded-full text-[11px] font-semibold bg
 
 export function AboutTab() {
   const state = useAppState();
-  const mxcliVersion = state.mxcliInfo?.version ?? null;
+  const mxcliVersion = state.config.mxcliInfo?.version ?? null;
 
   return (
     <div className="max-w-[600px]">

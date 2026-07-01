@@ -17,8 +17,8 @@ export function ExcludeRuleDialog({ rule, items, onClose }: Props) {
   const byFp = new Map<string, Violation>();
   for (const v of items) if (!byFp.has(v.fingerprint)) byFp.set(v.fingerprint, v);
   const uniqueCount = byFp.size;
-  const label = ruleName(rule, state.ruleNames)
-    ? `${rule.ruleId} (${ruleName(rule, state.ruleNames)})`
+  const label = ruleName(rule, state.scan.ruleNames)
+    ? `${rule.ruleId} (${ruleName(rule, state.scan.ruleNames)})`
     : rule.ruleId;
   const bundleNote = items.length > uniqueCount
     ? ` Some findings share a fingerprint; ${items.length} findings map to ${uniqueCount} exclusion entries.`

@@ -20,7 +20,7 @@ export function excludedView(state: AppState): ExcludedView {
   const ruleMap = new Map<string, { ruleId: string; entries: ExcludedView["groups"][number]["entries"]; findingCount: number; staleEntries: number }>();
   let matchedCount = 0;
   let staleCount = 0;
-  for (const e of state.exclusions) {
+  for (const e of state.config.exclusions) {
     const vs = byFp.get(e.fingerprint) ?? [];
     const isStale = vs.length === 0;
     if (isStale) staleCount++; else matchedCount += vs.length;

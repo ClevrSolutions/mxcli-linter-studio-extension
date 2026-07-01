@@ -24,10 +24,10 @@ export function ExcludedSection() {
           className="bg-transparent border-0 text-[12px] text-clevr-muted underline cursor-pointer p-0 hover:text-clevr-fg"
           onClick={() => dispatch({ type: "TOGGLE_SHOW_EXCLUDED" })}
         >
-          {state.showExcluded ? "Hide" : "Show"} excluded ({ev.matchedCount}{staleNote})
+          {state.filters.showExcluded ? "Hide" : "Show"} excluded ({ev.matchedCount}{staleNote})
         </button>
       </div>
-      {state.showExcluded && (
+      {state.filters.showExcluded && (
         <div className="mt-4">
           <div className="flex items-baseline gap-2 mb-2 pb-[5px] border-b-2 border-clevr-fg">
             <h2 className="text-[15px] font-semibold m-0">Excluded improvements</h2>
@@ -51,7 +51,7 @@ function ExcludedRuleGroup({ g }: { g: ExclusionRuleGroup }) {
   const state = useAppState();
   const dispatch = useAppDispatch();
   const [showConfirm, setShowConfirm] = useState(false);
-  const name = ruleName({ ruleId: g.ruleId, kind: "mxcli", category: "", severity: "", documentType: "", documentQualifiedName: "", reason: "", fingerprint: "" }, state.ruleNames);
+  const name = ruleName({ ruleId: g.ruleId, kind: "mxcli", category: "", severity: "", documentType: "", documentQualifiedName: "", reason: "", fingerprint: "" }, state.scan.ruleNames);
   const staleNote = g.staleEntries ? ` · ${g.staleEntries} stale` : "";
 
   function handleRemoveAll() {
@@ -96,8 +96,8 @@ function ExcludedRuleGroup({ g }: { g: ExclusionRuleGroup }) {
         >
           <div className="flex items-center gap-2 flex-wrap mb-1">
             <span className="font-semibold font-mono text-[12px]">{entry.exclusion.ruleId}</span>
-            {state.ruleNames[entry.exclusion.ruleId] && (
-              <span className="text-[12px] text-clevr-muted">{state.ruleNames[entry.exclusion.ruleId]}</span>
+            {state.scan.ruleNames[entry.exclusion.ruleId] && (
+              <span className="text-[12px] text-clevr-muted">{state.scan.ruleNames[entry.exclusion.ruleId]}</span>
             )}
             {(entry.exclusion.elementName
               ? `${entry.exclusion.documentQualifiedName} › ${entry.exclusion.elementName}`

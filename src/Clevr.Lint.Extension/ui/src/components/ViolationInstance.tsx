@@ -20,7 +20,7 @@ export function ViolationInstance({ rule, v, interactive = true, isFixed = false
   const [showExclude, setShowExclude] = useState(false);
 
   async function copyAiPrompt() {
-    const prompt = aiPromptForFinding(rule, v, state.ruleNames, state.ruleCategories);
+    const prompt = aiPromptForFinding(rule, v, state.scan.ruleNames, state.scan.ruleCategories);
     const ok = await copyToClipboard(prompt);
     dispatch({
       type: "SHOW_TOAST",

@@ -51,11 +51,11 @@ export function App() {
 
           <Toolbar />
 
-          {state.settingsVisible ? (
+          {state.ui.settingsVisible ? (
             <Settings />
           ) : (
             <>
-              {state.scanHasRun && (
+              {state.scan.scanHasRun && (
                 <>
                   <div className="flex gap-2 items-center my-2">
                     <input
@@ -63,7 +63,7 @@ export function App() {
                       className="flex-1 border border-clevr-border rounded px-2.5 py-1.5 text-[13px] outline-none focus:border-clevr-accent"
                       type="search"
                       placeholder="Filter by rule, document, category, severity, reason…"
-                      value={state.filterQuery}
+                      value={state.filters.filterQuery}
                       onChange={(e) => dispatch({ type: "SET_FILTER_QUERY", query: e.target.value })}
                     />
                     <button

@@ -14,8 +14,8 @@ export function ExcludeDialog({ v, onClose }: Props) {
   const state = useAppState();
   const dispatch = useAppDispatch();
   const shared = sharedFingerprintCount(state, v);
-  const label = ruleName(v, state.ruleNames)
-    ? `${v.ruleId} (${ruleName(v, state.ruleNames)})`
+  const label = ruleName(v, state.scan.ruleNames)
+    ? `${v.ruleId} (${ruleName(v, state.scan.ruleNames)})`
     : v.ruleId;
   const where = v.elementName
     ? `${v.documentType} ${v.documentQualifiedName} › ${v.elementName}`

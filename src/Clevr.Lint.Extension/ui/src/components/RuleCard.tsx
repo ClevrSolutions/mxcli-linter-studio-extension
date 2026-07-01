@@ -20,13 +20,13 @@ export function RuleCard({ rule, items, interactive = true, isFixed = false }: P
   const dispatch = useAppDispatch();
   const [showExcludeRule, setShowExcludeRule] = useState(false);
   const sev = rule.severity ?? "";
-  const name = ruleName(rule, state.ruleNames);
+  const name = ruleName(rule, state.scan.ruleNames);
   const preview = previewText(items[0]?.reason);
 
   async function copyAiPrompt(e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
-    const prompt = aiPromptForRule(rule, items, state.ruleNames, state.ruleCategories);
+    const prompt = aiPromptForRule(rule, items, state.scan.ruleNames, state.scan.ruleCategories);
     const ok = await copyToClipboard(prompt);
     dispatch({
       type: "SHOW_TOAST",

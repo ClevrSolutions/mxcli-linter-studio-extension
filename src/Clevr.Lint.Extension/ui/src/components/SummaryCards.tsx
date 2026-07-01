@@ -18,18 +18,18 @@ const countSelected = "bg-clevr-selected shadow-[inset_2px_0_0_var(--color-clevr
 export function SummaryCards({ interactive = true }: Props) {
   const state = useAppState();
   const dispatch = useAppDispatch();
-  const q = state.filterQuery.trim().toLowerCase();
+  const q = state.filters.filterQuery.trim().toLowerCase();
   const filtered = activeViolations(state).filter((v) =>
-    passesFilters(v, q, state.categoryEnabled, state.severityEnabled, state.moduleFilterEnabled, state.ruleNames, state.ruleCategories)
+    passesFilters(v, q, state.filters.categoryEnabled, state.filters.severityEnabled, state.filters.moduleFilterEnabled, state.scan.ruleNames, state.scan.ruleCategories)
   );
 
-  const base = activeViolations({ ...state, baselineFilter: null });
+  const base = activeViolations({ ...state, filters: { ...state.filters, baselineFilter: null } });
   const moduleViolationCounts = new Map<string, number>();
   for (const v of base) {
     const m = moduleOf(v);
     if (m) moduleViolationCounts.set(m, (moduleViolationCounts.get(m) ?? 0) + 1);
   }
-  const moduleRows = state.modules
+  const moduleRows = state.config.modules
     .map(({ name }) => ({ name, count: moduleViolationCounts.get(name) ?? 0 }))
     .sort((a, b) => a.name.localeCompare(b.name));
 
@@ -37,7 +37,7 @@ export function SummaryCards({ interactive = true }: Props) {
   const [sevExpanded, setSevExpanded] = useState(false);
   const [modExpanded, setModExpanded] = useState(false);
 
-  const gridCols = state.modules.length >= 2 ? "grid-cols-3" : "grid-cols-2";
+  const gridCols = state.config.modules.length >= 2 ? "grid-cols-3" : "grid-cols-2";
 
   return (
     <div className={`grid gap-3 mb-4 max-[760px]:grid-cols-1 ${gridCols}`}>
@@ -52,8 +52,8 @@ export function SummaryCards({ interactive = true }: Props) {
         {catExpanded ? (
           <>
             {LINT_CATEGORIES.map((c) => {
-              const count = filtered.filter((v) => displayCategory(v, state.ruleCategories) === c).length;
-              const selected = state.categoryEnabled.has(c);
+              const count = filtered.filter((v) => displayCategory(v, state.scan.ruleCategories) === c).length;
+              const selected = state.filters.categoryEnabled.has(c);
               return interactive ? (
                 <div
                   key={c}
@@ -70,13 +70,13 @@ export function SummaryCards({ interactive = true }: Props) {
                 </div>
               );
             })}
-            <TotalRow count={filtered.length} streaming={state.scanStreaming} />
+            <TotalRow count={filtered.length} streaming={state.scan.scanStreaming} />
           </>
         ) : (
           <div className={countTotal}>
             <span>All</span>
             <span className="tabular-nums font-semibold min-w-[28px] text-right">
-              {state.scanStreaming ? `${filtered.length}…` : filtered.length}
+              {state.scan.scanStreaming ? `${filtered.length}…` : filtered.length}
             </span>
           </div>
         )}
@@ -94,7 +94,7 @@ export function SummaryCards({ interactive = true }: Props) {
           <>
             {severityUniverse(state).map((s) => {
               const count = filtered.filter((v) => v.severity === s).length;
-              const selected = state.severityEnabled.has(s);
+              const selected = state.filters.severityEnabled.has(s);
               const label = <span className={selected ? "font-semibold" : ""}><span className={`sev sev-${s}`}>{s || "(none)"}</span></span>;
               return interactive ? (
                 <div
@@ -112,19 +112,19 @@ export function SummaryCards({ interactive = true }: Props) {
                 </div>
               );
             })}
-            <TotalRow count={filtered.length} streaming={state.scanStreaming} />
+            <TotalRow count={filtered.length} streaming={state.scan.scanStreaming} />
           </>
         ) : (
           <div className={countTotal}>
             <span>All</span>
             <span className="tabular-nums font-semibold min-w-[28px] text-right">
-              {state.scanStreaming ? `${filtered.length}…` : filtered.length}
+              {state.scan.scanStreaming ? `${filtered.length}…` : filtered.length}
             </span>
           </div>
         )}
       </div>
 
-      {state.modules.length >= 2 && (
+      {state.config.modules.length >= 2 && (
         <div className={cardBase}>
           <h3
             className={interactive ? `${cardTitle} cursor-pointer flex justify-between items-center select-none` : cardTitle}
@@ -135,7 +135,7 @@ export function SummaryCards({ interactive = true }: Props) {
           </h3>
           {modExpanded ? (
             moduleRows.map(({ name, count }) => {
-              const selected = state.moduleFilterEnabled.has(name);
+              const selected = state.filters.moduleFilterEnabled.has(name);
               return interactive ? (
                 <div
                   key={name}
