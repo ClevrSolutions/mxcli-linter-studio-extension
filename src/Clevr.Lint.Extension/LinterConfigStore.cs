@@ -35,7 +35,14 @@ public sealed class LinterConfigStore
     public LinterConfig Load(string projectDir)
     {
         var path = ConfigPath(projectDir);
-        if (!File.Exists(path)) return new LinterConfig { ExcludedModules = ["System"] };
+        if (!File.Exists(path))
+        {
+            // mxcli reads this file directly, so the default must exist on disk
+            // before the first scan, not just live in memory here.
+            var defaults = new LinterConfig { ExcludedModules = ["System"] };
+            Save(projectDir, defaults);
+            return defaults;
+        }
         try
         {
             var yaml = File.ReadAllText(path);
@@ -75,6 +82,9 @@ public sealed class LinterConfigStore
 
     private sealed class RawConfig
     {
+        // mxcli's Go struct tag is "excludeModules" (no 'd') — the key on disk
+        // must match exactly, since mxcli reads this file directly.
+        [YamlMember(Alias = "excludeModules")]
         public List<string>? ExcludedModules { get; set; }
         public Dictionary<string, RawRule?>? Rules { get; set; }
     }

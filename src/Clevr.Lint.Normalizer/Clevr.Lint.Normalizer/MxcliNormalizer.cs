@@ -3,23 +3,12 @@
 /// <summary>
 /// Pure normalizer: converts raw mxcli violations to the normalized Violation format.
 /// No process invocation, no UI, no file IO — only the mapping.
+/// Which rules/modules are reported is mxcli's own concern (it reads lint-config.yaml
+/// from the project directory directly); this class never filters.
 /// </summary>
-public sealed class MxcliNormalizer
+public static class MxcliNormalizer
 {
-    /// <summary>
-    /// mxcli rule IDs that are suppressed because a more specific rule covers the same area.
-    /// These are filtered out unconditionally so the UI never sees the duplicate.
-    /// </summary>
-    private static readonly HashSet<string> SuppressedRules = new(StringComparer.OrdinalIgnoreCase)
-    {
-        // Microflow complexity — covered by ACR_ENT_ATTRS / more specific rules
-        "QUAL003",
-        "CONV009",
-        // Entity attribute count — covered by ACR_ENT_ATTRS
-        "DESIGN001",
-    };
-
-    public IReadOnlyList<Violation> Normalize(IEnumerable<MxcliViolation> rawViolations)
+    public static IReadOnlyList<Violation> Normalize(IEnumerable<MxcliViolation> rawViolations)
     {
         ArgumentNullException.ThrowIfNull(rawViolations);
 
@@ -27,9 +16,6 @@ public sealed class MxcliNormalizer
 
         foreach (var raw in rawViolations)
         {
-            if (SuppressedRules.Contains(raw.RuleId))
-                continue;
-
             var documentQualifiedName = BuildDocumentQualifiedName(raw);
             var documentType = DocumentTypeCanonicalizer.Canonicalize(raw.DocumentType);
             var documentId = NullIfBlank(raw.DocumentId);

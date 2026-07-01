@@ -16,7 +16,7 @@ C# .NET 10 DLL loaded in-process by Studio Pro via the Extensions API.
 - **`LintScanService`** — Orchestrator. Calls mxcli, gathers findings from all data sources, normalizes, and streams batches to the UI via `PostMessage`.
 - **`ProcessRunner`** — Thin wrapper around `System.Diagnostics.Process` to run mxcli and capture output.
 - **`ExclusionStore`** — Persists user exclusions to `<project>/.clevr-lint/exclusions.json`.
-- **`LinterConfigStore`** — Persists scan settings to `lint-scan-settings.json` in the project root.
+- **`LinterConfigStore`** — Persists rule enable/severity overrides and excluded modules to `lint-config.yaml` in the project root. mxcli reads this file directly from its working directory (the project root) on every `lint` invocation, so it — not the extension — is what actually applies rule/module filtering; see the note under Normalization library below. (Separately, `lint-scan-settings.json` holds the mxcli executable path and is managed elsewhere.)
 - **`ReportExporter`** — Generates an HTML report from the current findings.
 - **`GitChangedDocumentsService`** — Identifies git-changed documents to support scoped (changed-files-only) scans.
 
@@ -24,7 +24,7 @@ C# .NET 10 DLL loaded in-process by Studio Pro via the Extensions API.
 
 Pure .NET 10 library — zero external dependencies, no Mendix API references. This is what makes the rule logic fully unit-testable in isolation.
 
-- **`MxcliNormalizer`** — Converts raw mxcli violations to `Violation[]`, applying category/severity mapping.
+- **`MxcliNormalizer`** — Converts raw mxcli violations to `Violation[]`, applying category/severity mapping. Never filters: which rules/modules are reported is entirely mxcli's decision, driven by `lint-config.yaml` (see `LinterConfigStore` above). The extension normalizes whatever mxcli returns and trusts it as the final set — the UI's own filter bar (`filters.ts`) only affects what's shown in the current view, not what was scanned.
 - **`MxcliOutputParser`** — Parses mxcli's JSON lint output.
 - **`Exclusions`** — Fingerprint-based exclusion matching.
 - **`Fingerprint`** — Computes `sha1(ruleId|documentQualifiedName|elementName)`.

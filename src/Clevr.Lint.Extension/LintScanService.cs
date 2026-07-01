@@ -10,7 +10,11 @@ namespace Clevr.Lint.Extension;
 /// Chain: load settings → run mxcli → parse JSON (MxcliOutputParser)
 /// → normalize (MxcliNormalizer) → JSON for the webview.
 ///
-/// Contains ONLY IO and wiring; no normalization logic.
+/// Contains ONLY IO and wiring; no normalization logic. Which rules/modules
+/// are reported is not this class's concern either — mxcli reads
+/// lint-config.yaml directly from the project directory (its working
+/// directory) and applies rule/module filtering itself before this class
+/// ever sees the output.
 /// </summary>
 public sealed class LintScanService
 {
@@ -122,6 +126,11 @@ public sealed class LintScanService
 
         DebugLog.Write(projectDir, $"=== Scan for improvements === projectDir='{projectDir}' | settings.ProjectPath='{settings.ProjectPath}' | fallback='{fallbackProjectDir}'");
 
+        // mxcli reads lint-config.yaml directly from projectDir; ensure it exists
+        // before the first scan so mxcli's own filtering (rules/modules) applies
+        // even if the user has never opened Settings.
+        new LinterConfigStore().Load(projectDir);
+
         var arguments = $"lint -p \"{mprFileName}\" --format json";
         var commandLine = $"\"{settings.MxcliPath}\" {arguments}";
         _log.Info($"[CLEVR Lint] {commandLine}  (cwd: {projectDir})");
@@ -141,20 +150,7 @@ public sealed class LintScanService
         try { raw = MxcliOutputParser.Parse(proc.StdOut); }
         catch (Exception parseEx) { return (null, Diagnostic($"Could not parse mxcli JSON: {parseEx.Message}", commandLine, projectDir, proc)); }
 
-        var violations = new MxcliNormalizer().Normalize(raw).ToList();
-
-        var linterConfig = new LinterConfigStore().Load(projectDir);
-        if (linterConfig.ExcludedModules.Count > 0)
-        {
-            var excluded = new HashSet<string>(linterConfig.ExcludedModules, StringComparer.Ordinal);
-            violations = violations.Where(v =>
-            {
-                var qn = v.DocumentQualifiedName;
-                var dot = qn.IndexOf('.');
-                var moduleName = dot > 0 ? qn[..dot] : qn;
-                return !excluded.Contains(moduleName);
-            }).ToList();
-        }
+        var violations = MxcliNormalizer.Normalize(raw).ToList();
 
         var catalog = LoadRuleCatalog(settings.MxcliPath, mprFileName, projectDir, ct);
         var ruleNames = catalog.ToDictionary(kv => kv.Key, kv => kv.Value.Name, StringComparer.Ordinal);

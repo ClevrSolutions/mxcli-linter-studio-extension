@@ -6,8 +6,6 @@ namespace Clevr.Lint.Normalizer.Tests;
 
 public class MxcliNormalizerTests
 {
-    private readonly MxcliNormalizer _normalizer = new();
-
     [Fact]
     public void AcrRuleId_PassesThrough_WithMxcliSeverityAndDerivedCategory()
     {
@@ -23,7 +21,7 @@ public class MxcliNormalizerTests
             Suggestion = "Split related attributes into a separate entity.",
         };
 
-        var result = _normalizer.Normalize(new[] { raw });
+        var result = MxcliNormalizer.Normalize(new[] { raw });
 
         var v = Assert.Single(result);
         Assert.Equal(ViolationKind.Mxcli, v.Kind);
@@ -35,28 +33,6 @@ public class MxcliNormalizerTests
         Assert.Equal("Entity has too many attributes.", v.Reason);
         Assert.Equal("Split related attributes into a separate entity.", v.Suggestion);
         Assert.Equal("11111111-1111-1111-1111-111111111111", v.DocumentId);
-    }
-
-    [Fact]
-    public void SuppressedRules_AreFiltered_OtherRulesPassThrough()
-    {
-        var raws = new[]
-        {
-            new MxcliViolation { RuleId = "QUAL003",      Severity = "warning", Message = "mf >25 activities", Module = "M", Document = "MF1", DocumentType = "microflow" },
-            new MxcliViolation { RuleId = "CONV009",      Severity = "info",    Message = "mf >15 activities", Module = "M", Document = "MF1", DocumentType = "microflow" },
-            new MxcliViolation { RuleId = "DESIGN001",    Severity = "warning", Message = ">10 attributes",    Module = "M", Document = "E1",  DocumentType = "entity" },
-            new MxcliViolation { RuleId = "ACR_ENT_ATTRS",Severity = "warning", Message = ">25 attributes",    Module = "M", Document = "E1",  DocumentType = "entity" },
-            new MxcliViolation { RuleId = "MPR001",       Severity = "warning", Message = "naming",            Module = "M", Document = "E2",  DocumentType = "entity" },
-        };
-
-        var result = _normalizer.Normalize(raws);
-
-        Assert.DoesNotContain(result, v => v.RuleId == "QUAL003");
-        Assert.DoesNotContain(result, v => v.RuleId == "CONV009");
-        Assert.DoesNotContain(result, v => v.RuleId == "DESIGN001");
-        Assert.Contains(result, v => v.RuleId == "ACR_ENT_ATTRS");
-        Assert.Contains(result, v => v.RuleId == "MPR001");
-        Assert.Equal(2, result.Count);
     }
 
     [Fact]
@@ -73,7 +49,7 @@ public class MxcliNormalizerTests
             DocumentId = "22222222-2222-2222-2222-222222222222",
         };
 
-        var result = _normalizer.Normalize(new[] { raw });
+        var result = MxcliNormalizer.Normalize(new[] { raw });
 
         var v = Assert.Single(result);
         Assert.Equal(ViolationKind.Mxcli, v.Kind);
@@ -97,7 +73,7 @@ public class MxcliNormalizerTests
                 DocumentType = "microflow" },
         };
 
-        var result = _normalizer.Normalize(raw);
+        var result = MxcliNormalizer.Normalize(raw);
 
         Assert.Equal(2, result.Count);
         Assert.All(result, v => Assert.Equal(ViolationKind.Mxcli, v.Kind));
@@ -124,7 +100,7 @@ public class MxcliNormalizerTests
                 Document = "Credential", DocumentType = "entity" },
         };
 
-        var result = _normalizer.Normalize(raw);
+        var result = MxcliNormalizer.Normalize(raw);
 
         var qualified = Assert.Single(result, v => v.RuleId == "ACR_UNIQ_ENT");
         Assert.Equal("Accesslog.AccesslogBankenportaal", qualified.DocumentQualifiedName);
@@ -143,7 +119,7 @@ public class MxcliNormalizerTests
             DocumentType = "entity",
         };
 
-        var v = Assert.Single(_normalizer.Normalize(new[] { raw }));
+        var v = Assert.Single(MxcliNormalizer.Normalize(new[] { raw }));
 
         var expected = Fingerprint.Compute("ACR_ENT_ATTRS", "Sales.Customer", "");
         Assert.Equal(expected, v.Fingerprint);
@@ -166,7 +142,7 @@ public class MxcliNormalizerTests
             Module = "M", Document = "D", DocumentType = engineValue,
         };
 
-        var v = Assert.Single(_normalizer.Normalize(new[] { raw }));
+        var v = Assert.Single(MxcliNormalizer.Normalize(new[] { raw }));
         Assert.Equal(expected, v.DocumentType);
     }
 
@@ -183,7 +159,7 @@ public class MxcliNormalizerTests
         """;
 
         var dtos = JsonSerializer.Deserialize<List<MxcliViolation>>(json)!;
-        var result = _normalizer.Normalize(dtos);
+        var result = MxcliNormalizer.Normalize(dtos);
 
         var v = Assert.Single(result);
         Assert.Equal(ViolationKind.Mxcli, v.Kind);
