@@ -288,8 +288,8 @@ All five coordinators from candidate #1 are now implemented. `RunCommand`
 of this candidate's coordinator work.
 
 Each step should stay buildable (`dotnet build`) and get a manual smoke pass
-in the harness (`dotnet run --project src/Clevr.Lint.TestHarness -- --serve
-"C:\Mendix\AcrToLintTest-main"`) before moving to the next coordinator.
+in the harness (`npm run dev`, or `dotnet run --project src/Clevr.Lint.TestHarness
+-- --serve --mock`) before moving to the next coordinator.
 
 ---
 

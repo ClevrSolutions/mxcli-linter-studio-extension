@@ -21,6 +21,12 @@ dist/
 *.log
 .clevr-acr/
 
+# Local dev config (personal machine paths — see lint-scan-settings.example.json)
+src/Clevr.Lint.Extension/lint-scan-settings.json
+
+# Node
+node_modules/
+
 # OS
 .DS_Store
 Thumbs.db

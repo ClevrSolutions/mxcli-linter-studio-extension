@@ -1,0 +1,13 @@
+{
+  "name": "clevr-acr-extension",
+  "private": true,
+  "scripts": {
+    "postinstall": "npm --prefix src/Clevr.Lint.Extension/ui install",
+    "build": "powershell -NoProfile -ExecutionPolicy Bypass -File Pack-Dist.ps1",
+    "test": "dotnet test src/Clevr.Lint.Normalizer/Clevr.Lint.Normalizer.Tests/Clevr.Lint.Normalizer.Tests.csproj --configuration Release --logger \"trx;LogFileName=test-results.trx\"",
+    "dev": "concurrently -n harness,vite -c blue,green \"node scripts/dev-harness.js\" \"npm --prefix src/Clevr.Lint.Extension/ui run dev\""
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.0"
+  }
+}

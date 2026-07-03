@@ -4,6 +4,33 @@ A Mendix Studio Pro 11 extension that runs **mxcli** to lint a Mendix project an
 
 ![Build & Test](https://github.com/clevr/clevr-lint-extension/actions/workflows/build-and-test.yml/badge.svg)
 
+## Install (end users)
+
+See ![Mendix Marketplace](https://marketplace.mendix.com/link/component/301023) for the released version.
+1. Download
+1. Open the CLEVR Linter extenion via the Menu > Extensions > clevrlint > CLEVR Lint
+1. Requires mxcli which can be installed trough the extension
+1. Adding lint rules from different source via extension Settings > Sources
+  1. mxcli lint comes with a set of build in rules
+  1. Add additional mxcli rules (if not already installed via mxcli init) 
+  https://github.com/mendixlabs/mxcli/tree/main/.claude/lint-rules
+  1. Add Clevr ACR replace rules
+  https://github.com/ClevrSolutions/mxcli-linter-studio-extension/tree/main/rules 
+
+
+## Usage (end users)
+
+1. Open the CLEVR Linter extenion via the Menu > Extensions > clevrlint > CLEVR Lint
+1. Go to Settings
+  1. Select the modules you would like to scan
+  1. Select the rules you would like to use
+  1. Close settings
+1. Click Scan
+1. Check your results
+1. Save as baseline
+1. Fix your issues
+1. Scan again.
+
 ## Architecture
 
 ```
@@ -24,81 +51,83 @@ mxcli (Go CLI, Apache-2.0)
 | `dist/` | Pre-built distribution package for end users |
 | `docs/` | Architecture and rules inventory |
 | `.github/workflows/` | CI: build + test on every push/PR |
+| `package.json`, `scripts/` | Root `npm run build`/`test`/`dev` wrapper commands |
 
 ## Prerequisites
 
 | Tool | Version |
 |------|---------|
 | .NET SDK | 10.0 |
-| Mendix Studio Pro | 11.x |
-| mxcli | v0.12.0 (downloaded by installer) |
+| Node.js | 20+ |
+| Mendix Studio Pro | >11.12 (only needed to run the extension for real) |
+| mxcli | v0.13.0 (downloaded extension; not needed for `npm run dev` — mock mode has canned data) |
 
-## Build & test
+## Configure your dev project (optional)
+
+By default `npm run dev` uses canned mock data — no setup needed. To scan a real Mendix project instead:
 
 ```powershell
-dotnet build src/Clevr.Lint.Normalizer/Clevr.Lint.Normalizer/Clevr.Lint.Normalizer.csproj
-dotnet build src/Clevr.Lint.Extension/Clevr.Lint.Extension.csproj
-dotnet test src/Clevr.Lint.Normalizer/Clevr.Lint.Normalizer.Tests/Clevr.Lint.Normalizer.Tests.csproj
-.\Pack-Dist.ps1   # builds UI + extension, assembles dist/
+cp src/Clevr.Lint.Extension/lint-scan-settings.example.json src/Clevr.Lint.Extension/lint-scan-settings.json
+# then edit projectPath in that file
 ```
 
-## Install (end users)
+This file is gitignored — it holds your personal machine path and is never committed.
 
-See [`dist/README.md`](dist/README.md).
-
-## Running without Studio Pro
-
-The test harness lets you develop and test the full scan + UI cycle without a Studio Pro installation.
-
-### Serve mode (full UI in a browser)
+## Build
 
 ```powershell
-dotnet run --project src/Clevr.Lint.TestHarness -- --serve "C:\Mendix\YourProject"
+npm install   # first time only — installs root tooling + UI dependencies (postinstall)
+npm run build
 ```
 
-This starts an HTTP server on `http://localhost:5174/` and opens the browser automatically. The WebView2 bridge that Studio Pro normally provides is replaced by a JavaScript shim:
+Wraps `Pack-Dist.ps1`: builds the UI, builds the extension (Release), and assembles `dist/clevrlint`.
 
-- **browser → C#**: `POST /api/message` (same message payloads as the real extension)
-- **C# → browser**: `GET /api/events` (Server-Sent Events)
-
-All features work the same as in Studio Pro: run scans, add/remove exclusions, export HTML reports, open URLs. The only limitation is that "Open Document" is unavailable — the harness prints a message instead.
-
-The `extensionDir` argument (where `lint-scan-settings.json` lives) defaults to the extension's Debug build output. Provide it as a second argument to override:
+## Test
 
 ```powershell
-dotnet run --project src/Clevr.Lint.TestHarness -- --serve "C:\Mendix\YourProject" "C:\path\to\extensionDir"
+npm run test
 ```
 
-Stop the server with **Ctrl+C**.
+Runs the Normalizer's 232 unit tests — the same command CI runs.
 
-### Hot reload (instant UI changes)
+## Develop with hot reload
 
-Run the harness and Vite dev server side-by-side. Vite proxies all `/api/*` calls to the harness while React HMR applies component changes without a page refresh.
-
-**Terminal 1 — C# harness (API):**
 ```powershell
-dotnet run --project src/Clevr.Lint.TestHarness -- --serve "C:\Mendix\YourProject"
-```
-
-**Terminal 2 — Vite dev server (HMR):**
-```powershell
-cd src/Clevr.Lint.Extension/ui
 npm run dev
 ```
 
-Open **`http://localhost:5173`** in the browser. Edits to `.tsx` / `.ts` / `.css` files appear immediately — no rebuild, no refresh needed.
+Starts the C# test harness (in mock mode, `--serve --mock`) and the Vite dev server together. Open **`http://localhost:5173`** — edits to `.tsx` / `.ts` / `.css` hot-reload instantly, and the UI shows canned violations out of the box (no mxcli or project needed).
 
-> `npm run build` produces the production bundle in `wwwroot/`. `npm run watch` runs `vite build --watch` (rebuild on save, no HMR) if you need the old workflow.
-
-### Scan-only mode (JSON to stdout)
+To point at a real project instead of mock data, set `CLEVR_DEV_PROJECT` (or configure `lint-scan-settings.json` — see above) before running:
 
 ```powershell
+$env:CLEVR_DEV_PROJECT = "C:\Mendix\YourProject"
+npm run dev
+```
+
+Stop with **Ctrl+C**.
+
+<details>
+<summary>Advanced: running the harness directly</summary>
+
+The underlying commands `npm run dev` wraps are still available for finer control:
+
+```powershell
+# Full UI in a browser, no hot reload, mock data
+dotnet run --project src/Clevr.Lint.TestHarness -- --serve --mock
+
+# Full UI against a real project
+dotnet run --project src/Clevr.Lint.TestHarness -- --serve "C:\Mendix\YourProject"
+
+# Scan-only: JSON to stdout, no browser
 dotnet run --project src/Clevr.Lint.TestHarness -- "C:\Mendix\YourProject"
 ```
 
-Runs a full scan and writes the JSON result to stdout; progress and log lines go to stderr. Useful for piping output or quick regression checks without opening a browser.
+The WebView2 bridge that Studio Pro normally provides is replaced by a JavaScript shim (`POST /api/message`, `GET /api/events` SSE). All features work the same as in Studio Pro except "Open Document" — the harness prints a message instead.
 
-## Development — UI
+</details>
+
+## Development — UI internals
 
 The React UI lives in `src/Clevr.Lint.Extension/ui/`. It is a standard Vite + React 19 + TypeScript project with no external UI library.
 
@@ -112,21 +141,6 @@ The React UI lives in `src/Clevr.Lint.Extension/ui/`. It is a standard Vite + Re
 | State | Context + Reducer (`src/context/`) |
 | Bridge | `window.chrome.webview` (WebView2 in Studio Pro; shim in dev) |
 
-### Setup
-
-```powershell
-cd src/Clevr.Lint.Extension/ui
-npm install
-```
-
-### Scripts
-
-| Script | Command | When to use |
-|--------|---------|-------------|
-| `npm run dev` | `vite` | Day-to-day UI work — Vite dev server on port 5173 with React HMR |
-| `npm run build` | `vite build` | Production bundle → `wwwroot/main.js` (required before `Pack-Dist.ps1`) |
-| `npm run watch` | `vite build --watch` | Rebuild on save without the dev server (e.g. when testing inside Studio Pro) |
-
 ### Key source files
 
 | File | Role |
@@ -139,15 +153,7 @@ npm install
 | `src/utils/filters.ts` | Pure filter logic (no React) |
 | `vite.config.ts` | Build config + dev-server proxy + webview shim injection |
 
-### Dev workflow with hot reload
-
-Run the C# harness (API) and Vite (HMR) side-by-side — see [Hot reload](#hot-reload-instant-ui-changes) above.
-
-Changes to `.tsx` / `.ts` / `.css` appear instantly in the browser at `http://localhost:5173` without a rebuild or page refresh. The webview shim is injected automatically by a Vite plugin (`apply: "serve"`) so the message bus works identically to Studio Pro.
-
-### Committing UI changes
-
-After editing the UI, run `npm run build` to regenerate `wwwroot/main.js` before committing, or run `.\Pack-Dist.ps1` which builds everything in one step.
+After editing the UI, `npm run build` (from `src/Clevr.Lint.Extension/ui`) regenerates `wwwroot/main.js` before committing — or run the root `npm run build`, which does this as part of the full package.
 
 ## Documentation
 

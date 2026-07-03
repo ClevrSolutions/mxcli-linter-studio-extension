@@ -17,11 +17,16 @@
 // scan + UI cycle without Studio Pro.
 //
 // Usage:
-//   dotnet run --project src/Clevr.Lint.TestHarness -- --serve [projectDir] [extensionDir]
+//   dotnet run --project src/Clevr.Lint.TestHarness -- --serve [--mock] [projectDir] [extensionDir]
 //
 // Opens http://localhost:5174/index in the default browser automatically.
 // The chrome.webview bridge is mocked via a JS shim: POST /api/message (browser
 // → C#) and GET /api/events (C# → browser via SSE).
+//
+// -- --mock ---------------------------------------------------------------------
+// Serves canned violation/rule data (see MockFixtures.cs) instead of invoking mxcli,
+// so the UI dev loop needs neither mxcli installed nor a real Mendix project on disk.
+// projectDir/extensionDir are unused for scanning in this mode but still accepted.
 
 using System.Collections.Concurrent;
 using System.Diagnostics;
@@ -36,8 +41,9 @@ using Clevr.Lint.Normalizer;
 using Mendix.StudioPro.ExtensionsAPI.Services;
 
 // ── arg parsing ───────────────────────────────────────────────────────────────
-bool serveMode = args.Length > 0 && args[0] == "--serve";
-var rest = serveMode ? args[1..] : args;
+bool serveMode = args.Contains("--serve");
+bool mockMode  = args.Contains("--mock");
+var rest = args.Where(a => a != "--serve" && a != "--mock").ToArray();
 
 var projectDir   = rest.Length > 0 ? rest[0] : null;
 var extensionDir = rest.Length > 1
@@ -114,7 +120,7 @@ if (!serveMode)
 }
 
 // ── serve mode ────────────────────────────────────────────────────────────────
-await RunServeModeAsync(projectDir, extensionDir);
+await RunServeModeAsync(projectDir, extensionDir, mockMode);
 return 0;
 
 static void Err(string msg) => Console.Error.WriteLine(msg);
@@ -123,7 +129,7 @@ static string Str(JsonElement el, string prop)
 
 // ── serve-mode implementation ─────────────────────────────────────────────────
 
-static async Task RunServeModeAsync(string? projectDir, string extensionDir)
+static async Task RunServeModeAsync(string? projectDir, string extensionDir, bool mockMode)
 {
     const int port = 5174;
     var baseUrl = $"http://localhost:{port}/";
@@ -152,8 +158,9 @@ static async Task RunServeModeAsync(string? projectDir, string extensionDir)
     listener.Prefixes.Add(baseUrl);
     listener.Start();
 
+    Console.Error.WriteLine($"[serve] mock mode     : {(mockMode ? "ON — canned data, no mxcli/project required" : "off")}");
     Console.Error.WriteLine($"[serve] extension dir : {extensionDir}");
-    Console.Error.WriteLine($"[serve] project dir   : {projectDir ?? "(none)"}");
+    Console.Error.WriteLine($"[serve] project dir   : {(mockMode ? "(unused in mock mode)" : projectDir ?? "(none)")}");
     Console.Error.WriteLine($"[serve] wwwroot       : {wwwroot}");
     Console.Error.WriteLine($"[serve] listening on  : {baseUrl}");
     Console.Error.WriteLine($"[serve] open          : {baseUrl}index");
@@ -182,7 +189,7 @@ static async Task RunServeModeAsync(string? projectDir, string extensionDir)
             {
                 await HandleRequestAsync(ctx, projectDir, fileService, logService,
                     exclusionCoordinator, linterConfigCoordinator, scanCoordinator, settingsCoordinator,
-                    baselineStore, projectDirResolver, wwwroot, Push, clients);
+                    baselineStore, projectDirResolver, wwwroot, Push, clients, mockMode);
             }
             catch (Exception ex) { Console.Error.WriteLine($"[serve] request error: {ex.Message}"); }
         }, cts.Token);
@@ -205,7 +212,8 @@ static async Task HandleRequestAsync(
     ProjectDirResolver projectDirResolver,
     string wwwroot,
     Action<string, string> push,
-    ConcurrentDictionary<Guid, Channel<SseEvent>> clients)
+    ConcurrentDictionary<Guid, Channel<SseEvent>> clients,
+    bool mockMode)
 {
     var req  = ctx.Request;
     var resp = ctx.Response;
@@ -277,7 +285,7 @@ static async Task HandleRequestAsync(
 
         _ = Task.Run(() => DispatchMessage(body, projectDir, fileService, logService,
             exclusionCoordinator, linterConfigCoordinator, scanCoordinator, settingsCoordinator,
-            baselineStore, projectDirResolver, push));
+            baselineStore, projectDirResolver, push, mockMode));
 
         resp.StatusCode = 204;
         resp.Close();
@@ -336,7 +344,8 @@ static void DispatchMessage(
     SettingsCoordinator settingsCoordinator,
     BaselineStore baselineStore,
     ProjectDirResolver projectDirResolver,
-    Action<string, string> push)
+    Action<string, string> push,
+    bool mockMode)
 {
     JsonObject? data;
     string message;
@@ -361,7 +370,17 @@ static void DispatchMessage(
             break;
 
         case "RunFullScan":
-            scanCoordinator.RunFullScan(new SyncProgress<ScanEvent>(ev => push(ScanMessageName(ev.Kind), ev.Data)));
+            if (mockMode)
+            {
+                push("ScanProgress", "Analyzing with mxcli… (mock)");
+                push("LintViolations", MockFixtures.BuildFullScanBatchJson());
+                push("UncommittedDocuments", MockFixtures.BuildUncommittedDocumentsJson());
+                push("ScanFinished", "");
+            }
+            else
+            {
+                scanCoordinator.RunFullScan(new SyncProgress<ScanEvent>(ev => push(ScanMessageName(ev.Kind), ev.Data)));
+            }
             break;
 
         case "RequestExclusions":
@@ -393,20 +412,27 @@ static void DispatchMessage(
             break;
 
         case "RequestRulesCatalog":
-            _ = Task.Run(() =>
+            if (mockMode)
             {
-                try
+                push("RulesCatalog", MockFixtures.BuildRulesCatalogJson());
+            }
+            else
+            {
+                _ = Task.Run(() =>
                 {
-                    var svc    = new LintScanService(fileService, logService);
-                    var result = svc.TryLoadRulesCatalog(projectDir);
-                    if (result == null) return;
-                    var payload = JsonSerializer.Serialize(
-                        new { ruleNames = result.Value.ruleNames, ruleCategories = result.Value.ruleCategories },
-                        new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
-                    push("RulesCatalog", payload);
-                }
-                catch (Exception ex) { Console.Error.WriteLine($"[serve] RulesCatalog error: {ex.Message}"); }
-            });
+                    try
+                    {
+                        var svc    = new LintScanService(fileService, logService);
+                        var result = svc.TryLoadRulesCatalog(projectDir);
+                        if (result == null) return;
+                        var payload = JsonSerializer.Serialize(
+                            new { ruleNames = result.Value.ruleNames, ruleCategories = result.Value.ruleCategories },
+                            new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+                        push("RulesCatalog", payload);
+                    }
+                    catch (Exception ex) { Console.Error.WriteLine($"[serve] RulesCatalog error: {ex.Message}"); }
+                });
+            }
             break;
 
         case "ExportHtml":

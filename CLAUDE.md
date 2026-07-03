@@ -88,10 +88,10 @@ dotnet test src/Clevr.Lint.Normalizer/Clevr.Lint.Normalizer.Tests/Clevr.Lint.Nor
 .\Pack-Dist.ps1
 
 # 3. Relaunch the test harness in serve mode (opens browser automatically)
-dotnet run --project src/Clevr.Lint.TestHarness -- --serve "C:\Mendix\AcrToLintTest-main"
+npm run dev
 ```
 
-Step 3 requires `C:\Mendix\AcrToLintTest-main` to exist on this machine. The test harness reads the extension DLLs straight from `dist\clevrlint` (Release build written by `Pack-Dist.ps1`) when a projectDir is passed — no install step needed. If the harness is already running, stop it with Ctrl+C before relaunching.
+Step 3 uses mock data by default (canned violations, no mxcli or Mendix project required). To scan a real project, either set `projectPath` in your local (gitignored) `src/Clevr.Lint.Extension/lint-scan-settings.json` — copy it from `lint-scan-settings.example.json` on first use — or set `CLEVR_DEV_PROJECT` before running `npm run dev`. If the harness is already running, stop it with Ctrl+C before relaunching.
 
 ## Validating UI changes with Playwright
 
@@ -105,7 +105,7 @@ npx playwright install chromium
 
 # 1. Rebuild + repack (see "After completing any code change" above), then
 #    start the harness in the background and wait for it to be ready
-dotnet run --project src/Clevr.Lint.TestHarness -- --serve "C:\Mendix\AcrToLintTest-main"
+dotnet run --project src/Clevr.Lint.TestHarness -- --serve --mock
 #   (from another shell) poll http://localhost:5174/index until it responds
 
 # 2. From src/Clevr.Lint.Extension/ui, run a Playwright script (plain Node, not @playwright/test)
