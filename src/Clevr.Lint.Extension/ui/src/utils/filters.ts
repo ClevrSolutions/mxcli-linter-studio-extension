@@ -54,13 +54,28 @@ export function baseViolations(state: AppState): Violation[] {
   return vs;
 }
 
+function selectedBaseline(state: AppState) {
+  return state.baseline.baselines.find((x) => x.id === state.baseline.selectedBaselineId);
+}
+
 function selectedBaselineViolations(state: AppState): Violation[] {
-  const b = state.baseline.baselines.find((x) => x.id === state.baseline.selectedBaselineId);
-  return b?.violations ?? [];
+  return selectedBaseline(state)?.violations ?? [];
 }
 
 export function baselineFingerprintSet(state: AppState): Set<string> {
   return new Set(selectedBaselineViolations(state).map((v) => v.fingerprint));
+}
+
+// A violation missing from the baseline is "outside baseline" (not a regression) when its
+// module or rule wasn't in scope for that baseline's scan — the baseline never had a chance
+// to detect it. Baselines saved before this field existed have no recorded scope, so nothing
+// is ever classified as outside baseline for them.
+function isOutsideBaselineScope(v: Violation, state: AppState): boolean {
+  const b = selectedBaseline(state);
+  if (!b) return false;
+  const excludedModules = b.excludedModules ?? [];
+  const disabledRuleIds = b.disabledRuleIds ?? [];
+  return excludedModules.includes(moduleOf(v)) || disabledRuleIds.includes(v.ruleId);
 }
 
 export function currentFingerprintSet(state: AppState): Set<string> {
@@ -106,9 +121,16 @@ export function activeViolations(state: AppState): Violation[] {
       return qnMatch || idMatch;
     });
   }
-  if (state.filters.baselineFilter === "new" && state.baseline.selectedBaselineId) {
+  if (
+    (state.filters.baselineFilter === "new" || state.filters.baselineFilter === "outside")
+    && state.baseline.selectedBaselineId
+  ) {
     const baselineFps = baselineFingerprintSet(state);
     vs = vs.filter((v) => !baselineFps.has(v.fingerprint));
+    vs = vs.filter((v) =>
+      state.filters.baselineFilter === "outside"
+        ? isOutsideBaselineScope(v, state)
+        : !isOutsideBaselineScope(v, state));
   }
   return vs;
 }

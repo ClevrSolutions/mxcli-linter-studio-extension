@@ -416,7 +416,20 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
                 ? JsonSerializer.Deserialize<Violation[]>(violationsNode.ToJsonString(), LintScanService.JsonOut) ?? []
                 : Array.Empty<Violation>();
             var gitRevision = BaselineStore.GetGitRevision(projectDir);
-            var entry = new BaselineEntry { Id = id, SavedAt = savedAt, GitRevision = gitRevision, Violations = violations };
+            var linterConfig = _linterConfigCoordinator.Load();
+            var disabledRuleIds = linterConfig.Rules
+                .Where(kv => kv.Value.Enabled == false)
+                .Select(kv => kv.Key)
+                .ToArray();
+            var entry = new BaselineEntry
+            {
+                Id = id,
+                SavedAt = savedAt,
+                GitRevision = gitRevision,
+                Violations = violations,
+                ExcludedModules = linterConfig.ExcludedModules.ToArray(),
+                DisabledRuleIds = disabledRuleIds,
+            };
             _baselines.Save(projectDir, entry);
             PostBaselines(webView);
         }

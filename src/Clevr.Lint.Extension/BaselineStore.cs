@@ -9,6 +9,12 @@ public sealed record BaselineEntry
     public required DateTimeOffset SavedAt { get; init; }
     public string? GitRevision { get; init; }
     public required Violation[] Violations { get; init; }
+
+    /// <summary>Modules excluded from scanning when this baseline was saved. Null/empty on baselines saved before this field existed.</summary>
+    public string[]? ExcludedModules { get; init; }
+
+    /// <summary>Rule IDs disabled when this baseline was saved. Null/empty on baselines saved before this field existed.</summary>
+    public string[]? DisabledRuleIds { get; init; }
 }
 
 file sealed record BaselinesFile

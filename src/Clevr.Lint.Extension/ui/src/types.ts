@@ -84,6 +84,8 @@ export interface BaselineEntry {
   savedAt: string; // ISO 8601 from DateTimeOffset
   gitRevision: string | null;
   violations: Violation[];
+  excludedModules?: string[] | null;
+  disabledRuleIds?: string[] | null;
 }
 
 export interface MxcliInfo {

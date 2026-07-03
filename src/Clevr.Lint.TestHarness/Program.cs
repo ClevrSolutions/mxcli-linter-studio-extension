@@ -468,7 +468,20 @@ static void DispatchMessage(
                     ? JsonSerializer.Deserialize<Violation[]>(violationsNode.ToJsonString(), BaselineJsonOptions()) ?? []
                     : [];
                 var gitRevision = BaselineStore.GetGitRevision(dir);
-                var entry = new BaselineEntry { Id = id, SavedAt = savedAt, GitRevision = gitRevision, Violations = violations };
+                var linterConfig = linterConfigCoordinator.Load();
+                var disabledRuleIds = linterConfig.Rules
+                    .Where(kv => kv.Value.Enabled == false)
+                    .Select(kv => kv.Key)
+                    .ToArray();
+                var entry = new BaselineEntry
+                {
+                    Id = id,
+                    SavedAt = savedAt,
+                    GitRevision = gitRevision,
+                    Violations = violations,
+                    ExcludedModules = linterConfig.ExcludedModules.ToArray(),
+                    DisabledRuleIds = disabledRuleIds,
+                };
                 baselineStore.Save(dir, entry);
                 push("BaselinesLoaded", JsonSerializer.Serialize(baselineStore.Load(dir), BaselineJsonOptions()));
             }

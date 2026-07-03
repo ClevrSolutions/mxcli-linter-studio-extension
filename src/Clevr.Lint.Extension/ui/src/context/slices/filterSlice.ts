@@ -10,7 +10,7 @@ export interface FilterState {
   uncommittedStatus: string;
   showExcluded: boolean;
   filterQuery: string;
-  baselineFilter: "new" | "fixed" | null;
+  baselineFilter: "new" | "outside" | "fixed" | null;
 }
 
 export type FilterAction =
@@ -23,7 +23,7 @@ export type FilterAction =
   | { type: "TOGGLE_SHOW_EXCLUDED" }
   | { type: "SET_FILTER_QUERY"; query: string }
   | { type: "RESET_FILTERS" }
-  | { type: "SET_BASELINE_FILTER"; filter: "new" | "fixed" | null }
+  | { type: "SET_BASELINE_FILTER"; filter: "new" | "outside" | "fixed" | null }
   | { type: "SELECT_BASELINE"; id: string | null };
 
 export const initialFilterState: FilterState = {

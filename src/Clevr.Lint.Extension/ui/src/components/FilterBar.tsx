@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useAppDispatch, useAppState } from "../context/AppContext";
 import { activeViolations } from "../utils/filters";
 import { isAppStoreModule } from "../utils/origins";
@@ -24,9 +25,19 @@ export function FilterBar() {
   const hasBaseline = state.baseline.baselines.length > 0 && state.scan.scanHasRun;
 
   const newCount = hasBaseline ? activeViolations({ ...state, filters: { ...state.filters, baselineFilter: "new" } }).length : 0;
+  const outsideCount = hasBaseline ? activeViolations({ ...state, filters: { ...state.filters, baselineFilter: "outside" } }).length : 0;
   const fixedCount = hasBaseline ? activeViolations({ ...state, filters: { ...state.filters, baselineFilter: "fixed" } }).length : 0;
   const allCount = base.length;
 
+  useEffect(() => {
+    if (state.filters.baselineFilter === "outside" && outsideCount === 0) {
+      dispatch({ type: "SET_BASELINE_FILTER", filter: null });
+    }
+  }, [state.filters.baselineFilter, outsideCount, dispatch]);
+
+  // Violations are cleared/replaced while a scan streams in, so counts here would be
+  // misleading mid-flight (e.g. showing spurious "Fixed" spikes for a still-empty list).
+  if (state.scan.scanStreaming) return null;
   if (asCount === 0 && !state.filters.uncommittedAvailable && !hasBaseline) return null;
 
   return (
@@ -90,6 +101,16 @@ export function FilterBar() {
             >
               New ({newCount})
             </button>
+            {outsideCount > 0 && (
+              <button
+                type="button"
+                className={`${segBase}${state.filters.baselineFilter === "outside" ? ` ${segActive}` : ""}`}
+                onClick={() => dispatch({ type: "SET_BASELINE_FILTER", filter: "outside" })}
+                title="Show violations from modules/rules that weren't in scope when the baseline was saved"
+              >
+                Outside Baseline ({outsideCount})
+              </button>
+            )}
             <button
               type="button"
               className={`${segBase}${state.filters.baselineFilter === "fixed" ? ` ${segActive}` : ""}`}
