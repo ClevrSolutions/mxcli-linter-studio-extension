@@ -9,6 +9,8 @@ const CHANGELOG: { version: string; changes: string[] }[] = [
   {
     version: "0.1.1",
     changes: [
+      "Add Outside Baseline filter for violations from modules/rules added to scope after a baseline was saved",
+      "Hide filter bar counters while a scan is streaming to avoid misleading counts",
       "Make summary cards collapsible and move module filter into card",
       "Show scanning message in report while scan is in progress",
       "Scope baseline 'fixed' comparison to current scan configuration",
