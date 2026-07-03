@@ -1,4 +1,4 @@
-export type SettingsTab = "modules" | "rules" | "configuration" | "sources" | "about";
+export type SettingsTab = "modules" | "rules" | "snapshots" | "configuration" | "sources" | "about";
 
 export interface UIState {
   toast: { text: string; isError: boolean; id: number } | null;

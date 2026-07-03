@@ -29,6 +29,7 @@ using System.Net;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
 using System.Threading.Channels;
 using Clevr.Lint.Extension;
 using Clevr.Lint.Normalizer;
@@ -134,6 +135,7 @@ static async Task RunServeModeAsync(string? projectDir, string extensionDir)
     var linterConfigCoordinator = new LinterConfigCoordinator(new LinterConfigStore(), projectDirResolver);
     var scanCoordinator = new ScanCoordinator(fileService, logService, projectDirResolver);
     var settingsCoordinator = new SettingsCoordinator(fileService, () => projectDir, projectDirResolver, new RuleSourcesService());
+    var baselineStore = new BaselineStore();
     var wwwroot      = Path.Combine(AppContext.BaseDirectory, "wwwroot");
 
     // Each connected SSE client gets its own channel so push() fans out to all of them.
@@ -179,7 +181,8 @@ static async Task RunServeModeAsync(string? projectDir, string extensionDir)
             try
             {
                 await HandleRequestAsync(ctx, projectDir, fileService, logService,
-                    exclusionCoordinator, linterConfigCoordinator, scanCoordinator, settingsCoordinator, wwwroot, Push, clients);
+                    exclusionCoordinator, linterConfigCoordinator, scanCoordinator, settingsCoordinator,
+                    baselineStore, projectDirResolver, wwwroot, Push, clients);
             }
             catch (Exception ex) { Console.Error.WriteLine($"[serve] request error: {ex.Message}"); }
         }, cts.Token);
@@ -198,6 +201,8 @@ static async Task HandleRequestAsync(
     LinterConfigCoordinator linterConfigCoordinator,
     ScanCoordinator scanCoordinator,
     SettingsCoordinator settingsCoordinator,
+    BaselineStore baselineStore,
+    ProjectDirResolver projectDirResolver,
     string wwwroot,
     Action<string, string> push,
     ConcurrentDictionary<Guid, Channel<SseEvent>> clients)
@@ -271,7 +276,8 @@ static async Task HandleRequestAsync(
         var body = await reader.ReadToEndAsync();
 
         _ = Task.Run(() => DispatchMessage(body, projectDir, fileService, logService,
-            exclusionCoordinator, linterConfigCoordinator, scanCoordinator, settingsCoordinator, push));
+            exclusionCoordinator, linterConfigCoordinator, scanCoordinator, settingsCoordinator,
+            baselineStore, projectDirResolver, push));
 
         resp.StatusCode = 204;
         resp.Close();
@@ -312,6 +318,13 @@ static async Task HandleRequestAsync(
     resp.Close();
 }
 
+static JsonSerializerOptions BaselineJsonOptions() => new()
+{
+    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+    Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) },
+    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+};
+
 static void DispatchMessage(
     string body,
     string? projectDir,
@@ -321,6 +334,8 @@ static void DispatchMessage(
     LinterConfigCoordinator linterConfigCoordinator,
     ScanCoordinator scanCoordinator,
     SettingsCoordinator settingsCoordinator,
+    BaselineStore baselineStore,
+    ProjectDirResolver projectDirResolver,
     Action<string, string> push)
 {
     JsonObject? data;
@@ -426,6 +441,55 @@ static void DispatchMessage(
             catch (Exception ex) { push("UrlError", ex.Message); }
             break;
         }
+
+        case "RequestBaselines":
+            try
+            {
+                var list = baselineStore.Load(projectDirResolver.Resolve());
+                push("BaselinesLoaded", JsonSerializer.Serialize(list, BaselineJsonOptions()));
+            }
+            catch (Exception ex) { push("BaselineError", ex.Message); }
+            break;
+
+        case "SaveBaseline":
+            try
+            {
+                var dir = projectDirResolver.Resolve();
+                if (string.IsNullOrWhiteSpace(dir))
+                {
+                    push("BaselineError", "No project folder available to save the baseline.");
+                    break;
+                }
+                var savedAtMs = data?["savedAt"]?.GetValue<long>() ?? DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                var savedAt = DateTimeOffset.FromUnixTimeMilliseconds(savedAtMs);
+                var id = savedAt.ToString("yyyyMMdd-HHmmss");
+                var violationsNode = data?["violations"];
+                var violations = violationsNode != null
+                    ? JsonSerializer.Deserialize<Violation[]>(violationsNode.ToJsonString(), BaselineJsonOptions()) ?? []
+                    : [];
+                var gitRevision = BaselineStore.GetGitRevision(dir);
+                var entry = new BaselineEntry { Id = id, SavedAt = savedAt, GitRevision = gitRevision, Violations = violations };
+                baselineStore.Save(dir, entry);
+                push("BaselinesLoaded", JsonSerializer.Serialize(baselineStore.Load(dir), BaselineJsonOptions()));
+            }
+            catch (Exception ex) { push("BaselineError", ex.Message); }
+            break;
+
+        case "DeleteBaseline":
+            try
+            {
+                var dir = projectDirResolver.Resolve();
+                if (string.IsNullOrWhiteSpace(dir))
+                {
+                    push("BaselineError", "No project folder available.");
+                    break;
+                }
+                var id = data?["id"]?.GetValue<string>() ?? "";
+                if (!string.IsNullOrWhiteSpace(id)) baselineStore.Delete(dir, id);
+                push("BaselinesLoaded", JsonSerializer.Serialize(baselineStore.Load(dir), BaselineJsonOptions()));
+            }
+            catch (Exception ex) { push("BaselineError", ex.Message); }
+            break;
 
         case "RequestModules":
         {

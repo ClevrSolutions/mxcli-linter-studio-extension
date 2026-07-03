@@ -6,6 +6,7 @@ import type { LinterConfigRule } from "../types";
 import { ConfigurationTab } from "./ConfigurationTab";
 import { RuleSourcesTab } from "./RuleSourcesTab";
 import { AboutTab } from "./AboutTab";
+import { SnapshotsTab } from "./SnapshotsTab";
 import { RuleInfoDialog } from "./dialogs/RuleInfoDialog";
 import {
   btnPrimary, btnSecondary, bulkBtn, sectionHeading,
@@ -116,7 +117,7 @@ export function Settings() {
     ...(byCategory.has("Other") ? ["Other"] : []),
   ];
 
-  const isConfigTab = state.ui.settingsActiveTab === "configuration" || state.ui.settingsActiveTab === "sources" || state.ui.settingsActiveTab === "about";
+  const isConfigTab = state.ui.settingsActiveTab === "configuration" || state.ui.settingsActiveTab === "sources" || state.ui.settingsActiveTab === "about" || state.ui.settingsActiveTab === "snapshots";
 
   const tabBtn = (tab: string, label: string) => {
     const active = state.ui.settingsActiveTab === tab;
@@ -328,6 +329,7 @@ export function Settings() {
       <div className="flex border-b border-clevr-border mb-4">
         {tabBtn("modules", "Modules")}
         {tabBtn("rules", "Rules")}
+        {tabBtn("snapshots", "Snapshots")}
         {tabBtn("configuration", "Configuration")}
         {tabBtn("sources", "Sources")}
         {tabBtn("about", "About")}
@@ -335,6 +337,7 @@ export function Settings() {
 
       {state.ui.settingsActiveTab === "modules" && moduleSection}
       {state.ui.settingsActiveTab === "rules" && rulesContent}
+      {state.ui.settingsActiveTab === "snapshots" && <SnapshotsTab />}
       {state.ui.settingsActiveTab === "configuration" && <ConfigurationTab />}
       {state.ui.settingsActiveTab === "sources" && <RuleSourcesTab />}
       {state.ui.settingsActiveTab === "about" && <AboutTab />}
