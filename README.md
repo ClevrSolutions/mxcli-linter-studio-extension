@@ -9,7 +9,10 @@ A Mendix Studio Pro 11 extension that runs **mxcli** to lint a Mendix project an
 See ![Mendix Marketplace](https://marketplace.mendix.com/link/component/301023) for the released version.
 1. Download
 1. Open the CLEVR Linter extenion via the Menu > Extensions > clevrlint > CLEVR Lint
-1. Requires mxcli which can be installed trough the extension
+1. Requires mxcli which can be installed through the extension
+  1. Settings
+  1. Configuration
+  1. Download Latest, or select from Path.
 1. Adding lint rules from different source via extension Settings > Sources
   1. mxcli lint comes with a set of build in rules
   1. Add additional mxcli rules (if not already installed via mxcli init) 
@@ -68,7 +71,15 @@ By default `npm run dev` uses canned mock data — no setup needed. To scan a re
 
 ```powershell
 cp src/Clevr.Lint.Extension/lint-scan-settings.example.json src/Clevr.Lint.Extension/lint-scan-settings.json
-# then edit projectPath in that file
+
+# then edit projectPath in the file
+# src/Clevr.Lint.Extension/lint-scan-settings.json
+
+{
+  "mxcliPath": "C:\\mxcli",
+  "projectPath": "C:\\Mendix\\MyTestProject"
+}
+
 ```
 
 This file is gitignored — it holds your personal machine path and is never committed.
