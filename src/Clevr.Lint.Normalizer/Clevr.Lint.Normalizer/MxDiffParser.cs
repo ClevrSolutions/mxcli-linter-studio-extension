@@ -7,8 +7,7 @@ namespace Clevr.Lint.Normalizer;
 /// Pure parser for the JSON produced by `mx diff BASE MINE OUT` (Mendix mx-toolset).
 /// Returns the semantically-changed elements within the describe-route scope:
 /// microflow unit GUIDs (to be resolved to qualified names via CATALOG.MICROFLOWS)
-/// and entity qualified names (extracted directly from the changeDescription field,
-/// e.g. "Entity 'TRB.Bank'").
+/// and entity qualified names (extracted directly from the changeDescription field
 ///
 /// mx diff structure (verified against Mendix 11.10): top-level <c>unitDifferences[]</c>,
 /// per unit <c>type</c> (Microflows$Microflow / DomainModels$DomainModel / …),

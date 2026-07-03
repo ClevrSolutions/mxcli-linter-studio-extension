@@ -4,7 +4,7 @@ namespace Clevr.Lint.Normalizer;
 
 /// <summary>
 /// Raw mxcli violation as delivered by `mxcli lint --format json`
-/// (schema established on TRB). DTO for deserialization — no logic.
+/// DTO for deserialization — no logic.
 /// </summary>
 public sealed class MxcliViolation
 {

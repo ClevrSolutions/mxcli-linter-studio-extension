@@ -17,15 +17,15 @@ Four severities (ascending): `Minor` < `Major` < `Critical` < `Blocker`
 
 ## 12 active CLEVR rules
 
-These rules are implemented in `Clevr.Lint.Normalizer` and run via `LintScanService`. All verified on the TRB reference project.
+These rules are implemented in `Clevr.Lint.Normalizer` and run via `LintScanService`. All verified on the test reference project.
 
 ### Catalog route (7 rules)
 Sourced from `mxcli -c "SELECT … FROM CATALOG.*"` (fast, ~0.4s/query).
 
 | Rule ID | Name | Notes |
 |---------|------|-------|
-| MAINT-007 | Microflow size | High-volume on large projects (30 on TRB) |
-| MAINT-010 | Default value missing | High-volume (592 on TRB) |
+| MAINT-007 | Microflow size | High-volume on large projects (30 on Test) |
+| MAINT-010 | Default value missing | High-volume (592 on Test) |
 | MAINT-014 | Number of modules | Per-project |
 | SEC-011 | Exposed constants | |
 | PERF-001 | Inherits Administration.Account | |
@@ -37,12 +37,12 @@ Sourced from `mxcli describe microflow/entity <name>`. Deepscan only (~1s per el
 
 | Rule ID | Name | Notes |
 |---------|------|-------|
-| MAINT-008 | Complexity without annotation | High-volume (129 on TRB) |
+| MAINT-008 | Complexity without annotation | High-volume (129 on Test) |
 | MAINT-009 | Nested ifs | |
 | REL-001 | Redundant empty-string check | |
 | REL-002 | Incomplete empty-string check | |
 | MAINT-013 | Default ReadWrite access | |
-| MAINT-006 | Redundant boolean | Catches variable assignments (104 on TRB) |
+| MAINT-006 | Redundant boolean | Catches variable assignments (104 on Test) |
 
 ### Security route (4 rules)
 Synthesized from `describe projectsecurity` + `describe userrole` + `project-tree`.
@@ -81,4 +81,4 @@ Code exists in `PageRules` + `PageYamlReader`.
 Reactivate when: mxcli exposes WIDGETS style/alt-text.
 
 **Severity calibration for MAINT-007, MAINT-008, MAINT-010**
-These three rules produce high volumes on large projects and have not been calibrated against noise. Current numbers are real (verified on TRB) but the severity/default suppression thresholds need tuning before customer rollout.
+These three rules produce high volumes on large projects and have not been calibrated against noise. Current numbers are real (verified on Test) but the severity/default suppression thresholds need tuning before customer rollout.
