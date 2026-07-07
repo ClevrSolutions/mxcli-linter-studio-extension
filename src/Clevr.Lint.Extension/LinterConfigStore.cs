@@ -54,7 +54,7 @@ public sealed class LinterConfigStore
             var excludedModules = raw.ExcludedModules ?? new List<string>();
             return new LinterConfig { Rules = rules, ExcludedModules = excludedModules };
         }
-        catch (Exception ex) { DebugLog.Write(projectDir, $"Failed to load lint-config.yaml: {ex.Message}"); return new LinterConfig(); }
+        catch (Exception ex) { DebugLog.Write(projectDir, $"Failed to load lint-config.yaml: {ex.Message}", LogLevel.Error); return new LinterConfig(); }
     }
 
     public void Save(string projectDir, LinterConfig config)

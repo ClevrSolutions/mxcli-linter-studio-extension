@@ -126,18 +126,12 @@ public sealed class LintScanService
         if (resolveError is not null)
             return (null, Error(resolveError));
 
-        DebugLog.Write(projectDir, $"=== Scan for improvements === projectDir='{projectDir}' | settings.ProjectPath='{settings.ProjectPath}' | fallback='{fallbackProjectDir}'");
+        DebugLog.Write(projectDir, $"=== Scan for improvements === projectDir='{projectDir}' | settings.ProjectPath='{settings.ProjectPath}' | fallback='{fallbackProjectDir}'", LogLevel.Trace);
 
         // mxcli reads lint-config.yaml directly from projectDir; ensure it exists
         // before the first scan so mxcli's own filtering (rules/modules) applies
         // even if the user has never opened Settings.
         new LinterConfigStore().Load(projectDir);
-
-        // Some custom rules (SEC010, SEC019) need mxcli's FULL catalog to see
-        // permission/attribute/activity data; without it they silently return
-        // zero findings instead of erroring. Best-effort: a failed/timed-out
-        // refresh just falls back to today's default-catalog behavior.
-        RefreshCatalogFull(settings.MxcliPath, mprFileName, projectDir, ct);
 
         var arguments = $"lint -p \"{mprFileName}\" --format json";
         var commandLine = $"\"{settings.MxcliPath}\" {arguments}";
@@ -263,20 +257,6 @@ public sealed class LintScanService
         return ("", "", $"projectPath does not exist: {projectPath}");
     }
 
-    private void RefreshCatalogFull(string mxcliPath, string mprFileName, string projectDir, CancellationToken ct)
-    {
-        try
-        {
-            var proc = ProcessRunner.Run(mxcliPath, $"-p \"{mprFileName}\" -c \"REFRESH CATALOG FULL\"", projectDir, timeoutMs: 300_000, ct);
-            _log.Info($"[CLEVR Lint] REFRESH CATALOG FULL exit={proc.ExitCode}");
-            DebugLog.Write(projectDir, $"[catalog] REFRESH CATALOG FULL exit={proc.ExitCode}; stderr={proc.StdErr}");
-        }
-        catch (Exception ex)
-        {
-            _log.Warn($"[CLEVR Lint] REFRESH CATALOG FULL failed (continuing with existing catalog): {ex.Message}");
-        }
-    }
-
     private LintScanSettings LoadSettings(string? fallbackProjectDir)
     {
         var path = _files.ResolvePath("lint-scan-settings.json");
@@ -294,7 +274,7 @@ public sealed class LintScanService
             var proc = ProcessRunner.Run(mxcliPath, $"lint -p \"{mprFileName}\" --list-rules", projectDir, timeoutMs: 30_000, ct);
             var catalog = MxcliRulesCatalogParser.Parse(proc.StdOut);
             _log.Info($"[CLEVR Lint] {catalog.Count} rules (name+category) from --list-rules");
-            DebugLog.Write(projectDir, $"[catalog] {catalog.Count} rules loaded; PH001 present={catalog.ContainsKey("PH001")}; stdout-len={proc.StdOut?.Length}");
+            DebugLog.Write(projectDir, $"[catalog] {catalog.Count} rules loaded; PH001 present={catalog.ContainsKey("PH001")}; stdout-len={proc.StdOut?.Length}", LogLevel.Trace);
             return catalog;
         }
         catch (Exception ex)

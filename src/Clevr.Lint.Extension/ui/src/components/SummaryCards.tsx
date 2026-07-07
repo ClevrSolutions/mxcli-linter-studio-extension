@@ -33,16 +33,21 @@ export function SummaryCards({ interactive = true }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     activeViolationsDeps(state),
   );
+  const excludedModuleNames = state.config.excludedModules.saved;
+  const enabledModules = useMemo(
+    () => state.config.modules.filter((m) => !excludedModuleNames.includes(m.name)),
+    [state.config.modules, excludedModuleNames],
+  );
   const moduleRows = useMemo(() => {
     const moduleViolationCounts = new Map<string, number>();
     for (const v of base) {
       const m = moduleOf(v);
       if (m) moduleViolationCounts.set(m, (moduleViolationCounts.get(m) ?? 0) + 1);
     }
-    return state.config.modules
+    return enabledModules
       .map(({ name }) => ({ name, count: moduleViolationCounts.get(name) ?? 0 }))
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [base, state.config.modules]);
+  }, [base, enabledModules]);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const severities = useMemo(() => severityUniverse(state), activeViolationsDeps(state));
@@ -51,7 +56,7 @@ export function SummaryCards({ interactive = true }: Props) {
   const [sevExpanded, setSevExpanded] = useState(false);
   const [modExpanded, setModExpanded] = useState(false);
 
-  const gridCols = state.config.modules.length >= 2 ? "grid-cols-3" : "grid-cols-2";
+  const gridCols = enabledModules.length >= 2 ? "grid-cols-3" : "grid-cols-2";
 
   return (
     <div className={`grid gap-3 mb-4 max-[760px]:grid-cols-1 ${gridCols}`}>
@@ -138,7 +143,7 @@ export function SummaryCards({ interactive = true }: Props) {
         )}
       </div>
 
-      {state.config.modules.length >= 2 && (
+      {enabledModules.length >= 2 && (
         <div className={cardBase}>
           <h3
             className={interactive ? `${cardTitle} cursor-pointer flex justify-between items-center select-none` : cardTitle}
@@ -169,7 +174,9 @@ export function SummaryCards({ interactive = true }: Props) {
           ) : (
             <div className={countTotal}>
               <span>All</span>
-              <span className="tabular-nums font-semibold min-w-[28px] text-right">{base.length}</span>
+              <span className="tabular-nums font-semibold min-w-[28px] text-right">
+                {state.scan.scanStreaming ? `${filtered.length}…` : filtered.length}
+              </span>
             </div>
           )}
         </div>

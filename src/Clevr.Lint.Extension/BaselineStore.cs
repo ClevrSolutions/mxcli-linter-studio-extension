@@ -44,7 +44,7 @@ public sealed class BaselineStore
         }
         catch (Exception ex)
         {
-            DebugLog.Write(projectDir, $"baselines.json could not be parsed — treating as empty: {ex.Message}");
+            DebugLog.Write(projectDir, $"baselines.json could not be parsed — treating as empty: {ex.Message}", LogLevel.Error);
             return [];
         }
     }

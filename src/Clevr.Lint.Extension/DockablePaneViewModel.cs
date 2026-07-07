@@ -85,7 +85,7 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
                 var ctx = SynchronizationContext.Current;
                 _uiContext ??= ctx; // Capture the known-good UI context for background→UI marshaling
                 if (ctx == null)
-                    DebugLog.Write(_getProjectDir(), "[CLEVR Lint] WARNING: SynchronizationContext.Current is null at scan start — UI posts will run on background thread");
+                    DebugLog.Write(_getProjectDir(), "[CLEVR Lint] WARNING: SynchronizationContext.Current is null at scan start — UI posts will run on background thread", LogLevel.Error);
                 // Signal the previous scan (if any) to stop, but do NOT dispose its CTS here: the old
                 // scan's background thread may still be inside ProcessRunner.Run, which links a token
                 // off this same CTS (CreateLinkedTokenSource) — disposing while that's in flight throws
@@ -105,7 +105,7 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
             else if (args.Message == "CancelScan")
             {
                 _scanCts?.Cancel();
-                DebugLog.Write(_getProjectDir(), "[CLEVR Lint] scan cancellation requested by user");
+                DebugLog.Write(_getProjectDir(), "[CLEVR Lint] scan cancellation requested by user", LogLevel.Info);
             }
             else if (args.Message == "ExportHtml")
             {
@@ -238,12 +238,12 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
         var documentId = data?["documentId"]?.GetValue<string>();
         var qualifiedName = data?["documentQualifiedName"]?.GetValue<string>() ?? "";
         var documentType = data?["documentType"]?.GetValue<string>() ?? "";
-        DebugLog.Write(projectDir, $"=== OpenDocument === documentId='{documentId}' qn='{qualifiedName}' type='{documentType}'");
+        DebugLog.Write(projectDir, $"=== OpenDocument === documentId='{documentId}' qn='{qualifiedName}' type='{documentType}'", LogLevel.Trace);
 
         try
         {
             var resolution = _navigationCoordinator.Resolve(documentId, qualifiedName, documentType);
-            DebugLog.Write(projectDir, $"OpenDocument: {resolution.Reason}");
+            DebugLog.Write(projectDir, $"OpenDocument: {resolution.Reason}", LogLevel.Trace);
 
             switch (resolution.Route)
             {
@@ -266,7 +266,7 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
             }
 
             _dockingWindowService.TryOpenEditor(resolution.Unit!, resolution.Focus);
-            DebugLog.Write(projectDir, $"OpenDocument: OPENED unit.Id='{resolution.Unit!.Id}' focus={(resolution.Focus != null ? "yes" : "no")} (qn='{qualifiedName}')");
+            DebugLog.Write(projectDir, $"OpenDocument: OPENED unit.Id='{resolution.Unit!.Id}' focus={(resolution.Focus != null ? "yes" : "no")} (qn='{qualifiedName}')", LogLevel.Trace);
 
             // Enumerations are a unit (TryOpenEditor succeeds technically), but Studio Pro
             // shows them as a dialog — not always visible from an extension. Honest message.
@@ -279,7 +279,7 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
         }
         catch (Exception ex)
         {
-            DebugLog.Write(projectDir, $"OpenDocument: EXCEPTION {ex}");
+            DebugLog.Write(projectDir, $"OpenDocument: EXCEPTION {ex}", LogLevel.Error);
             _logService.Error("[CLEVR Lint] OpenDocument failed", ex);
             webView.PostMessage("DocumentOpenError", ex.Message);
         }
@@ -352,13 +352,13 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
     private void PostRulesCatalog(IWebView webView, SynchronizationContext? uiContext = null)
     {
         var projectDirForLog = _getProjectDir();
-        DebugLog.Write(projectDirForLog, $"[PostRulesCatalog] starting, uiContext={(uiContext != null ? uiContext.GetType().Name : "null")}");
+        DebugLog.Write(projectDirForLog, $"[PostRulesCatalog] starting, uiContext={(uiContext != null ? uiContext.GetType().Name : "null")}", LogLevel.Trace);
         try
         {
             var service = new LintScanService(_fileService, _logService);
             var result = service.TryLoadRulesCatalog(_getProjectDir());
-            if (result == null) { DebugLog.Write(projectDirForLog, "[PostRulesCatalog] TryLoadRulesCatalog returned null — mxcli or project not configured"); return; }
-            DebugLog.Write(projectDirForLog, $"[PostRulesCatalog] catalog loaded: {result.Value.ruleNames.Count} rules");
+            if (result == null) { DebugLog.Write(projectDirForLog, "[PostRulesCatalog] TryLoadRulesCatalog returned null — mxcli or project not configured", LogLevel.Info); return; }
+            DebugLog.Write(projectDirForLog, $"[PostRulesCatalog] catalog loaded: {result.Value.ruleNames.Count} rules", LogLevel.Trace);
 
             var payload = JsonSerializer.Serialize(new
             {
@@ -716,7 +716,7 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
         }
         catch (Exception ex)
         {
-            DebugLog.Write(projectDir, $"PostMessage({message}) FAILED: {ex}");
+            DebugLog.Write(projectDir, $"PostMessage({message}) FAILED: {ex}", LogLevel.Error);
             _logService.Error($"[CLEVR Lint] PostMessage({message}) failed", ex);
         }
     }

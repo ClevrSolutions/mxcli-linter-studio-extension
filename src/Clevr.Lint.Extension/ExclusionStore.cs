@@ -32,7 +32,7 @@ public sealed class ExclusionStore
         var json = File.ReadAllText(path);
         var list = ExclusionsJson.Parse(json);
         if (list.Count == 0 && json.Trim().Length > 10)
-            DebugLog.Write(projectDir, $"exclusions.json exists but parsed to empty list — possibly corrupt: {path}");
+            DebugLog.Write(projectDir, $"exclusions.json exists but parsed to empty list — possibly corrupt: {path}", LogLevel.Error);
         return list;
     }
 

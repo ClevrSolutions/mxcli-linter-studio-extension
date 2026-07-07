@@ -91,7 +91,7 @@ public sealed class ChangedElementsResolver
             var (mxExe, loose, mxErr) = FindMxExe(ct);
             if (mxExe is null)
                 return Fail(ChangedScanStatus.NoMxTool, mxErr!);
-            DebugLog.Write(_projectDir, $"[CLEVR Lint] mx.exe: {mxExe}");
+            DebugLog.Write(_projectDir, $"[CLEVR Lint] mx.exe: {mxExe}", LogLevel.Trace);
 
             // 5) Extract HEAD baseline (scoped: .mpr + mprcontents, no javasource/node_modules)
             Directory.CreateDirectory(tmp);
@@ -113,21 +113,21 @@ public sealed class ChangedElementsResolver
             var baseStyle = Path.Combine(baseDir, "style");
             DebugLog.Write(_projectDir, $"[CLEVR Lint] baseline: mpr={File.Exists(baseMpr)} mprcontents={Directory.Exists(baseMprContents)} " +
                 $"mprcontents-files={( Directory.Exists(baseMprContents) ? Directory.GetFiles(baseMprContents, "*", SearchOption.AllDirectories).Length : 0 )} " +
-                $"designproperties={Directory.Exists(baseDesignProps)} style={Directory.Exists(baseStyle)}");
+                $"designproperties={Directory.Exists(baseDesignProps)} style={Directory.Exists(baseStyle)}", LogLevel.Trace);
 
             // 6) mx diff baseline vs live → JSON
             var outJson = Path.Combine(tmp, "diff.json");
             var liveMpr = Path.Combine(_projectDir, _mprFileName);
             var looseFlag = loose ? "--loose-version-check " : "";
             var diffArgs = $"diff {looseFlag}\"{baseMpr}\" \"{liveMpr}\" \"{outJson}\"";
-            DebugLog.Write(_projectDir, $"[CLEVR Lint] running: {mxExe} {diffArgs}");
+            DebugLog.Write(_projectDir, $"[CLEVR Lint] running: {mxExe} {diffArgs}", LogLevel.Trace);
             var diff = ProcessRunner.Run(mxExe, diffArgs, _projectDir, 600_000, ct);
             if (!File.Exists(outJson))
             {
                 cleanupTmp = false; // keep tmp so the baseline can be inspected
-                DebugLog.Write(_projectDir, $"[CLEVR Lint] mx diff failed (exit {diff.ExitCode}) — keeping tmp: {tmp}");
-                DebugLog.Write(_projectDir, $"[CLEVR Lint] mx diff stdout: {diff.StdOut}");
-                DebugLog.Write(_projectDir, $"[CLEVR Lint] mx diff stderr: {diff.StdErr}");
+                DebugLog.Write(_projectDir, $"[CLEVR Lint] mx diff failed (exit {diff.ExitCode}) — keeping tmp: {tmp}", LogLevel.Error);
+                DebugLog.Write(_projectDir, $"[CLEVR Lint] mx diff stdout: {diff.StdOut}", LogLevel.Error);
+                DebugLog.Write(_projectDir, $"[CLEVR Lint] mx diff stderr: {diff.StdErr}", LogLevel.Error);
                 var errText = Trim(diff.StdErr, diff.Error);
                 // Detect uncommitted Mendix version upgrade: entity schema changed between commits
                 // (exit 129 + "do not have the same properties" = mprcontents/ upgraded locally but not committed)
@@ -141,7 +141,7 @@ public sealed class ChangedElementsResolver
 
             // 7) Parse diff JSON → changed microflow GUIDs + entity QNs
             var diffJsonText = File.ReadAllText(outJson);
-            DebugLog.Write(_projectDir, $"[CLEVR Lint] mx diff output:{Environment.NewLine}{diffJsonText}");
+            DebugLog.Write(_projectDir, $"[CLEVR Lint] mx diff output:{Environment.NewLine}{diffJsonText}", LogLevel.Trace);
             var changed = MxDiffParser.Parse(diffJsonText);
 
             // 8) Microflow GUIDs → qualified names via CATALOG.MICROFLOWS (cheap SELECT, ~0.4s)
@@ -161,7 +161,7 @@ public sealed class ChangedElementsResolver
                 .ToList();
 
             DebugLog.Write(_projectDir, $"[CLEVR Lint] changed-files: {microflows.Count} microflows + {entities.Count} entities " +
-                      $"(user-module), {changed.VisualOnlySkipped} visual-only skipped");
+                      $"(user-module), {changed.VisualOnlySkipped} visual-only skipped", LogLevel.Info);
 
             if (microflows.Count + entities.Count == 0)
                 return Fail(ChangedScanStatus.NoChanges,
@@ -179,7 +179,7 @@ public sealed class ChangedElementsResolver
         }
         catch (Exception ex)
         {
-            DebugLog.Write(_projectDir, $"[CLEVR Lint] changed-files resolver error: {ex.Message}");
+            DebugLog.Write(_projectDir, $"[CLEVR Lint] changed-files resolver error: {ex.Message}", LogLevel.Error);
             return Fail(ChangedScanStatus.Error, $"Changed-files scan failed: {ex.Message}");
         }
         finally
@@ -223,7 +223,7 @@ public sealed class ChangedElementsResolver
         }
         catch (Exception ex)
         {
-            DebugLog.Write(_projectDir, $"[CLEVR Lint] microflow GUID→name (catalog) skipped: {ex.Message}");
+            DebugLog.Write(_projectDir, $"[CLEVR Lint] microflow GUID→name (catalog) skipped: {ex.Message}", LogLevel.Info);
         }
         return names;
     }
@@ -251,7 +251,7 @@ public sealed class ChangedElementsResolver
         }
         catch (Exception ex)
         {
-            DebugLog.Write(_projectDir, $"[CLEVR Lint] user-modules query (changed-files) skipped: {ex.Message}");
+            DebugLog.Write(_projectDir, $"[CLEVR Lint] user-modules query (changed-files) skipped: {ex.Message}", LogLevel.Info);
         }
         return set;
     }

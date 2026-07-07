@@ -72,7 +72,7 @@ Nothing found is a data-loss or production-security emergency — the worst runt
 
 - **B11** — Trailing-backslash project path breaks quoted args: `git -C "C:\proj\"` misparses (`\"` escapes the quote), changed-files scan reports `NotGit` on a good repo (`ChangedElementsResolver.cs:186`, `BaselineStore.cs:84`).
 - **B12** — `HttpListenerResponseUtils.cs:14-21`: `File.ReadAllBytesAsync` can throw after headers are set, response never closed; `Access-Control-Allow-Origin: *` on the extension's local port (`WebServerExtension.cs:36-43`).
-- **B13** — `REFRESH CATALOG FULL` runs on *every* scan (300 s budget) even when nothing changed; `LinterConfigStore` loaded twice per scan (`LintScanService.cs:134,140,163`).
+- **B13** — `REFRESH CATALOG FULL` runs on *every* scan (300 s budget) even when nothing changed; `LinterConfigStore` loaded twice per scan (`LintScanService.cs:134,140,163`). ✅ **FIXED** — the `RefreshCatalogFull` call and method removed entirely; the next mxcli lint release no longer needs a full-catalog refresh for SEC010/SEC019 to see permission/attribute/activity data. `LinterConfigStore` is still loaded twice per scan (unrelated leftover).
 - **B14** — `RequestRulesCatalog` has no in-flight guard — repeated Settings opens spawn concurrent `mxcli --list-rules` processes (`DockablePaneViewModel.cs:156`).
 - **B15** — No pane teardown: CTS never disposed, `MessageReceived` never unsubscribed (whole `DockablePaneViewModel`).
 - **B16** — mxcli sha256 verification is correct in mechanics (streamed hash, size check, refuses missing digest) but digest and URL come from the same untrusted GitHub API response — integrity, not authenticity. Acceptable trade-off; worth a comment. No version pin despite docs naming v0.12.0/v0.13.0.
@@ -101,7 +101,7 @@ No `useMemo`/`useCallback`/`React.memo` anywhere in `ui/src`. The context value 
 
 ### Low
 
-- **U8** — Collapsed module card shows the *unfiltered* total while category/severity cards show filtered totals — three "All" numbers disagree on one screen (`SummaryCards.tsx:158`).
+- **U8** — Collapsed module card shows the *unfiltered* total while category/severity cards show filtered totals — three "All" numbers disagree on one screen (`SummaryCards.tsx:158`). ✅ **FIXED** — collapsed module total now uses the same `filtered` count as the category/severity cards; additionally, the per-module breakdown (and the `grid-cols-3`/card-visibility threshold) now only lists modules not excluded in Settings, since an excluded module can never produce a violation.
 - **U9** — `report.ts:36,49`: `workingDirectory`-derived project name interpolated into exported HTML without `esc()` (everything else in the file is escaped).
 - **U10** — Impure reducer: module-level `++toastId` (`uiSlice.ts:26-31`) double-increments under StrictMode.
 - **U11** — `Toolbar.tsx:38` non-null assertion on `scanCompletedAt`; "Xs ago" label never ticks.

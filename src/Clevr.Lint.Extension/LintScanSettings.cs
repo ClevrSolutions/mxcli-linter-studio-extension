@@ -25,6 +25,7 @@ public sealed class LintScanSettings
     [JsonPropertyName("mxcliPath")]    public string MxcliPath    { get; set; } = "mxcli";
     [JsonPropertyName("projectPath")]  public string ProjectPath  { get; set; } = "";
     [JsonPropertyName("ruleSources")]  public List<RuleSource> RuleSources { get; set; } = [];
+    [JsonPropertyName("logLevel")]     public string LogLevel     { get; set; } = "error";
 
     public static LintScanSettings Load(string? settingsJson, string? fallbackProjectDir)
     {
@@ -39,6 +40,9 @@ public sealed class LintScanSettings
             settings.ProjectPath = fallbackProjectDir ?? "";
 
         settings.RuleSources ??= [];
+
+        if (!DebugLog.TryParseLevel(settings.LogLevel, out _))
+            settings.LogLevel = "error";
 
         return settings;
     }

@@ -52,6 +52,22 @@ public sealed class SettingsCoordinator
     public Task<MxcliInfo> DownloadMxcliAsync(Action<int> onProgress, CancellationToken ct = default)
         => MxcliService.DownloadLatestAsync(_fileService, onProgress, ct);
 
+    // ---- debug log level -------------------------------------------------------
+
+    /// <summary>The currently configured debug-log level ("error" | "info" | "trace"); defaults to "error".</summary>
+    public string GetLogLevel() => LoadSettings().LogLevel;
+
+    /// <summary>Saves the debug-log level and applies it immediately so subsequent DebugLog.Write calls are gated by it.</summary>
+    public string SetLogLevel(string level)
+    {
+        DebugLog.TryParseLevel(level, out var logLevel); // defaults to Error on an unrecognized value
+        var settings = LoadSettings();
+        settings.LogLevel = logLevel.ToString().ToLowerInvariant();
+        WriteSettings(settings);
+        DebugLog.SetLevel(logLevel);
+        return settings.LogLevel;
+    }
+
     // ---- rule sources --------------------------------------------------------
 
     public List<RuleSource> GetRuleSources() => LoadSettings().RuleSources;

@@ -57,7 +57,7 @@ public sealed class ScanCoordinator
     public void RunFullScan(IProgress<ScanEvent> progress, CancellationToken ct = default)
     {
         var projectDir = _projectDir.Resolve();
-        DebugLog.Write(projectDir, $"=== Full scan (one button) started === projectDir='{projectDir}'");
+        DebugLog.Write(projectDir, $"=== Full scan (one button) started === projectDir='{projectDir}'", LogLevel.Info);
         _logService.Info($"[CLEVR Lint] full scan started (projectDir='{projectDir}')");
 
         try
@@ -84,18 +84,18 @@ public sealed class ScanCoordinator
             }
             catch (Exception ex)
             {
-                DebugLog.Write(projectDir, $"full scan: mxcli step ERROR: {ex}");
+                DebugLog.Write(projectDir, $"full scan: mxcli step ERROR: {ex}", LogLevel.Error);
                 progress.Report(ScanEvent.Violations(LintScanService.ErrorJson($"Unexpected error during mxcli scan: {ex.Message}")));
             }
 
             var changedResult = changedTask.GetAwaiter().GetResult();
             DebugLog.Write(projectDir,
                 $"[changed-files] status={changedResult.Status} message=\"{changedResult.Message}\" " +
-                $"microflows={changedResult.Microflows.Count} entities={changedResult.Entities.Count}");
+                $"microflows={changedResult.Microflows.Count} entities={changedResult.Entities.Count}", LogLevel.Info);
             if (changedResult.Microflows.Count > 0)
-                DebugLog.Write(projectDir, $"[changed-files] microflows: {string.Join(", ", changedResult.Microflows)}");
+                DebugLog.Write(projectDir, $"[changed-files] microflows: {string.Join(", ", changedResult.Microflows)}", LogLevel.Trace);
             if (changedResult.Entities.Count > 0)
-                DebugLog.Write(projectDir, $"[changed-files] entities: {string.Join(", ", changedResult.Entities)}");
+                DebugLog.Write(projectDir, $"[changed-files] entities: {string.Join(", ", changedResult.Entities)}", LogLevel.Trace);
 
             var gitPayload = JsonSerializer.Serialize(new
             {
@@ -106,11 +106,11 @@ public sealed class ScanCoordinator
             }, LintScanService.JsonOut);
             progress.Report(ScanEvent.Uncommitted(gitPayload));
 
-            DebugLog.Write(projectDir, "=== Full scan DONE ===");
+            DebugLog.Write(projectDir, "=== Full scan DONE ===", LogLevel.Info);
         }
         catch (Exception ex)
         {
-            DebugLog.Write(projectDir, $"Full scan ERROR (orchestration): {ex}");
+            DebugLog.Write(projectDir, $"Full scan ERROR (orchestration): {ex}", LogLevel.Error);
             _logService.Error("[CLEVR Lint] full scan failed", ex);
             progress.Report(ScanEvent.Error(ex.Message));
         }
