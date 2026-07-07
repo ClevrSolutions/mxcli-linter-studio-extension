@@ -464,6 +464,8 @@ static async Task ServeTextAsync(HttpListenerResponse resp, string content, stri
 
 static string ChromeWebViewShimJs() => """
     // chrome-webview-shim.js — mocks window.chrome.webview for the CLEVR Lint TestHarness.
+    // Single source of truth for the shim: the Vite dev server (ui/vite.config.ts) also
+    // loads it from here, via its /chrome-webview-shim.js proxy entry.
     // Replaces Studio Pro's WebView bridge with:
     //   browser → C#  :  POST /api/message  { message, data }
     //   C# → browser  :  GET  /api/events   (Server-Sent Events)
