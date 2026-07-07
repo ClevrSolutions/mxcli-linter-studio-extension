@@ -71,6 +71,9 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
         _linterConfigCoordinator = new LinterConfigCoordinator(new LinterConfigStore(), _projectDirResolver);
         _settingsCoordinator = new SettingsCoordinator(fileService, getProjectDir, _projectDirResolver, _ruleSourcesService);
         _scanCoordinator = new ScanCoordinator(fileService, logService, _projectDirResolver, mendixVersion);
+
+        DebugLog.TryParseLevel(_settingsCoordinator.GetLogLevel(), out var initialLogLevel);
+        DebugLog.SetLevel(initialLogLevel);
     }
 
     public override void InitWebView(IWebView webView)
@@ -161,6 +164,15 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
             else if (args.Message is "RequestMxcliInfo" or "BrowseMxcliPath" or "SetMxcliPath" or "DownloadMxcli")
             {
                 _ = DispatchMxcliMessageAsync(webView, args.Message, args.Data);
+            }
+            else if (args.Message == "RequestLogLevel")
+            {
+                webView.PostMessage("LogLevel", _settingsCoordinator.GetLogLevel());
+            }
+            else if (args.Message == "SetLogLevel")
+            {
+                var level = args.Data?["level"]?.GetValue<string>() ?? "error";
+                webView.PostMessage("LogLevel", _settingsCoordinator.SetLogLevel(level));
             }
             else if (args.Message == "RequestModules")
             {
