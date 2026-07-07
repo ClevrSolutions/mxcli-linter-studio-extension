@@ -1,8 +1,12 @@
 import { useState } from "react";
 import { useAppDispatch, useAppState } from "../context/AppContext";
+import { KNOWN_RULE_SOURCES } from "../constants";
 import { post } from "../hooks/useMessageBus";
 import type { RuleSource } from "../types";
 import { btnPrimary, btnSecondary, inputBase, sectionHeading, settingsDesc, settingsEmpty, warningBox } from "../utils/classes";
+
+const selectPreset =
+  "border border-clevr-border rounded px-2 py-0.5 text-[12px] bg-white outline-none focus:border-clevr-accent";
 
 const btnDeleteFile =
   "px-3 py-1.5 text-[12px] font-medium bg-white text-sev-major border border-sev-major rounded-[6px] cursor-pointer hover:bg-[#fff7e6] disabled:opacity-45 disabled:cursor-not-allowed";
@@ -56,6 +60,24 @@ export function RuleSourcesTab() {
         Use <strong>Add files</strong> to copy only new files, or{" "}
         <strong>Replace files</strong> to overwrite existing ones.
       </p>
+
+      <div className="mb-3">
+        <select
+          className={selectPreset}
+          value=""
+          onChange={(e) => {
+            const preset = KNOWN_RULE_SOURCES[Number(e.target.value)];
+            if (!preset) return;
+            setNewUrl(preset.url);
+            setNewLabel(preset.label);
+          }}
+        >
+          <option value="" disabled>Add a known source…</option>
+          {KNOWN_RULE_SOURCES.map((preset, i) => (
+            <option key={preset.url} value={i}>{preset.label}</option>
+          ))}
+        </select>
+      </div>
 
       <div className="flex gap-2 mb-3 flex-wrap">
         <input

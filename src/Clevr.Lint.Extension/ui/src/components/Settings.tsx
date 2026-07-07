@@ -212,13 +212,34 @@ export function Settings() {
   );
 
   const rulesContent = ruleIds.length === 0 ? (
-    <p className={settingsEmpty}>Loading rules — make sure a project is open in Studio Pro.</p>
+    <p className={settingsEmpty}>
+      No rules found — make sure a project is open in Studio Pro, or add rule definitions in the{" "}
+      <button
+        type="button"
+        className="bg-transparent border-0 p-0 text-clevr-accent underline cursor-pointer text-inherit font-inherit"
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        onClick={() => dispatch({ type: "SET_SETTINGS_TAB", tab: "sources" as any })}
+      >
+        Sources
+      </button>{" "}
+      tab.
+    </p>
   ) : (
     <>
       <div className="flex items-start justify-between gap-3 mb-3">
         <p className={`${settingsDesc} m-0`}>
           Configure which rules are active and their severity. Changes are written to{" "}
           <code>lint-config.yaml</code> in your project directory and take effect on the next scan.
+          Add more rules from the{" "}
+          <button
+            type="button"
+            className="bg-transparent border-0 p-0 text-clevr-accent underline cursor-pointer text-inherit font-inherit"
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            onClick={() => dispatch({ type: "SET_SETTINGS_TAB", tab: "sources" as any })}
+          >
+            Sources
+          </button>{" "}
+          tab.
         </p>
         <div className="flex items-center gap-1 text-[11px] shrink-0">
           <button type="button" className={bulkBtn} onClick={() => enableRules(ruleIds)}>Enable all</button>

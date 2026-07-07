@@ -37,3 +37,8 @@ export const GENERIC_PREFIX_FALLBACK: Record<string, string> = {
 };
 
 export const AI_RULE_CAP = 50;
+
+export const KNOWN_RULE_SOURCES: { label: string; url: string }[] = [
+  { label: "Mendix Default", url: "https://github.com/mendixlabs/mxcli/tree/main/.claude/lint-rules" },
+  { label: "CLEVR ACR", url: "https://github.com/ClevrSolutions/mxcli-linter-studio-extension/tree/main/rules" },
+];
