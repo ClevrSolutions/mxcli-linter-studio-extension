@@ -142,6 +142,7 @@ static async Task RunServeModeAsync(string? projectDir, string extensionDir, boo
     var scanCoordinator = new ScanCoordinator(fileService, logService, projectDirResolver);
     var settingsCoordinator = new SettingsCoordinator(fileService, () => projectDir, projectDirResolver, new RuleSourcesService());
     var baselineStore = new BaselineStore();
+    var scanCtsHolder = new ScanCtsHolder();
     var wwwroot      = Path.Combine(AppContext.BaseDirectory, "wwwroot");
 
     // Each connected SSE client gets its own channel so push() fans out to all of them.
@@ -189,7 +190,7 @@ static async Task RunServeModeAsync(string? projectDir, string extensionDir, boo
             {
                 await HandleRequestAsync(ctx, projectDir, fileService, logService,
                     exclusionCoordinator, linterConfigCoordinator, scanCoordinator, settingsCoordinator,
-                    baselineStore, projectDirResolver, wwwroot, Push, clients, mockMode);
+                    baselineStore, projectDirResolver, scanCtsHolder, wwwroot, Push, clients, mockMode);
             }
             catch (Exception ex) { Console.Error.WriteLine($"[serve] request error: {ex.Message}"); }
         }, cts.Token);
@@ -210,6 +211,7 @@ static async Task HandleRequestAsync(
     SettingsCoordinator settingsCoordinator,
     BaselineStore baselineStore,
     ProjectDirResolver projectDirResolver,
+    ScanCtsHolder scanCtsHolder,
     string wwwroot,
     Action<string, string> push,
     ConcurrentDictionary<Guid, Channel<SseEvent>> clients,
@@ -642,6 +644,19 @@ static void DispatchMessage(
             }
             catch (Exception ex) { push("MxcliDownloadError", ex.Message); }
             break;
+
+        case "RequestLogLevel":
+            try { push("LogLevel", settingsCoordinator.GetLogLevel()); }
+            catch (Exception ex) { Console.Error.WriteLine($"[serve] RequestLogLevel failed: {ex.Message}"); }
+            break;
+
+        case "SetLogLevel":
+        {
+            var level = data?["level"]?.GetValue<string>() ?? "error";
+            try { push("LogLevel", settingsCoordinator.SetLogLevel(level)); }
+            catch (Exception ex) { Console.Error.WriteLine($"[serve] SetLogLevel failed: {ex.Message}"); }
+            break;
+        }
 
         case "RequestRuleSources":
             try

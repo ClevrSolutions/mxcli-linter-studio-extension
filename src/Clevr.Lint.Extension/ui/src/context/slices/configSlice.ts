@@ -11,6 +11,7 @@ export interface ConfigState {
   mxcliDownloadProgress: number | null;
   ruleSources: RuleSource[];
   ruleSourceFetchStatus: Record<string, RuleSourceFetchStatus>;
+  logLevel: string;
 }
 
 export type ConfigAction =
@@ -30,7 +31,8 @@ export type ConfigAction =
   | { type: "SET_RULE_SOURCE_FETCH_STATUS"; id: string; status: RuleSourceFetchStatus }
   | { type: "SET_MXCLI_INFO"; info: MxcliInfo }
   | { type: "MXCLI_DOWNLOAD_STARTED" }
-  | { type: "MXCLI_DOWNLOAD_PROGRESS"; percent: number };
+  | { type: "MXCLI_DOWNLOAD_PROGRESS"; percent: number }
+  | { type: "SET_LOG_LEVEL"; level: string };
 
 export const initialConfigState: ConfigState = {
   exclusions: [],
@@ -42,6 +44,7 @@ export const initialConfigState: ConfigState = {
   mxcliDownloadProgress: null,
   ruleSources: [],
   ruleSourceFetchStatus: {},
+  logLevel: "error",
 };
 
 export function configReducer(state: ConfigState, action: ConfigAction): ConfigState {
@@ -135,6 +138,8 @@ export function configReducer(state: ConfigState, action: ConfigAction): ConfigS
       return { ...state, mxcliDownloading: true, mxcliDownloadProgress: 0 };
     case "MXCLI_DOWNLOAD_PROGRESS":
       return { ...state, mxcliDownloadProgress: action.percent };
+    case "SET_LOG_LEVEL":
+      return { ...state, logLevel: action.level };
     default:
       return state;
   }

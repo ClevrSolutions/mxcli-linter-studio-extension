@@ -8,6 +8,7 @@ import { RuleSourcesTab } from "./RuleSourcesTab";
 import { AboutTab } from "./AboutTab";
 import { SnapshotsTab } from "./SnapshotsTab";
 import { RuleInfoDialog } from "./dialogs/RuleInfoDialog";
+import { UnsavedSettingsDialog } from "./dialogs/UnsavedSettingsDialog";
 import {
   btnPrimary, btnSecondary, bulkBtn, sectionHeading,
   settingsDesc, settingsEmpty, tableBase,
@@ -64,6 +65,7 @@ export function Settings() {
   const state = useAppState();
   const dispatch = useAppDispatch();
   const [infoRuleId, setInfoRuleId] = useState<string | null>(null);
+  const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
   useEffect(() => {
     post("RequestModules");
     post("RequestRulesCatalog");
@@ -110,6 +112,25 @@ export function Settings() {
     const rules = stripRules(state.config.linterConfig.pending);
     post("SaveLinterConfig", { rules, excludedModules: state.config.excludedModules.pending });
     dispatch({ type: "SET_LINTER_CONFIG", config: rules, excludedModules: state.config.excludedModules.pending });
+  }
+
+  function handleBack() {
+    if (hasChanges) {
+      setShowUnsavedDialog(true);
+    } else {
+      dispatch({ type: "HIDE_SETTINGS" });
+    }
+  }
+
+  function saveAndClose() {
+    save();
+    setShowUnsavedDialog(false);
+    dispatch({ type: "HIDE_SETTINGS" });
+  }
+
+  function revertAndClose() {
+    setShowUnsavedDialog(false);
+    dispatch({ type: "HIDE_SETTINGS" });
   }
 
   const ruleIds = Object.keys(state.scan.ruleNames).sort();
@@ -342,7 +363,7 @@ export function Settings() {
   return (
     <div className="pb-8">
       <div className="flex items-center gap-3 mb-3 pb-2 border-b border-clevr-border">
-        <button type="button" className={btnSecondary} onClick={() => dispatch({ type: "HIDE_SETTINGS" })}>
+        <button type="button" className={btnSecondary} onClick={handleBack}>
           ← Back
         </button>
         <h2 className="text-[15px] font-semibold m-0">Settings</h2>
@@ -371,6 +392,14 @@ export function Settings() {
       {state.ui.settingsActiveTab === "configuration" && <ConfigurationTab />}
       {state.ui.settingsActiveTab === "sources" && <RuleSourcesTab />}
       {state.ui.settingsActiveTab === "about" && <AboutTab />}
+
+      {showUnsavedDialog && (
+        <UnsavedSettingsDialog
+          onSave={saveAndClose}
+          onRevert={revertAndClose}
+          onCancel={() => setShowUnsavedDialog(false)}
+        />
+      )}
 
       {infoRuleId && (
         <RuleInfoDialog

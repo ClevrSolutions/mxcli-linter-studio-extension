@@ -98,6 +98,12 @@ function handleMxcliInfo(data: unknown, dispatch: Dispatch<AppAction>): void {
   dispatch({ type: "SET_MXCLI_INFO", info: payload });
 }
 
+function handleLogLevel(data: unknown, dispatch: Dispatch<AppAction>): void {
+  const level = typeof data === "string" ? data : null;
+  if (!level) return;
+  dispatch({ type: "SET_LOG_LEVEL", level });
+}
+
 function handleRuleSources(data: unknown, dispatch: Dispatch<AppAction>): void {
   let list: RuleSource[];
   try {
@@ -237,6 +243,7 @@ export function useMessageBus(dispatch: Dispatch<AppAction>): void {
         case "RuleSourceFetched":        return handleRuleSourceFetched(data, dispatch);
         case "RuleSourceFilesDeleted":   return handleRuleSourceFilesDeleted(data, dispatch);
         case "RuleSourceFetchError":     return handleRuleSourceFetchError(data, dispatch);
+        case "LogLevel":                 return handleLogLevel(data, dispatch);
       }
     }
 
@@ -248,6 +255,7 @@ export function useMessageBus(dispatch: Dispatch<AppAction>): void {
     post("RequestLinterConfig");
     post("RequestMxcliInfo");
     post("RequestRuleSources");
+    post("RequestLogLevel");
 
     return () => window.chrome?.webview?.removeEventListener("message", handleMessage);
   }, [dispatch]);

@@ -3,6 +3,13 @@ import { useAppDispatch, useAppState } from "../context/AppContext";
 import { post } from "../hooks/useMessageBus";
 import { btnPrimary, btnSecondary, inputBase, sectionHeading, settingsDesc, settingsEmpty, tableBase, warningBox } from "../utils/classes";
 
+const LOG_LEVEL_OPTIONS = ["error", "info", "trace"] as const;
+const LOG_LEVEL_LABELS: Record<string, string> = {
+  error: "Error (default)",
+  info:  "Info",
+  trace: "Trace (verbose — includes full mx diff output)",
+};
+
 const SOURCE_LABELS: Record<string, string> = {
   path:       "System PATH",
   clevrLint:  "CLEVR Lint",
@@ -21,9 +28,15 @@ export function ConfigurationTab() {
   const state    = useAppState();
   const dispatch = useAppDispatch();
   const info     = state.config.mxcliInfo;
+  const logLevel = state.config.logLevel;
 
   const [editMode, setEditMode] = useState(false);
   const [editPath, setEditPath] = useState("");
+
+  function handleLogLevelChange(level: string) {
+    dispatch({ type: "SET_LOG_LEVEL", level });
+    post("SetLogLevel", { level });
+  }
 
   function handleDownload() {
     dispatch({ type: "MXCLI_DOWNLOAD_STARTED" });
@@ -52,12 +65,35 @@ export function ConfigurationTab() {
     setEditPath("");
   }
 
+  const logLevelSection = (
+    <section className="mb-6">
+      <h3 className={sectionHeading}>Debug log</h3>
+      <p className={settingsDesc}>
+        Diagnostics are written to <code className="font-mono text-[12px]">.clevr-lint\clevr-lint-debug.log</code> in
+        the project folder. Higher levels write more (Trace includes full mx diff output per scan) — leave this on
+        Error unless you're troubleshooting.
+      </p>
+      <select
+        className={`${inputBase} w-auto`}
+        value={logLevel}
+        onChange={(e) => handleLogLevelChange(e.target.value)}
+      >
+        {LOG_LEVEL_OPTIONS.map((level) => (
+          <option key={level} value={level}>{LOG_LEVEL_LABELS[level]}</option>
+        ))}
+      </select>
+    </section>
+  );
+
   if (info === null) {
     return (
-      <section className="mb-6">
-        <h3 className={sectionHeading}>mxcli</h3>
-        <p className={settingsEmpty}>Loading mxcli information…</p>
-      </section>
+      <>
+        <section className="mb-6">
+          <h3 className={sectionHeading}>mxcli</h3>
+          <p className={settingsEmpty}>Loading mxcli information…</p>
+        </section>
+        {logLevelSection}
+      </>
     );
   }
 
@@ -67,6 +103,7 @@ export function ConfigurationTab() {
   const badgeColor    = SOURCE_BADGE_COLORS[info.source] ?? "bg-clevr-card text-clevr-muted";
 
   return (
+    <>
     <section className="mb-6">
       <h3 className={sectionHeading}>mxcli</h3>
       <p className={settingsDesc}>
@@ -158,5 +195,7 @@ export function ConfigurationTab() {
         )}
       </div>
     </section>
+    {logLevelSection}
+    </>
   );
 }
