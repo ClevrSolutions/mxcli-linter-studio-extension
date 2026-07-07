@@ -15,7 +15,7 @@ import { btnPrimary, btnSecondary } from "../utils/classes";
 // needs to be recorded if it's disabled or has a concrete (non-"inherit") severity. This is
 // exactly what gets posted to the host on save, so it's also the canonical form used to
 // detect whether pending differs from saved (see isPendingChanged below).
-function stripRules(rules: Record<string, LinterConfigRule>): Record<string, LinterConfigRule> {
+export function stripRules(rules: Record<string, LinterConfigRule>): Record<string, LinterConfigRule> {
   const stripped: Record<string, LinterConfigRule> = {};
   for (const [ruleId, cfg] of Object.entries(rules)) {
     if (cfg.enabled === false || (cfg.severity && cfg.severity !== "inherit")) {
@@ -28,7 +28,7 @@ function stripRules(rules: Record<string, LinterConfigRule>): Record<string, Lin
   return stripped;
 }
 
-function isPendingChanged(
+export function isPendingChanged(
   pending: Record<string, LinterConfigRule>,
   saved: Record<string, LinterConfigRule>,
   pendingExcluded: string[],
