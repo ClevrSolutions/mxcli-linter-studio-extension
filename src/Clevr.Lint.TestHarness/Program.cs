@@ -302,7 +302,7 @@ static async Task HandleRequestAsync(
 
         _ = Task.Run(() => DispatchMessage(body, projectDir, fileService, logService,
             exclusionCoordinator, linterConfigCoordinator, scanCoordinator, settingsCoordinator,
-            baselineStore, projectDirResolver, push, mockMode));
+            baselineStore, projectDirResolver, scanCtsHolder, push, mockMode));
 
         resp.StatusCode = 204;
         resp.Close();
@@ -365,6 +365,7 @@ static void DispatchMessage(
     SettingsCoordinator settingsCoordinator,
     BaselineStore baselineStore,
     ProjectDirResolver projectDirResolver,
+    ScanCtsHolder scanCtsHolder,
     Action<string, string> push,
     bool mockMode)
 {
@@ -400,8 +401,19 @@ static void DispatchMessage(
             }
             else
             {
-                scanCoordinator.RunFullScan(new SyncProgress<ScanEvent>(ev => push(ScanMessageName(ev.Kind), ev.Data)));
+                // Mirrors DockablePaneViewModel: cancel (don't dispose) any in-flight scan's CTS
+                // before starting a new one, so Cancel always reaches the current scan.
+                scanCtsHolder.Cts?.Cancel();
+                scanCtsHolder.Cts = new CancellationTokenSource();
+                scanCoordinator.RunFullScan(
+                    new SyncProgress<ScanEvent>(ev => push(ScanMessageName(ev.Kind), ev.Data)),
+                    scanCtsHolder.Cts.Token);
             }
+            break;
+
+        case "CancelScan":
+            scanCtsHolder.Cts?.Cancel();
+            Console.Error.WriteLine("[serve] scan cancellation requested by user");
             break;
 
         case "RequestExclusions":
@@ -622,6 +634,20 @@ static void DispatchMessage(
             catch (Exception ex) { Console.Error.WriteLine($"[serve] RequestMxcliInfo failed: {ex.Message}"); }
             break;
 
+        case "BrowseMxcliPath":
+            try
+            {
+                var current = settingsCoordinator.CurrentMxcliPath();
+                var picked = NativeFileDialog.ShowExePicker("Select mxcli.exe", current);
+                if (picked != null)
+                {
+                    var info = settingsCoordinator.ApplyMxcliPath(picked);
+                    push("MxcliInfo", JsonSerializer.Serialize(info, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }));
+                }
+            }
+            catch (Exception ex) { push("MxcliPathError", ex.Message); }
+            break;
+
         case "SetMxcliPath":
         {
             var path = data?["path"]?.GetValue<string>()?.Trim() ?? "";
@@ -799,6 +825,13 @@ static string ChromeWebViewShimJs() => """
     """;
 
 record SseEvent(string Message, string Data);
+
+// Mutable holder so DispatchMessage (invoked fresh per request) can cancel the previous
+// scan's token when a new one starts, and CancelScan can reach whichever scan is current.
+sealed class ScanCtsHolder
+{
+    public CancellationTokenSource? Cts;
+}
 
 // Progress<T> marshals via SynchronizationContext, which this console app doesn't have —
 // report events synchronously and in order instead.
