@@ -4,7 +4,7 @@ import { filterReducer, initialFilterState, type FilterAction, type FilterState 
 import { initialScanState, scanReducer, type ScanAction, type ScanState } from "./slices/scanSlice";
 import { initialUIState, uiReducer, type UIAction, type UIState } from "./slices/uiSlice";
 
-export type { ScanDescribePayload, ScanFastPayload } from "./slices/scanSlice";
+export type { ScanFastPayload } from "./slices/scanSlice";
 
 export interface AppState {
   scan: ScanState;

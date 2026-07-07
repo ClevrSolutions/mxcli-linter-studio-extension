@@ -35,8 +35,6 @@ export interface ScanProgress {
   processed: number;
   total: number;
   label: string;
-  requested?: number;
-  returned?: number;
 }
 
 export interface ExclusionEntry {

@@ -1,5 +1,5 @@
 ﻿import { Dispatch, useEffect } from "react";
-import type { AppAction, ScanDescribePayload, ScanFastPayload } from "../context/AppReducer";
+import type { AppAction, ScanFastPayload } from "../context/AppReducer";
 import type { BaselineEntry, Exclusion, LinterConfigRule, ModuleInfo, MxcliInfo, RuleSource, RuleSourceFetchStatus } from "../types";
 
 export function post(message: string, data?: unknown): void {
@@ -7,7 +7,7 @@ export function post(message: string, data?: unknown): void {
 }
 
 function handleMxcliResult(data: unknown, dispatch: Dispatch<AppAction>): void {
-  let payload: (ScanFastPayload & { phase?: string; final?: boolean }) | null;
+  let payload: (ScanFastPayload & { final?: boolean }) | null;
   try {
     payload = typeof data === "string" ? JSON.parse(data) : (data as typeof payload);
   } catch (e) {
@@ -18,12 +18,7 @@ function handleMxcliResult(data: unknown, dispatch: Dispatch<AppAction>): void {
     dispatch({ type: "SCAN_ERROR", error: payload?.error ?? "mxcli scan failed (unknown error)." });
     return;
   }
-  const phase = payload.phase ?? "fast";
-  if (phase === "describe") {
-    dispatch({ type: "SCAN_DESCRIBE_BATCH", payload: payload as ScanDescribePayload });
-  } else {
-    dispatch({ type: "SCAN_FAST_BATCH", payload });
-  }
+  dispatch({ type: "SCAN_FAST_BATCH", payload });
 }
 
 function handleExclusions(data: unknown, dispatch: Dispatch<AppAction>): void {

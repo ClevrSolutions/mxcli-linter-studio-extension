@@ -139,7 +139,6 @@ internal static class MockFixtures
         {
             ok = true,
             streaming = true,
-            phase = "fast",
             final = true,
             command = "mxcli lint --format json (mock)",
             workingDirectory = "(mock — no real project)",

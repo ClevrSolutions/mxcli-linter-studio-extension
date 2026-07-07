@@ -212,7 +212,6 @@ public sealed class LintScanService
         {
             ok = true,
             streaming = true,
-            phase = "fast",
             final = true,
             command = fast.Command,
             workingDirectory = fast.ProjectDir,
