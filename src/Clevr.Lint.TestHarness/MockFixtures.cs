@@ -128,7 +128,9 @@ internal static class MockFixtures
         ["PERF-003"] = "Performance",
     };
 
-    public static readonly string[] AppStoreModules = ["Administration", "System"];
+    // Empty to match the real backend (LintScanService hardcodes empty); populate both sides
+    // together when the marketplace filter ships.
+    public static readonly string[] AppStoreModules = [];
 
     /// <summary>Mirrors LintScanService.SerializeBatch's payload shape exactly.</summary>
     public static string BuildFullScanBatchJson()

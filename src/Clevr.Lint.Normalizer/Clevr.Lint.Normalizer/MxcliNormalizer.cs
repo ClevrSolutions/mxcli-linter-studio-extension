@@ -16,6 +16,13 @@ public static class MxcliNormalizer
 
         foreach (var raw in rawViolations)
         {
+            // A violation with no rule id can't be matched to the rules catalog, can't be
+            // categorized (DeriveCategory would return ""), and produces a fingerprint that no
+            // exclusion could ever meaningfully target. mxcli should never emit this, but the
+            // envelope is untrusted (explicit JSON `null` coalesces to "" in MxcliViolation) —
+            // skip rather than surface a garbage "Other"/"" category entry.
+            if (raw.RuleId.Length == 0) continue;
+
             var documentQualifiedName = BuildDocumentQualifiedName(raw);
             var documentType = DocumentTypeCanonicalizer.Canonicalize(raw.DocumentType);
             var documentId = NullIfBlank(raw.DocumentId);
@@ -57,7 +64,13 @@ public static class MxcliNormalizer
         if (module.Length > 0 && document.Length > 0)
         {
             // 'document' already qualified with this module → do not double-prefix.
-            if (document.StartsWith(module + ".", StringComparison.Ordinal)) return document;
+            // Case-INsensitive on purpose: Mendix module names are case-insensitively unique,
+            // and mxcli's 'module' casing does not always match the casing inside 'document'
+            // (e.g. module "sales", document "Sales.Customer"). An Ordinal compare would
+            // produce the corrupted QN "sales.Sales.Customer", which changes the fingerprint
+            // and silently invalidates existing exclusions. On a match, 'document' is returned
+            // UNCHANGED — its casing is authoritative and must never be rewritten.
+            if (document.StartsWith(module + ".", StringComparison.OrdinalIgnoreCase)) return document;
             return $"{module}.{document}";
         }
         if (document.Length > 0) return document;

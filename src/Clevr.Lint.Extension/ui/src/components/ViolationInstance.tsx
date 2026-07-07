@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { memo, useState } from "react";
 import { useAppDispatch, useAppState } from "../context/AppContext";
 import type { Violation } from "../types";
 import { post } from "../hooks/useMessageBus";
@@ -14,7 +14,9 @@ interface Props {
   isFixed?: boolean;
 }
 
-export function ViolationInstance({ rule, v, interactive = true, isFixed = false }: Props) {
+// memo: `rule`/`v` are elements of memoized arrays upstream, so unchanged instances keep
+// reference-equal props and skip re-rendering entirely.
+export const ViolationInstance = memo(function ViolationInstance({ rule, v, interactive = true, isFixed = false }: Props) {
   const state = useAppState();
   const dispatch = useAppDispatch();
   const [showExclude, setShowExclude] = useState(false);
@@ -106,4 +108,4 @@ export function ViolationInstance({ rule, v, interactive = true, isFixed = false
       {showExclude && <ExcludeDialog v={v} onClose={() => setShowExclude(false)} />}
     </div>
   );
-}
+});

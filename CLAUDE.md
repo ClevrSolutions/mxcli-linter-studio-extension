@@ -7,9 +7,9 @@ CLEVR Lint is a **Mendix Studio Pro 11 extension** that runs **mxcli** against a
 ```
 src/
   Clevr.Lint.Extension/     ← Extension backend (C# .NET 10) + React UI
-  Clevr.Lint.Normalizer/    ← Pure normalization library + 232 unit tests
+  Clevr.Lint.Normalizer/    ← Pure normalization library + unit tests
   Clevr.Lint.TestHarness/   ← Standalone CLI for debugging the normalizer
-dist/                       ← Dev/test build output (Pack-Dist.ps1); read directly by TestHarness
+dist/                       ← Dev/test build output assembled by Pack-Dist.ps1
 docs/                       ← Architecture, rules inventory
 .github/workflows/          ← CI: build + test on every push/PR
 Pack-Dist.ps1               ← Builds UI + extension (Release), assembles dist/clevrlint
@@ -48,7 +48,7 @@ User clicks Scan / Deepscan in Studio Pro
 ## Build commands
 
 ```powershell
-# Run tests (must stay green — 232 tests)
+# Run the normalizer test suite (all tests must pass)
 dotnet test src/Clevr.Lint.Normalizer/Clevr.Lint.Normalizer.Tests/Clevr.Lint.Normalizer.Tests.csproj
 
 # Build normalizer library
@@ -72,7 +72,7 @@ cd src/Clevr.Lint.Extension/ui && npm run build
 | UI | React 19 + TypeScript, Vite 6, Tailwind CSS v4 |
 | Normalization library | C# / .NET 10, zero external dependencies |
 | Mendix API | Mendix.StudioPro.ExtensionsAPI 11.10 |
-| External tool | mxcli v0.12.0 (Apache-2.0, auto-detected/downloaded at runtime by `MxcliService.cs`) |
+| External tool | mxcli (Apache-2.0) — latest GitHub release resolved at runtime by `MxcliService.cs`, no pinned version |
 
 End users install CLEVR Lint from the **Mendix Marketplace** (not from this repo's `dist/` folder or any install script). `dist/` exists only so `Clevr.Lint.TestHarness` has a Release build to load during local dev/testing.
 
@@ -125,9 +125,9 @@ Playwright must run from inside `src/Clevr.Lint.Extension/ui` (not repo root) so
 
 **Update mxcli version:** nothing to do here — `MxcliService.cs` always resolves the latest GitHub release at runtime and verifies its sha256 before use.
 
-**Rebuild for local testing:** run `Pack-Dist.ps1`, then relaunch `Clevr.Lint.TestHarness --serve` (it reads `dist\clevrlint` directly). For testing inside Studio Pro itself, copy `dist\clevrlint` into `<project>\extensions\clevrlint` and restart Studio Pro — changes apply to new scans only.
+**Rebuild for local testing:** run `Pack-Dist.ps1` (it also refreshes `src/Clevr.Lint.Extension/wwwroot`, which flows into the harness's build output on the next `dotnet run`), then relaunch `Clevr.Lint.TestHarness --serve`. For testing inside Studio Pro itself, copy `dist\clevrlint` into `<project>\extensions\clevrlint` and restart Studio Pro — changes apply to new scans only.
 
-**Debug log:** `<project>\.clevr-lint\mxlint-debug.log`
+**Debug log:** `<project>\.clevr-lint\clevr-lint-debug.log`
 
 ## Known limitations
 

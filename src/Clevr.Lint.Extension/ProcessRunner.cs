@@ -2,11 +2,6 @@
 
 namespace Clevr.Lint.Extension;
 
-/// <summary>
-/// Proof of assumption (a): a C# extension component can start an external process.
-/// This is plain .NET 10 (System.Diagnostics.Process) — there is no Mendix-specific
-/// API or restriction. Intentionally starts innocuous (cmd /c echo test).
-/// </summary>
 public static class ProcessRunner
 {
     public record Result(string StdOut, string StdErr, int ExitCode, bool Ok, string? Error);
@@ -96,15 +91,5 @@ public static class ProcessRunner
     {
         try { return readTask.Wait(2000) ? readTask.Result : ""; }
         catch { return ""; }
-    }
-
-    /// <summary>The command for this spike. Start innocuous; switch to mxcli later.</summary>
-    public static Result RunSpikeCommand()
-    {
-        // Step 1 (innocuous, always present on Windows):
-        return Run("cmd.exe", "/c echo test");
-
-        // Step 2 (once step 1 works) — remove the comment to try the real engine:
-        // return Run("mxcli", "--version");
     }
 }

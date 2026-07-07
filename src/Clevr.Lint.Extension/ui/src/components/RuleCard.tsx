@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { memo, useState } from "react";
 import { useAppDispatch, useAppState } from "../context/AppContext";
 import type { Violation } from "../types";
 import { copyToClipboard } from "../hooks/useClipboard";
@@ -15,7 +15,9 @@ interface Props {
   isFixed?: boolean;
 }
 
-export function RuleCard({ rule, items, interactive = true, isFixed = false }: Props) {
+// memo: `rule`/`items` come from memoized arrays upstream, so when nothing relevant changed
+// the props are reference-equal and the VDOM diff of hundreds of cards is skipped.
+export const RuleCard = memo(function RuleCard({ rule, items, interactive = true, isFixed = false }: Props) {
   const state = useAppState();
   const dispatch = useAppDispatch();
   const [showExcludeRule, setShowExcludeRule] = useState(false);
@@ -70,4 +72,4 @@ export function RuleCard({ rule, items, interactive = true, isFixed = false }: P
       {showExcludeRule && <ExcludeRuleDialog rule={rule} items={items} onClose={() => setShowExcludeRule(false)} />}
     </>
   );
-}
+});

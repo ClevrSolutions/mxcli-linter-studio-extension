@@ -82,6 +82,31 @@ export function currentFingerprintSet(state: AppState): Set<string> {
   return new Set(state.scan.violations.map((v) => v.fingerprint));
 }
 
+// Every state slice read by activeViolations / baseViolations / excludedView /
+// severityUniverse. Components memoize those derived computations with useMemo and this
+// as the dependency list, so the expensive recompute (fingerprint Sets over all
+// violations/exclusions/baseline) only reruns when one of these slices actually changes —
+// not on every dispatch (e.g. streaming progress toasts). Keep this in sync with the
+// functions above/below whenever they start reading a new slice.
+export function activeViolationsDeps(state: AppState): unknown[] {
+  return [
+    state.scan.violations,
+    state.scan.appStoreModules,
+    state.filters.appStoreVisible,
+    state.filters.baselineFilter,
+    state.filters.uncommittedFilterActive,
+    state.filters.uncommittedAvailable,
+    state.filters.uncommittedQualifiedNames,
+    state.filters.uncommittedDocumentIds,
+    state.config.excludedModules.saved,
+    state.config.modules,
+    state.config.exclusions,
+    state.config.linterConfig.saved,
+    state.baseline.baselines,
+    state.baseline.selectedBaselineId,
+  ];
+}
+
 export function activeViolations(state: AppState): Violation[] {
   if (state.filters.baselineFilter === "fixed" && state.baseline.selectedBaselineId) {
     // Use scoped current fingerprints — same view the user sees (app store + Project exclusion applied).

@@ -21,8 +21,8 @@ public sealed record ScanEvent(ScanEventKind Kind, string Data)
 }
 
 /// <summary>
-/// Owns the scan workflow: the quick single-shot "RunLintScan" and the streaming
-/// "RunFullScan" (mxcli + changed-files git diff, run together, reported as they complete).
+/// Owns the scan workflow: "RunFullScan" streams mxcli findings and a parallel changed-files
+/// git diff, reported together as they complete.
 /// No IWebView and no thread marshaling live here — <see cref="RunFullScan"/> reports via a
 /// plain <see cref="IProgress{ScanEvent}"/>, so a unit test can assert on the emitted event
 /// sequence with a fake IProgress&lt;T&gt; and no WebView2, no UI thread. The dispatcher is
@@ -49,10 +49,6 @@ public sealed class ScanCoordinator
         _mendixVersion = mendixVersion;
     }
 
-    /// <summary>The original "Scan" action: mxcli only, synchronous, single JSON result.</summary>
-    public string RunLintScan()
-        => new LintScanService(_fileService, _logService).RunScanAsJson(_projectDir.Resolve());
-
     /// <summary>
     /// The "one button" full scan: mxcli lint (streamed in batches) plus a parallel changed-files
     /// git diff, reported to <paramref name="progress"/> as: Progress, Violations* (one per batch),
@@ -77,7 +73,7 @@ public sealed class ScanCoordinator
             // Start changed-files detection in parallel — finishes well before mxcli does on any real project.
             var changedTask = (resolveErr == null && !string.IsNullOrEmpty(mprFileName) && !string.IsNullOrEmpty(resolvedDir))
                 ? Task.Run(() => new ChangedElementsResolver(
-                      settings.MxcliPath, resolvedDir, mprFileName, _logService, _mendixVersion).Resolve())
+                      settings.MxcliPath, resolvedDir, mprFileName, _logService, _mendixVersion).Resolve(ct))
                 : Task.FromResult(new ChangedScanResult
                       { Status = ChangedScanStatus.Error, Message = "project not resolved" });
 

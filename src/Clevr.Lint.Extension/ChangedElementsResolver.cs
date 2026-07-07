@@ -55,31 +55,40 @@ public sealed class ChangedElementsResolver
         _mendixVersion = mendixVersion;
     }
 
-    public ChangedScanResult Resolve()
+    /// <summary>
+    /// <paramref name="ct"/> is the scan's cancellation token (also propagated to CancelScan) —
+    /// threaded into every subprocess this resolver runs so the whole pipeline is cancellable
+    /// and, combined with each call's timeout, cannot hang forever (e.g. mxcli stuck on a
+    /// locked .mpr while Studio Pro saves). A cancelled/timed-out call surfaces the same way any
+    /// other subprocess failure here does — <see cref="ProcessRunner.Run"/> returns a
+    /// non-<c>Ok</c> <see cref="ProcessRunner.Result"/> rather than throwing, so the existing
+    /// typed-status handling below (NotGit, DiffFailed, ...) applies unchanged.
+    /// </summary>
+    public ChangedScanResult Resolve(CancellationToken ct = default)
     {
         var tmp = Path.Combine(Path.GetTempPath(), "clevr-lint-changed", Guid.NewGuid().ToString("N"));
         var cleanupTmp = true;
         try
         {
             // 1) Git repo check
-            var rp = Git("rev-parse --is-inside-work-tree");
+            var rp = Git("rev-parse --is-inside-work-tree", ct);
             if (!rp.Ok || rp.StdOut.Trim() != "true")
                 return Fail(ChangedScanStatus.NotGit,
                     "Changed-files scan requires a git project. This project is not under git — use a regular scan instead.");
 
             // 2) .mpr committed in HEAD? (need a baseline to diff against)
-            if (!Git($"cat-file -e \"HEAD:{_mprFileName}\"").Ok)
+            if (!Git($"cat-file -e \"HEAD:{_mprFileName}\"", ct).Ok)
                 return Fail(ChangedScanStatus.NotGit,
                     $"'{_mprFileName}' is not committed in HEAD — no baseline to diff against. Commit first, or use a regular scan.");
 
             // 3) Quick pre-check: any model files changed? (avoids the expensive baseline + diff)
-            var st = Git($"status --porcelain -- \"{_mprFileName}\" mprcontents");
+            var st = Git($"status --porcelain -- \"{_mprFileName}\" mprcontents", ct);
             if (st.Ok && st.StdOut.Trim().Length == 0)
                 return Fail(ChangedScanStatus.NoChanges,
                     "No changed elements — nothing in the model has changed since the last commit.");
 
             // 4) Find a compatible mx.exe
-            var (mxExe, loose, mxErr) = FindMxExe();
+            var (mxExe, loose, mxErr) = FindMxExe(ct);
             if (mxExe is null)
                 return Fail(ChangedScanStatus.NoMxTool, mxErr!);
             DebugLog.Write(_projectDir, $"[CLEVR Lint] mx.exe: {mxExe}");
@@ -87,14 +96,14 @@ public sealed class ChangedElementsResolver
             // 5) Extract HEAD baseline (scoped: .mpr + mprcontents, no javasource/node_modules)
             Directory.CreateDirectory(tmp);
             var tar = Path.Combine(tmp, "base.tar");
-            var arch = Git($"archive -o \"{tar}\" HEAD -- \"{_mprFileName}\" mprcontents");
+            var arch = Git($"archive -o \"{tar}\" HEAD -- \"{_mprFileName}\" mprcontents", ct);
             if (!arch.Ok || !File.Exists(tar))
                 return Fail(ChangedScanStatus.Error,
                     $"Could not extract baseline from git (git archive): {Trim(arch.StdErr, arch.Error)}");
 
             var baseDir = Path.Combine(tmp, "base");
             Directory.CreateDirectory(baseDir);
-            var untar = ProcessRunner.Run("tar", $"-xf \"{tar}\" -C \"{baseDir}\"", _projectDir, 120_000);
+            var untar = ProcessRunner.Run("tar", $"-xf \"{tar}\" -C \"{baseDir}\"", _projectDir, 120_000, ct);
             var baseMpr = Path.Combine(baseDir, _mprFileName);
             if (!File.Exists(baseMpr))
                 return Fail(ChangedScanStatus.Error,
@@ -112,7 +121,7 @@ public sealed class ChangedElementsResolver
             var looseFlag = loose ? "--loose-version-check " : "";
             var diffArgs = $"diff {looseFlag}\"{baseMpr}\" \"{liveMpr}\" \"{outJson}\"";
             DebugLog.Write(_projectDir, $"[CLEVR Lint] running: {mxExe} {diffArgs}");
-            var diff = ProcessRunner.Run(mxExe, diffArgs, _projectDir, 600_000);
+            var diff = ProcessRunner.Run(mxExe, diffArgs, _projectDir, 600_000, ct);
             if (!File.Exists(outJson))
             {
                 cleanupTmp = false; // keep tmp so the baseline can be inspected
@@ -136,10 +145,10 @@ public sealed class ChangedElementsResolver
             var changed = MxDiffParser.Parse(diffJsonText);
 
             // 8) Microflow GUIDs → qualified names via CATALOG.MICROFLOWS (cheap SELECT, ~0.4s)
-            var mfQns = ResolveMicroflowNames(changed.MicroflowUnitIds);
+            var mfQns = ResolveMicroflowNames(changed.MicroflowUnitIds, ct);
 
             // 9) Intersect with user modules (same scope as the describe sweep)
-            var userModules = UserModules();
+            var userModules = UserModules(ct);
             var microflows = mfQns
                 .Where(q => userModules.Contains(ModuleOf(q)))
                 .Distinct(StringComparer.Ordinal)
@@ -182,14 +191,16 @@ public sealed class ChangedElementsResolver
 
     // ── helpers ─────────────────────────────────────────────────────────────────────────────
 
-    private ProcessRunner.Result Git(string args) =>
-        ProcessRunner.Run("git", $"-C \"{_projectDir}\" {args}", _projectDir, 120_000);
+    private ProcessRunner.Result Git(string args, CancellationToken ct = default) =>
+        ProcessRunner.Run("git", $"-C \"{_projectDir}\" {args}", _projectDir, 120_000, ct);
 
     /// <summary>
     /// Resolves microflow unit GUIDs to qualified names via CATALOG.MICROFLOWS.Id.
-    /// One cheap SELECT (~0.4s) rather than a full mx dump-mpr (~29s).
+    /// One cheap SELECT (~0.4s) rather than a full mx dump-mpr (~29s). Bounded to 120s (same
+    /// order of magnitude as the git calls above) so a stuck mxcli (e.g. .mpr locked by a Studio
+    /// Pro save) can't hang the resolver forever — see the Resolve() doc comment.
     /// </summary>
-    private List<string> ResolveMicroflowNames(IReadOnlyList<string> guids)
+    private List<string> ResolveMicroflowNames(IReadOnlyList<string> guids, CancellationToken ct = default)
     {
         var names = new List<string>();
         if (guids.Count == 0) return names;
@@ -198,7 +209,7 @@ public sealed class ChangedElementsResolver
         {
             var proc = ProcessRunner.Run(_mxcliPath,
                 $"-p \"{_mprFileName}\" -c \"SELECT Id, QualifiedName FROM CATALOG.MICROFLOWS\"",
-                _projectDir);
+                _projectDir, 120_000, ct);
             var headerSeen = false;
             foreach (var line in (proc.StdOut ?? "").Split('\n'))
             {
@@ -217,15 +228,16 @@ public sealed class ChangedElementsResolver
         return names;
     }
 
-    /// <summary>User modules (CATALOG.MODULES.Source empty) — same scope as the describe sweep.</summary>
-    private HashSet<string> UserModules()
+    /// <summary>User modules (CATALOG.MODULES.Source empty) — same scope as the describe sweep.
+    /// Bounded to 120s for the same reason as <see cref="ResolveMicroflowNames"/>.</summary>
+    private HashSet<string> UserModules(CancellationToken ct = default)
     {
         var set = new HashSet<string>(StringComparer.Ordinal);
         try
         {
             var proc = ProcessRunner.Run(_mxcliPath,
                 $"-p \"{_mprFileName}\" -c \"SELECT Name, Source FROM CATALOG.MODULES\"",
-                _projectDir);
+                _projectDir, 120_000, ct);
             var headerSeen = false;
             foreach (var line in (proc.StdOut ?? "").Split('\n'))
             {
@@ -248,7 +260,7 @@ public sealed class ChangedElementsResolver
     /// Finds mx.exe matching the project's Mendix version.
     /// Exact version match → no loose flag; same major → loose-version-check; otherwise nothing.
     /// </summary>
-    private (string? Path, bool Loose, string? Error) FindMxExe()
+    private (string? Path, bool Loose, string? Error) FindMxExe(CancellationToken ct = default)
     {
         // Try sibling of mxcli first (they both ship in the Studio Pro modeler folder)
         var mxcliDir = Path.GetDirectoryName(_mxcliPath);
@@ -258,7 +270,7 @@ public sealed class ChangedElementsResolver
             if (File.Exists(sibling)) return (sibling, false, null);
         }
 
-        var version = _mendixVersion ?? ProjectMendixVersion();
+        var version = _mendixVersion ?? ProjectMendixVersion(ct);
         var roots = new[]
         {
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "Mendix"),
@@ -306,13 +318,13 @@ public sealed class ChangedElementsResolver
     /// query is sufficient to trigger it. Used as fallback when the Studio Pro host version is
     /// not available (e.g. test harness).
     /// </summary>
-    private string? ProjectMendixVersion()
+    private string? ProjectMendixVersion(CancellationToken ct = default)
     {
         try
         {
             var r = ProcessRunner.Run(_mxcliPath,
                 $"-p \"{_mprFileName}\" -c \"SELECT Name FROM CATALOG.MODULES\"",
-                _projectDir, 30_000);
+                _projectDir, 30_000, ct);
             var m = Regex.Match((r.StdOut ?? "") + (r.StdErr ?? ""), @"Mendix\s+(\d+\.\d+\.\d+)");
             return m.Success ? m.Groups[1].Value : null;
         }

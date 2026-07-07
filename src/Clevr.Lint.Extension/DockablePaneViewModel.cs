@@ -15,10 +15,8 @@ using Mendix.StudioPro.ExtensionsAPI.UI.WebView;
 namespace Clevr.Lint.Extension;
 
 /// <summary>
-/// The C#-hosted webview pane. Two message handlers:
-///   "RunCommand"  → the original spike (cmd /c echo test) — proves the bus.
-///   "RunLintScan"  → Phase 2A: runs the REAL mxcli engine via LintScanService,
-///                   normalizes to Violation[] and sends them back as JSON.
+/// The C#-hosted webview pane, dispatching WebView messages (Scan, Settings, Exclusions,
+/// Baselines, ...) to the coordinators that implement them.
 ///
 /// Bridge = the WebView message bus:
 ///   web → C# : window.chrome.webview.postMessage({ message, data })  →  MessageReceived
@@ -43,6 +41,12 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
     private readonly SettingsCoordinator _settingsCoordinator;
     private readonly ScanCoordinator _scanCoordinator;
     private CancellationTokenSource? _scanCts;
+    // Bumped every time a new scan starts; each scan's events carry the generation that was
+    // current when it started. A superseded scan's own CTS is cancelled (see RunFullScan below),
+    // but cancellation is cooperative — mxcli may not observe it instantly — so PostScanEvent
+    // also drops events from any generation other than the current one. This is what prevents a
+    // stale scan's late Finished from re-enabling the Scan button while a newer scan still runs.
+    private int _scanGeneration;
     private SynchronizationContext? _uiContext;
 
     public DockablePaneViewModel(
@@ -76,35 +80,26 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
 
         webView.MessageReceived += (_, args) =>
         {
-            if (args.Message == "RunCommand")
-            {
-                var r = ProcessRunner.RunSpikeCommand();
-                _logService.Info($"[CLEVR Lint] command done, exit={r.ExitCode}, ok={r.Ok}");
-                string report =
-                    $"exitCode: {r.ExitCode}\nok: {r.Ok}\n\n" +
-                    $"--- stdout ---\n{r.StdOut}\n--- stderr ---\n{r.StdErr}" +
-                    (r.Error is null ? "" : $"\n\n--- error ---\n{r.Error}");
-                webView.PostMessage("CommandOutput", report);
-            }
-            else if (args.Message == "RunLintScan")
-            {
-                // Synchronous (like the spike): mxcli on a project can take a few seconds.
-                // For production later: async + marshal back to the UI thread.
-                var json = _scanCoordinator.RunLintScan();
-                webView.PostMessage("LintViolations", json);
-            }
-            else if (args.Message == "RunFullScan")
+            if (args.Message == "RunFullScan")
             {
                 var ctx = SynchronizationContext.Current;
                 _uiContext ??= ctx; // Capture the known-good UI context for background→UI marshaling
                 if (ctx == null)
                     DebugLog.Write(_getProjectDir(), "[CLEVR Lint] WARNING: SynchronizationContext.Current is null at scan start — UI posts will run on background thread");
-                _scanCts?.Dispose();
+                // Signal the previous scan (if any) to stop, but do NOT dispose its CTS here: the old
+                // scan's background thread may still be inside ProcessRunner.Run, which links a token
+                // off this same CTS (CreateLinkedTokenSource) — disposing while that's in flight throws
+                // ObjectDisposedException. Just cancel and drop the reference; the GC reclaims it once
+                // the old scan (and its linked token) is done with it.
+                _scanCts?.Cancel();
                 _scanCts = new CancellationTokenSource();
                 var token = _scanCts.Token;
+                // Bump the generation so PostScanEvent can tell a superseded scan's (possibly still
+                // in-flight) events apart from the current scan's — see the field comment above.
+                var generation = ++_scanGeneration;
                 // Progress<T> captures SynchronizationContext.Current at construction — here, on the
                 // UI thread — so each Report() below auto-marshals back to the UI without manual Post().
-                var progress = new Progress<ScanEvent>(ev => PostScanEvent(webView, ev));
+                var progress = new Progress<ScanEvent>(ev => PostScanEvent(webView, ev, generation));
                 _ = Task.Run(() => _scanCoordinator.RunFullScan(progress, token));
             }
             else if (args.Message == "CancelScan")
@@ -314,9 +309,13 @@ public class DockablePaneViewModel : WebViewDockablePaneViewModel
     }
 
     /// <summary>Translates a <see cref="ScanEvent"/> from <see cref="ScanCoordinator.RunFullScan"/>
-    /// into the WebView message it corresponds to. The only place scan events touch the WebView.</summary>
-    private void PostScanEvent(IWebView webView, ScanEvent ev)
+    /// into the WebView message it corresponds to. The only place scan events touch the WebView.
+    /// Drops events from a superseded scan (<paramref name="generation"/> != the current
+    /// <see cref="_scanGeneration"/>) — e.g. a stale Finished that would otherwise re-enable the
+    /// Scan button while a newer scan, started before the old one noticed cancellation, is still running.</summary>
+    private void PostScanEvent(IWebView webView, ScanEvent ev, int generation)
     {
+        if (generation != _scanGeneration) return;
         var message = ev.Kind switch
         {
             ScanEventKind.Progress => "ScanProgress",

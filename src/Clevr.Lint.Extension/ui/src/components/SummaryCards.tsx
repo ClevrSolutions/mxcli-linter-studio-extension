@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useAppDispatch, useAppState } from "../context/AppContext";
 import { LINT_CATEGORIES } from "../constants";
-import { activeViolations, displayCategory, passesFilters } from "../utils/filters";
+import { activeViolations, activeViolationsDeps, displayCategory, passesFilters } from "../utils/filters";
 import { severityUniverse } from "../utils/grouping";
 import { moduleOf } from "../utils/origins";
 import { cardBase, countRow } from "../utils/classes";
@@ -19,19 +19,33 @@ export function SummaryCards({ interactive = true }: Props) {
   const state = useAppState();
   const dispatch = useAppDispatch();
   const q = state.filters.filterQuery.trim().toLowerCase();
-  const filtered = activeViolations(state).filter((v) =>
-    passesFilters(v, q, state.filters.categoryEnabled, state.filters.severityEnabled, state.filters.moduleFilterEnabled, state.scan.ruleNames, state.scan.ruleCategories)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const active = useMemo(() => activeViolations(state), activeViolationsDeps(state));
+  const filtered = useMemo(
+    () => active.filter((v) =>
+      passesFilters(v, q, state.filters.categoryEnabled, state.filters.severityEnabled, state.filters.moduleFilterEnabled, state.scan.ruleNames, state.scan.ruleCategories)
+    ),
+    [active, q, state.filters.categoryEnabled, state.filters.severityEnabled, state.filters.moduleFilterEnabled, state.scan.ruleNames, state.scan.ruleCategories],
   );
 
-  const base = activeViolations({ ...state, filters: { ...state.filters, baselineFilter: null } });
-  const moduleViolationCounts = new Map<string, number>();
-  for (const v of base) {
-    const m = moduleOf(v);
-    if (m) moduleViolationCounts.set(m, (moduleViolationCounts.get(m) ?? 0) + 1);
-  }
-  const moduleRows = state.config.modules
-    .map(({ name }) => ({ name, count: moduleViolationCounts.get(name) ?? 0 }))
-    .sort((a, b) => a.name.localeCompare(b.name));
+  const base = useMemo(
+    () => activeViolations({ ...state, filters: { ...state.filters, baselineFilter: null } }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    activeViolationsDeps(state),
+  );
+  const moduleRows = useMemo(() => {
+    const moduleViolationCounts = new Map<string, number>();
+    for (const v of base) {
+      const m = moduleOf(v);
+      if (m) moduleViolationCounts.set(m, (moduleViolationCounts.get(m) ?? 0) + 1);
+    }
+    return state.config.modules
+      .map(({ name }) => ({ name, count: moduleViolationCounts.get(name) ?? 0 }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [base, state.config.modules]);
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const severities = useMemo(() => severityUniverse(state), activeViolationsDeps(state));
 
   const [catExpanded, setCatExpanded] = useState(false);
   const [sevExpanded, setSevExpanded] = useState(false);
@@ -92,7 +106,7 @@ export function SummaryCards({ interactive = true }: Props) {
         </h3>
         {sevExpanded ? (
           <>
-            {severityUniverse(state).map((s) => {
+            {severities.map((s) => {
               const count = filtered.filter((v) => v.severity === s).length;
               const selected = state.filters.severityEnabled.has(s);
               const label = <span className={selected ? "font-semibold" : ""}><span className={`sev sev-${s}`}>{s || "(none)"}</span></span>;

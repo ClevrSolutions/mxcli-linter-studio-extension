@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useAppDispatch, useAppState } from "../context/AppContext";
 import { excludedView } from "../utils/exclusions";
+import { activeViolationsDeps } from "../utils/filters";
 import { previewText, ruleName } from "../utils/grouping";
 import { post } from "../hooks/useMessageBus";
 import { ConfirmDialog } from "./dialogs/ConfirmDialog";
@@ -10,7 +11,8 @@ import { btnPillMuted } from "../utils/classes";
 export function ExcludedSection() {
   const state = useAppState();
   const dispatch = useAppDispatch();
-  const ev = excludedView(state);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const ev = useMemo(() => excludedView(state), activeViolationsDeps(state));
 
   if (!ev.groups.length) return null;
 

@@ -2,13 +2,13 @@
 
 A Mendix Studio Pro 11 extension that runs **mxcli** to lint a Mendix project and displays the findings as a structured report inside the IDE — grouped by category and severity, with filtering, exclusions, and HTML export.
 
-![Build & Test](https://github.com/clevr/clevr-lint-extension/actions/workflows/build-and-test.yml/badge.svg)
+![Build & Test](https://github.com/ClevrSolutions/mxcli-linter-studio-extension/actions/workflows/build-and-test.yml/badge.svg)
 
 ## Install (end users)
 
-See ![Mendix Marketplace](https://marketplace.mendix.com/link/component/301023) for the released version.
+See [Mendix Marketplace](https://marketplace.mendix.com/link/component/301023) for the released version.
 1. Download
-1. Open the CLEVR Linter extenion via the Menu > Extensions > clevrlint > CLEVR Lint
+1. Open the CLEVR Linter extension via the Menu > Extensions > clevrlint > CLEVR Lint
 1. Requires mxcli which can be installed through the extension
   1. Settings
   1. Configuration
@@ -23,7 +23,7 @@ See ![Mendix Marketplace](https://marketplace.mendix.com/link/component/301023) 
 
 ## Usage (end users)
 
-1. Open the CLEVR Linter extenion via the Menu > Extensions > clevrlint > CLEVR Lint
+1. Open the CLEVR Linter extension via the Menu > Extensions > clevrlint > CLEVR Lint
 1. Go to Settings
   1. Select the modules you would like to scan
   1. Select the rules you would like to use
@@ -49,9 +49,9 @@ mxcli (Go CLI, Apache-2.0)
 | Folder | Purpose |
 |--------|---------|
 | `src/Clevr.Lint.Extension/` | Extension backend (C#) + React UI |
-| `src/Clevr.Lint.Normalizer/` | Pure normalization library + 232 unit tests |
+| `src/Clevr.Lint.Normalizer/` | Pure normalization library + unit tests |
 | `src/Clevr.Lint.TestHarness/` | Standalone CLI for debugging the normalizer |
-| `dist/` | Pre-built distribution package for end users |
+| `dist/` | Local dev/test build output (end users install from the Mendix Marketplace) |
 | `docs/` | Architecture and rules inventory |
 | `.github/workflows/` | CI: build + test on every push/PR |
 | `package.json`, `scripts/` | Root `npm run build`/`test`/`dev` wrapper commands |
@@ -62,8 +62,8 @@ mxcli (Go CLI, Apache-2.0)
 |------|---------|
 | .NET SDK | 10.0 |
 | Node.js | 20+ |
-| Mendix Studio Pro | >11.12 (only needed to run the extension for real) |
-| mxcli | v0.13.0 (downloaded extension; not needed for `npm run dev` — mock mode has canned data) |
+| Mendix Studio Pro | >= 11.10 (only needed to run the extension for real) |
+| mxcli | latest release, resolved at runtime by the extension (not needed for `npm run dev` — mock mode has canned data) |
 
 ## Configure your dev project (optional)
 
@@ -99,7 +99,7 @@ Wraps `Pack-Dist.ps1`: builds the UI, builds the extension (Release), and assemb
 npm run test
 ```
 
-Runs the Normalizer's 232 unit tests — the same command CI runs.
+Runs the Normalizer's unit test suite — the same command CI runs.
 
 ## Develop with hot reload
 

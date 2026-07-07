@@ -171,7 +171,7 @@ static async Task RunServeModeAsync(string? projectDir, string extensionDir, boo
     Console.Error.WriteLine("");
 
     try { Process.Start(new ProcessStartInfo { FileName = $"{baseUrl}index", UseShellExecute = true }); }
-    catch { Console.Error.WriteLine("[serve] Could not auto-open browser — navigate to {baseUrl}index manually."); }
+    catch { Console.Error.WriteLine($"[serve] Could not auto-open browser — navigate to {baseUrl}index manually."); }
 
     var cts = new CancellationTokenSource();
     Console.CancelKeyPress += (_, e) => { e.Cancel = true; cts.Cancel(); };
@@ -219,7 +219,12 @@ static async Task HandleRequestAsync(
     var resp = ctx.Response;
     var path = req.Url?.AbsolutePath.TrimStart('/') ?? "";
 
-    resp.Headers.Add("Access-Control-Allow-Origin", "*");
+    // Only echo CORS back to localhost origins (the Vite dev server proxies /api/* itself and
+    // sends no Origin header at all; a direct browser hit on 5174 is same-origin either way).
+    // This keeps arbitrary third-party pages from reading responses via CORS.
+    var origin = req.Headers["Origin"];
+    if (origin != null && IsLocalhostOrigin(origin))
+        resp.Headers.Add("Access-Control-Allow-Origin", origin);
 
     if (req.HttpMethod == "OPTIONS") { resp.StatusCode = 204; resp.Close(); return; }
 
@@ -280,6 +285,16 @@ static async Task HandleRequestAsync(
     // POST /api/message — browser → C#
     if (path == "api/message" && req.HttpMethod == "POST")
     {
+        // A non-localhost Origin means some other website's page is making this request
+        // (e.g. via a stray CORS-less fetch or form post) — reject before dispatching, since
+        // these messages can launch a browser (OpenUrl) or write/open a file (ExportHtml).
+        if (origin != null && !IsLocalhostOrigin(origin))
+        {
+            resp.StatusCode = 403;
+            resp.Close();
+            return;
+        }
+
         using var reader = new StreamReader(req.InputStream, Encoding.UTF8);
         var body = await reader.ReadToEndAsync();
 
@@ -306,8 +321,12 @@ static async Task HandleRequestAsync(
             return;
         }
 
-        var filePath = Path.Combine(wwwroot, path.Replace('/', Path.DirectorySeparatorChar));
-        if (File.Exists(filePath))
+        // Resolve against wwwroot and require the result to stay inside it — Path.Combine
+        // happily discards its first argument for a rooted second one (e.g. "C:/Users/..."),
+        // which without this check would let a request read any file on disk.
+        var wwwrootFull = Path.GetFullPath(wwwroot) + Path.DirectorySeparatorChar;
+        var filePath = Path.GetFullPath(Path.Combine(wwwroot, path.Replace('/', Path.DirectorySeparatorChar)));
+        if (filePath.StartsWith(wwwrootFull, StringComparison.OrdinalIgnoreCase) && File.Exists(filePath))
         {
             var mime = path.EndsWith(".js")  ? "application/javascript; charset=utf-8" :
                        path.EndsWith(".png") ? "image/png" :
@@ -700,6 +719,12 @@ static ExclusionRequest ParseExclusionRequest(JsonObject? data) => new(
     RuleId: data?["ruleId"]?.GetValue<string>() ?? "",
     DocumentQualifiedName: data?["documentQualifiedName"]?.GetValue<string>() ?? "",
     ElementName: data?["elementName"]?.GetValue<string>() ?? "");
+
+// True for http(s)://localhost[:port] and http(s)://127.0.0.1[:port] — the only origins the
+// dev harness should trust (direct browser access on 5174, or the Vite dev server on 5173).
+static bool IsLocalhostOrigin(string origin)
+    => Uri.TryCreate(origin, UriKind.Absolute, out var uri)
+    && (uri.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase) || uri.Host == "127.0.0.1");
 
 static async Task ServeTextAsync(HttpListenerResponse resp, string content, string contentType)
 {

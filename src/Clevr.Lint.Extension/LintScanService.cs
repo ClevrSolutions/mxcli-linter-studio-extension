@@ -151,12 +151,11 @@ public sealed class LintScanService
         if (proc.Error is not null)
             return (null, Diagnostic($"mxcli could not start: {proc.Error}", commandLine, projectDir, proc));
 
-        if (!MxcliOutputParser.ContainsJson(proc.StdOut))
+        // TryParse returns false only when stdout contains no JSON at all (a real mxcli error,
+        // see MxcliOutputParser.ContainsJson); malformed JSON is tolerated and yields whatever
+        // violations could be salvaged.
+        if (!MxcliOutputParser.TryParse(proc.StdOut, out var raw))
             return (null, Diagnostic($"mxcli produced no JSON result (exitcode {proc.ExitCode}) — likely a real error, not findings", commandLine, projectDir, proc));
-
-        IReadOnlyList<MxcliViolation> raw;
-        try { raw = MxcliOutputParser.Parse(proc.StdOut); }
-        catch (Exception parseEx) { return (null, Diagnostic($"Could not parse mxcli JSON: {parseEx.Message}", commandLine, projectDir, proc)); }
 
         var violations = MxcliNormalizer.Normalize(raw).ToList();
 

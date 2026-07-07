@@ -36,13 +36,14 @@
     </None>
   </ItemGroup>
 
-  <!-- Automatisch kopiëren naar de app na de build. Zet het pad en haal het
-       commentaar weg, of kopieer bin\Debug\net10.0 handmatig (zie README). -->
-  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
+  <!-- Optional auto-deploy: set the ClevrDeployDir MSBuild property or environment variable
+       to a local Mendix project's extensions folder (e.g. C:\Mendix\MyProject\extensions\clevrlint)
+       to have every build copy its output there automatically. Unset = no-op. -->
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent" Condition="'$(ClevrDeployDir)' != ''">
     <ItemGroup>
       <BuildOutput Include="$(TargetDir)\**\*" />
     </ItemGroup>
-    <Copy SourceFiles="@(BuildOutput)" DestinationFolder="C:\Mendix\AcrToLintTest-main\extensions\clevrlint\%(RecursiveDir)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(BuildOutput)" DestinationFolder="$(ClevrDeployDir)\%(RecursiveDir)" SkipUnchangedFiles="true" />
   </Target>
 
 </Project>

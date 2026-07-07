@@ -19,7 +19,7 @@ dist/
 
 # Logs
 *.log
-.clevr-acr/
+.clevr-lint/
 
 # Local dev config (personal machine paths — see lint-scan-settings.example.json)
 src/Clevr.Lint.Extension/lint-scan-settings.json

@@ -167,4 +167,53 @@ public class MxcliNormalizerTests
         Assert.Equal("do this", v.Suggestion);
         Assert.Equal("33333333-3333-3333-3333-333333333333", v.DocumentId);
     }
+
+    [Fact]
+    public void ExplicitJsonNulls_DoNotThrow()
+    {
+        // System.Text.Json assigns an explicit JSON `null` straight to the property,
+        // bypassing the `= ""` initializer — MxcliViolation's setters coalesce it back
+        // to "" so Normalize (DeriveCategory reads ruleId.Length) cannot NRE.
+        const string json = """[{"ruleId": null, "severity": "warning", "message": "x"}]""";
+
+        var dtos = JsonSerializer.Deserialize<List<MxcliViolation>>(json)!;
+        var result = MxcliNormalizer.Normalize(dtos);
+
+        // Empty ruleId after coalescing → skipped (no catalog match, no meaningful
+        // category or fingerprint possible).
+        Assert.Empty(result);
+    }
+
+    [Fact]
+    public void ExplicitJsonNullSeverityAndMessage_AreCoalesced_ViolationKept()
+    {
+        const string json = """[{"ruleId": "MPR001", "severity": null, "message": null}]""";
+
+        var dtos = JsonSerializer.Deserialize<List<MxcliViolation>>(json)!;
+        var result = MxcliNormalizer.Normalize(dtos);
+
+        var v = Assert.Single(result);
+        Assert.Equal("MPR001", v.RuleId);
+        Assert.Equal("", v.Severity);
+        Assert.Equal("", v.Reason);
+    }
+
+    [Fact]
+    public void CaseMismatchedModulePrefix_IsNotDoublePrefixed_DocumentCasingWins()
+    {
+        // Mendix module names are case-insensitively unique: module "sales" and the
+        // "Sales." prefix in 'document' refer to the same module. A case-sensitive guard
+        // would produce the corrupted QN "sales.Sales.Customer", changing the fingerprint
+        // and silently breaking existing exclusions.
+        var raw = new MxcliViolation
+        {
+            RuleId = "MPR001", Severity = "warning", Message = "x",
+            Module = "sales", Document = "Sales.Customer", DocumentType = "entity",
+        };
+
+        var v = Assert.Single(MxcliNormalizer.Normalize(new[] { raw }));
+
+        // 'document' is returned unchanged — its casing is authoritative.
+        Assert.Equal("Sales.Customer", v.DocumentQualifiedName);
+    }
 }

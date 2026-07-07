@@ -1,6 +1,6 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useAppDispatch, useAppState } from "../context/AppContext";
-import { activeViolations } from "../utils/filters";
+import { activeViolations, activeViolationsDeps } from "../utils/filters";
 import { isAppStoreModule } from "../utils/origins";
 import { relativeTime } from "../utils/time";
 
@@ -11,23 +11,29 @@ export function FilterBar() {
   const state = useAppState();
   const dispatch = useAppDispatch();
 
-  const base = activeViolations({ ...state, filters: { ...state.filters, baselineFilter: null } });
-  const asCount = base.filter((v) => isAppStoreModule(v, state.scan.appStoreModules)).length;
-  const changedCount = state.filters.uncommittedAvailable
-    ? base.filter((v) => {
-        const qnMatch = state.filters.uncommittedQualifiedNames.size > 0
-          && state.filters.uncommittedQualifiedNames.has(v.documentQualifiedName.toLowerCase());
-        const idMatch = !!v.documentId && state.filters.uncommittedDocumentIds.has(v.documentId.toLowerCase());
-        return qnMatch || idMatch;
-      }).length
-    : 0;
-
   const hasBaseline = state.baseline.baselines.length > 0 && state.scan.scanHasRun;
 
-  const newCount = hasBaseline ? activeViolations({ ...state, filters: { ...state.filters, baselineFilter: "new" } }).length : 0;
-  const outsideCount = hasBaseline ? activeViolations({ ...state, filters: { ...state.filters, baselineFilter: "outside" } }).length : 0;
-  const fixedCount = hasBaseline ? activeViolations({ ...state, filters: { ...state.filters, baselineFilter: "fixed" } }).length : 0;
-  const allCount = base.length;
+  // One memoized pass per synthetic filter view; all counts derive from those passes so a
+  // dispatch that doesn't touch the underlying slices (e.g. a progress toast) recomputes nothing.
+  const { asCount, changedCount, newCount, outsideCount, fixedCount, allCount } = useMemo(() => {
+    const base = activeViolations({ ...state, filters: { ...state.filters, baselineFilter: null } });
+    return {
+      asCount: base.filter((v) => isAppStoreModule(v, state.scan.appStoreModules)).length,
+      changedCount: state.filters.uncommittedAvailable
+        ? base.filter((v) => {
+            const qnMatch = state.filters.uncommittedQualifiedNames.size > 0
+              && state.filters.uncommittedQualifiedNames.has(v.documentQualifiedName.toLowerCase());
+            const idMatch = !!v.documentId && state.filters.uncommittedDocumentIds.has(v.documentId.toLowerCase());
+            return qnMatch || idMatch;
+          }).length
+        : 0,
+      newCount: hasBaseline ? activeViolations({ ...state, filters: { ...state.filters, baselineFilter: "new" } }).length : 0,
+      outsideCount: hasBaseline ? activeViolations({ ...state, filters: { ...state.filters, baselineFilter: "outside" } }).length : 0,
+      fixedCount: hasBaseline ? activeViolations({ ...state, filters: { ...state.filters, baselineFilter: "fixed" } }).length : 0,
+      allCount: base.length,
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [...activeViolationsDeps(state), hasBaseline]);
 
   useEffect(() => {
     if (state.filters.baselineFilter === "outside" && outsideCount === 0) {

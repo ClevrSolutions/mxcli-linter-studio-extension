@@ -20,20 +20,37 @@ function displayCategory(ruleId: string, ruleCategories: Record<string, string>)
   return MXCLI_CATEGORY_TO_LINT[mxcliCat] ?? "Other";
 }
 
+// Strips a linter config down to the entries that are actually meaningful — a rule only
+// needs to be recorded if it's disabled or has a concrete (non-"inherit") severity. This is
+// exactly what gets posted to the host on save, so it's also the canonical form used to
+// detect whether pending differs from saved (see isPendingChanged below).
+function stripRules(rules: Record<string, LinterConfigRule>): Record<string, LinterConfigRule> {
+  const stripped: Record<string, LinterConfigRule> = {};
+  for (const [ruleId, cfg] of Object.entries(rules)) {
+    if (cfg.enabled === false || (cfg.severity && cfg.severity !== "inherit")) {
+      stripped[ruleId] = {
+        enabled: cfg.enabled === false ? false : undefined,
+        severity: cfg.severity && cfg.severity !== "inherit" ? cfg.severity : undefined,
+      };
+    }
+  }
+  return stripped;
+}
+
 function isPendingChanged(
   pending: Record<string, LinterConfigRule>,
   saved: Record<string, LinterConfigRule>,
   pendingExcluded: string[],
   savedExcluded: string[],
 ): boolean {
-  const pendingKeys = Object.keys(pending);
-  const savedKeys = Object.keys(saved);
-  if (pendingKeys.length !== savedKeys.length) return true;
-  if (pendingKeys.some((k) => {
-    const p = pending[k]!;
-    const s = saved[k];
-    return p.enabled !== s?.enabled || p.severity !== s?.severity;
-  })) return true;
+  const strippedPending = stripRules(pending);
+  const strippedSaved = stripRules(saved);
+  const allKeys = new Set([...Object.keys(strippedPending), ...Object.keys(strippedSaved)]);
+  for (const k of allKeys) {
+    const p = strippedPending[k];
+    const s = strippedSaved[k];
+    if (p?.enabled !== s?.enabled || p?.severity !== s?.severity) return true;
+  }
   if (pendingExcluded.length !== savedExcluded.length) return true;
   const savedSet = new Set(savedExcluded);
   return pendingExcluded.some((m) => !savedSet.has(m));
@@ -90,17 +107,9 @@ export function Settings() {
   }
 
   function save() {
-    const rules: Record<string, LinterConfigRule> = {};
-    for (const [ruleId, cfg] of Object.entries(state.config.linterConfig.pending)) {
-      if (cfg.enabled === false || (cfg.severity && cfg.severity !== "inherit")) {
-        rules[ruleId] = {
-          enabled: cfg.enabled === false ? false : undefined,
-          severity: cfg.severity && cfg.severity !== "inherit" ? cfg.severity : undefined,
-        };
-      }
-    }
+    const rules = stripRules(state.config.linterConfig.pending);
     post("SaveLinterConfig", { rules, excludedModules: state.config.excludedModules.pending });
-    dispatch({ type: "SET_LINTER_CONFIG", config: state.config.linterConfig.pending, excludedModules: state.config.excludedModules.pending });
+    dispatch({ type: "SET_LINTER_CONFIG", config: rules, excludedModules: state.config.excludedModules.pending });
   }
 
   const ruleIds = Object.keys(state.scan.ruleNames).sort();
