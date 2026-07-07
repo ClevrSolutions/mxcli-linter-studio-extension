@@ -34,10 +34,8 @@ using System.Net;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using System.Text.Json.Serialization;
 using System.Threading.Channels;
 using Clevr.Lint.Extension;
-using Clevr.Lint.Normalizer;
 using Mendix.StudioPro.ExtensionsAPI.Services;
 
 // ── arg parsing ───────────────────────────────────────────────────────────────
@@ -142,7 +140,7 @@ static async Task RunServeModeAsync(string? projectDir, string extensionDir, boo
     var scanCoordinator = new ScanCoordinator(fileService, logService, projectDirResolver);
     var settingsCoordinator = new SettingsCoordinator(fileService, () => projectDir, projectDirResolver, new RuleSourcesService());
     var baselineStore = new BaselineStore();
-    var scanCtsHolder = new ScanCtsHolder();
+    var scanLifecycle = new ScanLifecycle();
     var wwwroot      = Path.Combine(AppContext.BaseDirectory, "wwwroot");
 
     // Each connected SSE client gets its own channel so push() fans out to all of them.
@@ -154,6 +152,17 @@ static async Task RunServeModeAsync(string? projectDir, string extensionDir, boo
         foreach (var (_, ch) in clients)
             ch.Writer.TryWrite(ev);
     }
+
+    var router = new LintMessageRouter(
+        fileService,
+        logService,
+        exclusionCoordinator,
+        linterConfigCoordinator,
+        settingsCoordinator,
+        baselineStore,
+        projectDirResolver,
+        () => projectDir,
+        Push);
 
     var listener = new HttpListener();
     listener.Prefixes.Add(baseUrl);
@@ -199,9 +208,8 @@ static async Task RunServeModeAsync(string? projectDir, string extensionDir, boo
         {
             try
             {
-                await HandleRequestAsync(ctx, projectDir, fileService, logService,
-                    exclusionCoordinator, linterConfigCoordinator, scanCoordinator, settingsCoordinator,
-                    baselineStore, projectDirResolver, scanCtsHolder, wwwroot, Push, clients, mockMode);
+                await HandleRequestAsync(ctx, projectDir, scanCoordinator,
+                    scanLifecycle, router, wwwroot, Push, clients, mockMode);
             }
             catch (Exception ex) { Console.Error.WriteLine($"[serve] request error: {ex.Message}"); }
         }, cts.Token);
@@ -214,15 +222,9 @@ static async Task RunServeModeAsync(string? projectDir, string extensionDir, boo
 static async Task HandleRequestAsync(
     HttpListenerContext ctx,
     string? projectDir,
-    HarnessFileService fileService,
-    HarnessLogService logService,
-    ExclusionCoordinator exclusionCoordinator,
-    LinterConfigCoordinator linterConfigCoordinator,
     ScanCoordinator scanCoordinator,
-    SettingsCoordinator settingsCoordinator,
-    BaselineStore baselineStore,
-    ProjectDirResolver projectDirResolver,
-    ScanCtsHolder scanCtsHolder,
+    ScanLifecycle scanLifecycle,
+    LintMessageRouter router,
     string wwwroot,
     Action<string, string> push,
     ConcurrentDictionary<Guid, Channel<SseEvent>> clients,
@@ -311,9 +313,7 @@ static async Task HandleRequestAsync(
         using var reader = new StreamReader(req.InputStream, Encoding.UTF8);
         var body = await reader.ReadToEndAsync();
 
-        _ = Task.Run(() => DispatchMessage(body, projectDir, fileService, logService,
-            exclusionCoordinator, linterConfigCoordinator, scanCoordinator, settingsCoordinator,
-            baselineStore, projectDirResolver, scanCtsHolder, push, mockMode));
+        _ = Task.Run(() => DispatchMessageAsync(body, projectDir, scanCoordinator, scanLifecycle, router, push, mockMode));
 
         resp.StatusCode = 204;
         resp.Close();
@@ -358,25 +358,12 @@ static async Task HandleRequestAsync(
     resp.Close();
 }
 
-static JsonSerializerOptions BaselineJsonOptions() => new()
-{
-    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-    Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) },
-    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-};
-
-static void DispatchMessage(
+static async Task DispatchMessageAsync(
     string body,
     string? projectDir,
-    HarnessFileService fileService,
-    HarnessLogService logService,
-    ExclusionCoordinator exclusionCoordinator,
-    LinterConfigCoordinator linterConfigCoordinator,
     ScanCoordinator scanCoordinator,
-    SettingsCoordinator settingsCoordinator,
-    BaselineStore baselineStore,
-    ProjectDirResolver projectDirResolver,
-    ScanCtsHolder scanCtsHolder,
+    ScanLifecycle scanLifecycle,
+    LintMessageRouter router,
     Action<string, string> push,
     bool mockMode)
 {
@@ -412,166 +399,27 @@ static void DispatchMessage(
             }
             else
             {
-                // Mirrors DockablePaneViewModel: cancel (don't dispose) any in-flight scan's CTS
-                // before starting a new one, so Cancel always reaches the current scan.
-                scanCtsHolder.Cts?.Cancel();
-                scanCtsHolder.Cts = new CancellationTokenSource();
+                var token = scanLifecycle.StartNew(out var generation);
                 scanCoordinator.RunFullScan(
-                    new SyncProgress<ScanEvent>(ev => push(ScanMessageName(ev.Kind), ev.Data)),
-                    scanCtsHolder.Cts.Token);
+                    new SyncProgress<ScanEvent>(ev =>
+                    {
+                        if (scanLifecycle.IsCurrent(generation)) push(ScanMessageName(ev.Kind), ev.Data);
+                    }),
+                    token);
             }
             break;
 
         case "CancelScan":
-            scanCtsHolder.Cts?.Cancel();
+            scanLifecycle.Cancel();
             Console.Error.WriteLine("[serve] scan cancellation requested by user");
             break;
 
-        case "RequestExclusions":
-        case "AddExclusion":
-        case "AddExclusions":
-        case "RemoveExclusion":
-        case "RemoveExclusions":
-            try
-            {
-                var updated = message switch
-                {
-                    "RequestExclusions" => exclusionCoordinator.List(),
-                    "AddExclusion" => exclusionCoordinator.Add(
-                        ParseExclusionRequest(data), data?["reason"]?.GetValue<string>() ?? ""),
-                    "AddExclusions" => exclusionCoordinator.AddMany(
-                        (data?["items"] as JsonArray)?.OfType<JsonObject>().Select(ParseExclusionRequest)
-                            ?? Enumerable.Empty<ExclusionRequest>(),
-                        data?["reason"]?.GetValue<string>() ?? ""),
-                    "RemoveExclusion" => exclusionCoordinator.Remove(
-                        data?["fingerprint"]?.GetValue<string>() ?? ""),
-                    "RemoveExclusions" => exclusionCoordinator.RemoveMany(
-                        (data?["fingerprints"] as JsonArray)?.Select(n => n?.GetValue<string>() ?? "")
-                            ?? Enumerable.Empty<string>()),
-                    _ => throw new InvalidOperationException($"Unhandled exclusion message: {message}"),
-                };
-                push("Exclusions", ExclusionsJson.Serialize(updated));
-            }
-            catch (Exception ex) { push("ExclusionError", ex.Message); }
+        case "RequestRulesCatalog" when mockMode:
+            push("RulesCatalog", MockFixtures.BuildRulesCatalogJson());
             break;
-
-        case "RequestRulesCatalog":
-            if (mockMode)
-            {
-                push("RulesCatalog", MockFixtures.BuildRulesCatalogJson());
-            }
-            else
-            {
-                _ = Task.Run(() =>
-                {
-                    try
-                    {
-                        var svc    = new LintScanService(fileService, logService);
-                        var result = svc.TryLoadRulesCatalog(projectDir);
-                        if (result == null) return;
-                        var payload = JsonSerializer.Serialize(
-                            new { ruleNames = result.Value.ruleNames, ruleCategories = result.Value.ruleCategories },
-                            new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
-                        push("RulesCatalog", payload);
-                    }
-                    catch (Exception ex) { Console.Error.WriteLine($"[serve] RulesCatalog error: {ex.Message}"); }
-                });
-            }
-            break;
-
-        case "ExportHtml":
-        {
-            var html = data?["html"]?.GetValue<string>() ?? "";
-            if (string.IsNullOrWhiteSpace(html)) { push("ReportError", "Received empty report content."); break; }
-            try
-            {
-                var reportPath = ReportExporter.Write(html, projectDir);
-                Console.Error.WriteLine($"[serve] report saved: {reportPath}");
-                ReportExporter.TryOpen(reportPath);
-                push("ReportSaved", reportPath);
-            }
-            catch (Exception ex) { push("ReportError", ex.Message); }
-            break;
-        }
 
         case "OpenDocument":
             push("DocumentOpenError", "Opening documents in Studio Pro is not available in the test harness.");
-            break;
-
-        case "OpenUrl":
-        {
-            var url = data?["url"]?.GetValue<string>() ?? "";
-            if (!url.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
-             && !url.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
-            {
-                push("UrlError", $"Invalid or disallowed URL: {url}");
-                break;
-            }
-            try { Process.Start(new ProcessStartInfo { FileName = url, UseShellExecute = true }); push("UrlOpened", url); }
-            catch (Exception ex) { push("UrlError", ex.Message); }
-            break;
-        }
-
-        case "RequestBaselines":
-            try
-            {
-                var list = baselineStore.Load(projectDirResolver.Resolve());
-                push("BaselinesLoaded", JsonSerializer.Serialize(list, BaselineJsonOptions()));
-            }
-            catch (Exception ex) { push("BaselineError", ex.Message); }
-            break;
-
-        case "SaveBaseline":
-            try
-            {
-                var dir = projectDirResolver.Resolve();
-                if (string.IsNullOrWhiteSpace(dir))
-                {
-                    push("BaselineError", "No project folder available to save the baseline.");
-                    break;
-                }
-                var savedAtMs = data?["savedAt"]?.GetValue<long>() ?? DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-                var savedAt = DateTimeOffset.FromUnixTimeMilliseconds(savedAtMs);
-                var id = savedAt.ToString("yyyyMMdd-HHmmss");
-                var violationsNode = data?["violations"];
-                var violations = violationsNode != null
-                    ? JsonSerializer.Deserialize<Violation[]>(violationsNode.ToJsonString(), BaselineJsonOptions()) ?? []
-                    : [];
-                var gitRevision = BaselineStore.GetGitRevision(dir);
-                var linterConfig = linterConfigCoordinator.Load();
-                var disabledRuleIds = linterConfig.Rules
-                    .Where(kv => kv.Value.Enabled == false)
-                    .Select(kv => kv.Key)
-                    .ToArray();
-                var entry = new BaselineEntry
-                {
-                    Id = id,
-                    SavedAt = savedAt,
-                    GitRevision = gitRevision,
-                    Violations = violations,
-                    ExcludedModules = linterConfig.ExcludedModules.ToArray(),
-                    DisabledRuleIds = disabledRuleIds,
-                };
-                baselineStore.Save(dir, entry);
-                push("BaselinesLoaded", JsonSerializer.Serialize(baselineStore.Load(dir), BaselineJsonOptions()));
-            }
-            catch (Exception ex) { push("BaselineError", ex.Message); }
-            break;
-
-        case "DeleteBaseline":
-            try
-            {
-                var dir = projectDirResolver.Resolve();
-                if (string.IsNullOrWhiteSpace(dir))
-                {
-                    push("BaselineError", "No project folder available.");
-                    break;
-                }
-                var id = data?["id"]?.GetValue<string>() ?? "";
-                if (!string.IsNullOrWhiteSpace(id)) baselineStore.Delete(dir, id);
-                push("BaselinesLoaded", JsonSerializer.Serialize(baselineStore.Load(dir), BaselineJsonOptions()));
-            }
-            catch (Exception ex) { push("BaselineError", ex.Message); }
             break;
 
         case "RequestModules":
@@ -582,176 +430,9 @@ static void DispatchMessage(
             break;
         }
 
-        case "RequestLinterConfig":
-        {
-            try
-            {
-                var config = linterConfigCoordinator.Load();
-                var payload = JsonSerializer.Serialize(new
-                {
-                    rules = config.Rules.ToDictionary(
-                        kv => kv.Key,
-                        kv => new { enabled = kv.Value.Enabled, severity = kv.Value.Severity }),
-                    excludedModules = config.ExcludedModules,
-                }, new JsonSerializerOptions
-                {
-                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                    DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
-                });
-                push("LinterConfig", payload);
-            }
-            catch (Exception ex) { push("LinterConfigError", ex.Message); }
-            break;
-        }
-
-        case "SaveLinterConfig":
-        {
-            try
-            {
-                var rulesNode = data?["rules"]?.AsObject();
-                var rules     = new Dictionary<string, LinterConfigRule>();
-                if (rulesNode is not null)
-                {
-                    foreach (var kv in rulesNode)
-                    {
-                        var obj = kv.Value?.AsObject();
-                        bool? enabled = null;
-                        string? severity = null;
-                        if (obj?["enabled"] is { } en) enabled = en.GetValue<bool?>();
-                        if (obj?["severity"] is { } sv) severity = sv.GetValue<string?>();
-                        rules[kv.Key] = new LinterConfigRule { Enabled = enabled, Severity = severity };
-                    }
-                }
-                var excludedModules = new List<string>();
-                if (data?["excludedModules"]?.AsArray() is { } modsArr)
-                    foreach (var item in modsArr)
-                    {
-                        var name = item?.GetValue<string>();
-                        if (!string.IsNullOrWhiteSpace(name)) excludedModules.Add(name);
-                    }
-                linterConfigCoordinator.Save(new LinterConfig { Rules = rules, ExcludedModules = excludedModules });
-                push("LinterConfigSaved", "{}");
-            }
-            catch (Exception ex) { push("LinterConfigError", ex.Message); }
-            break;
-        }
-
-        case "RequestMxcliInfo":
-            try
-            {
-                var info = settingsCoordinator.GetMxcliInfo();
-                push("MxcliInfo", JsonSerializer.Serialize(info, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }));
-            }
-            catch (Exception ex) { Console.Error.WriteLine($"[serve] RequestMxcliInfo failed: {ex.Message}"); }
-            break;
-
-        case "BrowseMxcliPath":
-            try
-            {
-                var current = settingsCoordinator.CurrentMxcliPath();
-                var picked = NativeFileDialog.ShowExePicker("Select mxcli.exe", current);
-                if (picked != null)
-                {
-                    var info = settingsCoordinator.ApplyMxcliPath(picked);
-                    push("MxcliInfo", JsonSerializer.Serialize(info, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }));
-                }
-            }
-            catch (Exception ex) { push("MxcliPathError", ex.Message); }
-            break;
-
-        case "SetMxcliPath":
-        {
-            var path = data?["path"]?.GetValue<string>()?.Trim() ?? "";
-            if (string.IsNullOrEmpty(path)) break;
-            try
-            {
-                var info = settingsCoordinator.ApplyMxcliPath(path);
-                push("MxcliInfo", JsonSerializer.Serialize(info, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }));
-            }
-            catch (Exception ex) { push("MxcliPathError", ex.Message); }
-            break;
-        }
-
-        case "DownloadMxcli":
-            try
-            {
-                var info = settingsCoordinator.DownloadMxcliAsync(
-                    pct => push("MxcliDownloadProgress", pct.ToString())).GetAwaiter().GetResult();
-                push("MxcliInfo", JsonSerializer.Serialize(info, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }));
-            }
-            catch (Exception ex) { push("MxcliDownloadError", ex.Message); }
-            break;
-
-        case "RequestLogLevel":
-            try { push("LogLevel", settingsCoordinator.GetLogLevel()); }
-            catch (Exception ex) { Console.Error.WriteLine($"[serve] RequestLogLevel failed: {ex.Message}"); }
-            break;
-
-        case "SetLogLevel":
-        {
-            var level = data?["level"]?.GetValue<string>() ?? "error";
-            try { push("LogLevel", settingsCoordinator.SetLogLevel(level)); }
-            catch (Exception ex) { Console.Error.WriteLine($"[serve] SetLogLevel failed: {ex.Message}"); }
-            break;
-        }
-
-        case "RequestRuleSources":
-            try
-            {
-                var sources = settingsCoordinator.GetRuleSources();
-                push("RuleSources", JsonSerializer.Serialize(sources, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }));
-            }
-            catch (Exception ex) { push("RuleSourcesError", ex.Message); }
-            break;
-
-        case "SaveRuleSources":
-            try
-            {
-                var sourcesNode = data?["sources"];
-                var sources = sourcesNode is null
-                    ? []
-                    : JsonSerializer.Deserialize<List<RuleSource>>(sourcesNode.ToJsonString()) ?? [];
-                settingsCoordinator.SaveRuleSources(sources);
-                push("RuleSourcesSaved", "{}");
-            }
-            catch (Exception ex) { push("RuleSourcesError", ex.Message); }
-            break;
-
-        case "FetchRuleSource":
-        {
-            var id = data?["id"]?.GetValue<string>() ?? "";
-            var url = data?["url"]?.GetValue<string>() ?? "";
-            var replace = data?["replaceExisting"]?.GetValue<bool>() ?? false;
-            push("RuleSourceFetchStarted", JsonSerializer.Serialize(new { id }));
-            try
-            {
-                var result = settingsCoordinator.FetchRuleSourceAsync(url, replace,
-                    msg => push("RuleSourceFetchProgress", JsonSerializer.Serialize(new { id, message = msg }))).GetAwaiter().GetResult();
-                push("RuleSourceFetched", JsonSerializer.Serialize(
-                    new { id, copied = result.Copied, skipped = result.Skipped, failed = result.Failed, errors = result.Errors }));
-            }
-            catch (Exception ex) { push("RuleSourceFetchError", JsonSerializer.Serialize(new { id, error = ex.Message })); }
-            break;
-        }
-
-        case "DeleteRuleSourceFiles":
-        {
-            var id = data?["id"]?.GetValue<string>() ?? "";
-            var url = data?["url"]?.GetValue<string>() ?? "";
-            push("RuleSourceFetchStarted", JsonSerializer.Serialize(new { id }));
-            try
-            {
-                var result = settingsCoordinator.DeleteRuleSourceFilesAsync(url,
-                    msg => push("RuleSourceFetchProgress", JsonSerializer.Serialize(new { id, message = msg }))).GetAwaiter().GetResult();
-                push("RuleSourceFilesDeleted", JsonSerializer.Serialize(
-                    new { id, deleted = result.Deleted, notFound = result.NotFound, failed = result.Failed, errors = result.Errors }));
-            }
-            catch (Exception ex) { push("RuleSourceFetchError", JsonSerializer.Serialize(new { id, error = ex.Message })); }
-            break;
-        }
-
         default:
-            Console.Error.WriteLine($"[serve] unhandled message: {message}");
+            if (!await router.TryDispatchAsync(message, data))
+                Console.Error.WriteLine($"[serve] unhandled message: {message}");
             break;
     }
 }
@@ -765,12 +446,6 @@ static string ScanMessageName(ScanEventKind kind) => kind switch
     ScanEventKind.Finished => "ScanFinished",
     _ => throw new InvalidOperationException($"Unhandled scan event kind: {kind}"),
 };
-
-static ExclusionRequest ParseExclusionRequest(JsonObject? data) => new(
-    Fingerprint: data?["fingerprint"]?.GetValue<string>() ?? "",
-    RuleId: data?["ruleId"]?.GetValue<string>() ?? "",
-    DocumentQualifiedName: data?["documentQualifiedName"]?.GetValue<string>() ?? "",
-    ElementName: data?["elementName"]?.GetValue<string>() ?? "");
 
 // True for http(s)://localhost[:port] and http(s)://127.0.0.1[:port] — the only origins the
 // dev harness should trust (direct browser access on 5174, or the Vite dev server on 5173).
@@ -836,13 +511,6 @@ static string ChromeWebViewShimJs() => """
     """;
 
 record SseEvent(string Message, string Data);
-
-// Mutable holder so DispatchMessage (invoked fresh per request) can cancel the previous
-// scan's token when a new one starts, and CancelScan can reach whichever scan is current.
-sealed class ScanCtsHolder
-{
-    public CancellationTokenSource? Cts;
-}
 
 // Progress<T> marshals via SynchronizationContext, which this console app doesn't have —
 // report events synchronously and in order instead.
