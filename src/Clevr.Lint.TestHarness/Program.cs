@@ -157,7 +157,18 @@ static async Task RunServeModeAsync(string? projectDir, string extensionDir, boo
 
     var listener = new HttpListener();
     listener.Prefixes.Add(baseUrl);
-    listener.Start();
+    try
+    {
+        listener.Start();
+    }
+    catch (HttpListenerException ex)
+    {
+        Console.Error.WriteLine($"[serve] Could not start listener on {baseUrl}: {ex.Message}");
+        Console.Error.WriteLine($"[serve] Port {port} is likely already in use by another harness instance —");
+        Console.Error.WriteLine($"[serve] stop it (check for an orphaned 'dotnet run' process) and try again.");
+        Environment.Exit(1);
+        return;
+    }
 
     Console.Error.WriteLine($"[serve] mock mode     : {(mockMode ? "ON — canned data, no mxcli/project required" : "off")}");
     Console.Error.WriteLine($"[serve] extension dir : {extensionDir}");
