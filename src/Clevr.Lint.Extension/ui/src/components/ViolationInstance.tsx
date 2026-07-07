@@ -6,6 +6,7 @@ import { copyToClipboard } from "../hooks/useClipboard";
 import { aiPromptForFinding } from "../utils/ai";
 import { ExcludeDialog } from "./dialogs/ExcludeDialog";
 import { btnPillAccent, btnPillMuted } from "../utils/classes";
+import { keyActivate } from "../utils/a11y";
 
 interface Props {
   rule: Violation;
@@ -54,7 +55,10 @@ export const ViolationInstance = memo(function ViolationInstance({ rule, v, inte
       <div
         className={docClass}
         title={interactive && !isFixed ? "Open this document in Studio Pro" : undefined}
+        role={interactive && !isFixed ? "button" : undefined}
+        tabIndex={interactive && !isFixed ? 0 : undefined}
         onClick={interactive && !isFixed ? openDoc : undefined}
+        onKeyDown={interactive && !isFixed ? keyActivate(openDoc) : undefined}
       >
         <span className="font-medium text-clevr-fg">{v.documentType}: </span>
         <span>{v.documentQualifiedName}</span>

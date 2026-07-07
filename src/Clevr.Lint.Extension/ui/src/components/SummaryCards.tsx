@@ -5,6 +5,7 @@ import { activeViolations, activeViolationsDeps, displayCategory, passesFilters 
 import { severityUniverse } from "../utils/grouping";
 import { moduleOf } from "../utils/origins";
 import { cardBase, countRow } from "../utils/classes";
+import { keyActivate } from "../utils/a11y";
 
 interface Props {
   interactive?: boolean;
@@ -63,7 +64,11 @@ export function SummaryCards({ interactive = true }: Props) {
       <div className={cardBase}>
         <h3
           className={interactive ? `${cardTitle} cursor-pointer flex justify-between items-center select-none` : cardTitle}
+          role={interactive ? "button" : undefined}
+          tabIndex={interactive ? 0 : undefined}
+          aria-expanded={interactive ? catExpanded : undefined}
           onClick={interactive ? () => setCatExpanded(x => !x) : undefined}
+          onKeyDown={interactive ? keyActivate(() => setCatExpanded(x => !x)) : undefined}
         >
           Improvements per category
           {interactive && <span className="text-clevr-muted text-[18px] font-bold">{catExpanded ? "▾" : "▸"}</span>}          
@@ -77,7 +82,11 @@ export function SummaryCards({ interactive = true }: Props) {
                 <div
                   key={c}
                   className={`${countClickable}${selected ? ` ${countSelected}` : ""}`}
+                  role="button"
+                  tabIndex={0}
+                  aria-pressed={selected}
                   onClick={() => dispatch({ type: "TOGGLE_CATEGORY", category: c })}
+                  onKeyDown={keyActivate(() => dispatch({ type: "TOGGLE_CATEGORY", category: c }))}
                 >
                   <span className={selected ? "font-semibold" : ""}>{c}</span>
                   <span className="tabular-nums font-semibold min-w-[28px] text-right">{count}</span>
@@ -104,7 +113,11 @@ export function SummaryCards({ interactive = true }: Props) {
       <div className={cardBase}>
         <h3
           className={interactive ? `${cardTitle} cursor-pointer flex justify-between items-center select-none` : cardTitle}
+          role={interactive ? "button" : undefined}
+          tabIndex={interactive ? 0 : undefined}
+          aria-expanded={interactive ? sevExpanded : undefined}
           onClick={interactive ? () => setSevExpanded(x => !x) : undefined}
+          onKeyDown={interactive ? keyActivate(() => setSevExpanded(x => !x)) : undefined}
         >
           Improvements per severity
           {interactive && <span className="text-clevr-muted text-[18px] font-bold">{sevExpanded ? "▾" : "▸"}</span>}
@@ -119,7 +132,11 @@ export function SummaryCards({ interactive = true }: Props) {
                 <div
                   key={s}
                   className={`${countClickable}${selected ? ` ${countSelected}` : ""}`}
+                  role="button"
+                  tabIndex={0}
+                  aria-pressed={selected}
                   onClick={() => dispatch({ type: "TOGGLE_SEVERITY", severity: s })}
+                  onKeyDown={keyActivate(() => dispatch({ type: "TOGGLE_SEVERITY", severity: s }))}
                 >
                   {label}
                   <span className="tabular-nums font-semibold min-w-[28px] text-right">{count}</span>
@@ -147,7 +164,11 @@ export function SummaryCards({ interactive = true }: Props) {
         <div className={cardBase}>
           <h3
             className={interactive ? `${cardTitle} cursor-pointer flex justify-between items-center select-none` : cardTitle}
+            role={interactive ? "button" : undefined}
+            tabIndex={interactive ? 0 : undefined}
+            aria-expanded={interactive ? modExpanded : undefined}
             onClick={interactive ? () => setModExpanded(x => !x) : undefined}
+            onKeyDown={interactive ? keyActivate(() => setModExpanded(x => !x)) : undefined}
           >
             Improvements per module
             {interactive && <span className="text-clevr-muted text-[18px] font-bold">{modExpanded ? "▾" : "▸"}</span>}
@@ -159,7 +180,11 @@ export function SummaryCards({ interactive = true }: Props) {
                 <div
                   key={name}
                   className={`${countClickable}${selected ? ` ${countSelected}` : ""}`}
+                  role="button"
+                  tabIndex={0}
+                  aria-pressed={selected}
                   onClick={() => dispatch({ type: "TOGGLE_MODULE_FILTER", moduleName: name })}
+                  onKeyDown={keyActivate(() => dispatch({ type: "TOGGLE_MODULE_FILTER", moduleName: name }))}
                 >
                   <span className={selected ? "font-semibold" : ""}>{name}</span>
                   <span className="tabular-nums font-semibold min-w-[28px] text-right">{count}</span>
