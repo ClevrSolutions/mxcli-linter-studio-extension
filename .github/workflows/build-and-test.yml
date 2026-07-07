@@ -46,3 +46,6 @@ jobs:
 
       - name: Build extension
         run: dotnet build src/Clevr.Lint.Extension/Clevr.Lint.Extension.csproj --configuration Release
+
+      - name: Run extension tests
+        run: dotnet test src/Clevr.Lint.Extension/Clevr.Lint.Extension.Tests/Clevr.Lint.Extension.Tests.csproj --configuration Release --logger "trx;LogFileName=extension-test-results.trx"

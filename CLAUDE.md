@@ -7,6 +7,7 @@ CLEVR Lint is a **Mendix Studio Pro 11 extension** that runs **mxcli** against a
 ```
 src/
   Clevr.Lint.Extension/     ← Extension backend (C# .NET 10) + React UI
+    Clevr.Lint.Extension.Tests/ ← Unit tests for the backend coordinators (NSubstitute over the Mendix API)
   Clevr.Lint.Normalizer/    ← Pure normalization library + unit tests
   Clevr.Lint.TestHarness/   ← Standalone CLI for debugging the normalizer
 dist/                       ← Dev/test build output assembled by Pack-Dist.ps1
@@ -51,6 +52,9 @@ User clicks Scan / Deepscan in Studio Pro
 # Run the normalizer test suite (all tests must pass)
 dotnet test src/Clevr.Lint.Normalizer/Clevr.Lint.Normalizer.Tests/Clevr.Lint.Normalizer.Tests.csproj
 
+# Run the extension backend test suite (coordinators — all tests must pass)
+dotnet test src/Clevr.Lint.Extension/Clevr.Lint.Extension.Tests/Clevr.Lint.Extension.Tests.csproj
+
 # Build normalizer library
 dotnet build src/Clevr.Lint.Normalizer/Clevr.Lint.Normalizer/Clevr.Lint.Normalizer.csproj
 
@@ -83,6 +87,7 @@ Run these steps in order after every prompt that changes C# or UI source:
 ```powershell
 # 1. Verify tests still pass
 dotnet test src/Clevr.Lint.Normalizer/Clevr.Lint.Normalizer.Tests/Clevr.Lint.Normalizer.Tests.csproj
+dotnet test src/Clevr.Lint.Extension/Clevr.Lint.Extension.Tests/Clevr.Lint.Extension.Tests.csproj
 
 # 2. Full rebuild (UI + C# Release) and update dist/clevrlint
 .\Pack-Dist.ps1

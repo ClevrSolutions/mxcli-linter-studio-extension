@@ -193,7 +193,7 @@ The root cause of X1–X4 was structural: the harness re-implemented the message
 | `MxcliNormalizer.cs` | partial | null `Module`/`Document` fallback chain; case-mismatched double-prefix (N3); `element` field (never set in any test) |
 | `Exclusions.cs` | good | null-valued JSON fields; a golden serialization test (the on-disk format is version-controlled team data — format churn creates noisy diffs) |
 | `MxDiffParser.cs` | good | nested mixed `onlyVisualChanges` flags (recursion only exercised one level deep) |
-| Extension (all 24 files) | **zero** — no test project exists | the coordinators were explicitly designed to be testable (`IProgress<ScanEvent>`, typed `Resolution`) and have no tests; `ScanCoordinator` and `NavigationCoordinator` are the cheapest wins |
+| Extension (all 24 files) | ✅ started — `Clevr.Lint.Extension.Tests` added (11 tests, NSubstitute over the Mendix API), covering `NavigationCoordinator.Resolve`'s full route matrix (no model, GUID hit/miss, entity focus, name-route not-found, snippet, project-security, malformed qualified name, enumeration flag). `ScanCoordinator` remains untested — its constructor deps are interfaces but its method body directly `new`s IO-bound collaborators (`ChangedElementsResolver`, `LintScanService`, real `ProjectDirResolver` file reads), so it needs a refactor before it's cheaply testable. |
 | React UI | **zero** automated | the slice reducers are pure functions begging for vitest; U1/U2 (Settings diff bugs) would have been caught by a 10-line reducer test |
 
 ---
@@ -218,7 +218,7 @@ The root cause of X1–X4 was structural: the harness re-implemented the message
 11. **Make settings writes atomic** (B5), guard settings deserialization with a UI-visible error (B4), fix the `LinterConfigStore.Load` write-on-read race (B7).
 12. **Fix harness fidelity**: ~~real `appStoreModules` decision (X1)~~ ✅ done (mock aligned to production's empty array); ~~`CancelScan`/`BrowseMxcliPath` handlers (X3)~~ ✅ done; still open: modern `Modules` shape, then delete the UI's back-compat branch (X4).
 13. **Type `appReducer` against a single `AppAction` union** to make cross-slice action coupling compiler-checked (U4).
-14. **Start a test project for the Extension coordinators** and vitest for the UI slices (§8).
+14. ✅ **DONE (partial) — Started a test project for the Extension coordinators**: `Clevr.Lint.Extension.Tests` (xUnit + NSubstitute), 11 tests covering `NavigationCoordinator.Resolve`'s full route matrix; wired into CI as a new `Run extension tests` step. `ScanCoordinator` still needs a refactor (its collaborators are `new`'d inline, not injected) before it's cheaply testable. Vitest for the UI slices remains open.
 
 ### Longer-term (structural)
 

@@ -20,6 +20,12 @@
     <PackageReference Include="YamlDotNet" Version="16.3.0" />
   </ItemGroup>
 
+  <!-- Clevr.Lint.Extension.Tests lives in a subfolder and has its own csproj; exclude its
+       sources from this project's default **/*.cs glob to avoid double compilation. -->
+  <ItemGroup>
+    <Compile Remove="Clevr.Lint.Extension.Tests\**\*.cs" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\Clevr.Lint.Normalizer\Clevr.Lint.Normalizer\Clevr.Lint.Normalizer.csproj" />
   </ItemGroup>
