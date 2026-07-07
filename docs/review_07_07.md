@@ -223,7 +223,7 @@ The root cause of X1–X4 is structural: the harness re-implements the message r
 ### Longer-term (structural)
 
 15. **Extract a shared message router** used by both `DockablePaneViewModel` and the TestHarness — eliminates the entire harness-drift class (§2, §6) and shrinks both 700+-line files.
-16. **Split `Settings.tsx`** into `ModulesTab`/`RulesTab` components (§2).
+16. ✅ **DONE — Split `Settings.tsx`** into `ModulesTab`/`RulesTab` components (§2) — `Settings.tsx` is now just the tab shell + save/diff logic + dialogs; verified via Playwright (Modules/Rules tabs render, toggles work, rule info dialog opens, zero console errors).
 17. **Dialog accessibility pass**: Escape, focus trap, `role="dialog"`; keyboard paths for the click-only divs (U7).
 18. **Debug log rotation/size cap** and stop dumping full diff JSON (B8).
 
