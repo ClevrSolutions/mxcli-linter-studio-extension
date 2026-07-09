@@ -39,6 +39,15 @@ export function SummaryCards({ interactive = true }: Props) {
     () => state.config.modules.filter((m) => !excludedModuleNames.includes(m.name)),
     [state.config.modules, excludedModuleNames],
   );
+  const categoryRows = useMemo(() => {
+    const categoryCounts = new Map<string, number>();
+    for (const v of base) {
+      const c = displayCategory(v, state.scan.ruleCategories);
+      categoryCounts.set(c, (categoryCounts.get(c) ?? 0) + 1);
+    }
+    return LINT_CATEGORIES.filter((c) => (categoryCounts.get(c) ?? 0) > 0);
+  }, [base, state.scan.ruleCategories]);
+
   const moduleRows = useMemo(() => {
     const moduleViolationCounts = new Map<string, number>();
     for (const v of base) {
@@ -47,6 +56,7 @@ export function SummaryCards({ interactive = true }: Props) {
     }
     return enabledModules
       .map(({ name }) => ({ name, count: moduleViolationCounts.get(name) ?? 0 }))
+      .filter(({ count }) => count > 0)
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [base, enabledModules]);
 
@@ -57,7 +67,7 @@ export function SummaryCards({ interactive = true }: Props) {
   const [sevExpanded, setSevExpanded] = useState(false);
   const [modExpanded, setModExpanded] = useState(false);
 
-  const gridCols = enabledModules.length >= 2 ? "grid-cols-3" : "grid-cols-2";
+  const gridCols = moduleRows.length >= 2 ? "grid-cols-3" : "grid-cols-2";
 
   return (
     <div className={`grid gap-3 mb-4 max-[760px]:grid-cols-1 ${gridCols}`}>
@@ -75,7 +85,7 @@ export function SummaryCards({ interactive = true }: Props) {
         </h3>
         {catExpanded ? (
           <>
-            {LINT_CATEGORIES.map((c) => {
+            {categoryRows.map((c) => {
               const count = filtered.filter((v) => displayCategory(v, state.scan.ruleCategories) === c).length;
               const selected = state.filters.categoryEnabled.has(c);
               return interactive ? (
@@ -160,7 +170,7 @@ export function SummaryCards({ interactive = true }: Props) {
         )}
       </div>
 
-      {enabledModules.length >= 2 && (
+      {moduleRows.length >= 2 && (
         <div className={cardBase}>
           <h3
             className={interactive ? `${cardTitle} cursor-pointer flex justify-between items-center select-none` : cardTitle}
