@@ -455,6 +455,7 @@ public sealed class LintMessageRouter(
                     post("RuleSourceFetched", JsonSerializer.Serialize(
                         new { id, copied = result.Copied, skipped = result.Skipped, failed = result.Failed, errors = result.Errors },
                         LintScanService.JsonOut));
+                    await Task.Run(RequestRulesCatalog);
                 }
                 catch (Exception ex)
                 {
@@ -477,6 +478,7 @@ public sealed class LintMessageRouter(
                     post("RuleSourceFilesDeleted", JsonSerializer.Serialize(
                         new { id, deleted = result.Deleted, notFound = result.NotFound, failed = result.Failed, errors = result.Errors },
                         LintScanService.JsonOut));
+                    await Task.Run(RequestRulesCatalog);
                 }
                 catch (Exception ex)
                 {
