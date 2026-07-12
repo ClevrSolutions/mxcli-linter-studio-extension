@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Net.Http;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -67,6 +68,10 @@ public sealed class RuleSourcesService
         }
     }
 
+    private const int MaxConcurrentDownloads = 6;
+
+    private static readonly HttpClient SharedHttpClient = CreateHttpClient();
+
     private static HttpClient CreateHttpClient()
     {
         var http = new HttpClient();
@@ -100,7 +105,7 @@ public sealed class RuleSourcesService
 
         onProgress($"Listing files from {owner}/{repo}…");
 
-        using var http = CreateHttpClient();
+        var http = SharedHttpClient;
         var items = await ListFilesAsync(http, githubUrl, ct);
         var fileItems = items.Where(i => i.Type == "file").ToArray();
 
@@ -116,11 +121,11 @@ public sealed class RuleSourcesService
         var copied = 0;
         var skipped = 0;
         var failed = 0;
-        var errors = new List<string>();
+        var errors = new ConcurrentBag<string>();
+        var toDownload = new List<GitHubContentItem>();
 
-        for (var i = 0; i < fileItems.Length; i++)
+        foreach (var item in fileItems)
         {
-            var item = fileItems[i];
             var fileName = item.Name ?? "";
             if (string.IsNullOrEmpty(fileName) || string.IsNullOrEmpty(item.DownloadUrl))
                 continue;
@@ -132,8 +137,6 @@ public sealed class RuleSourcesService
                 continue;
             }
 
-            onProgress($"[{i + 1}/{fileItems.Length}] {fileName}");
-
             var destPath = Path.Combine(destDir, fileName);
             if (!replaceExisting && File.Exists(destPath))
             {
@@ -141,20 +144,38 @@ public sealed class RuleSourcesService
                 continue;
             }
 
+            toDownload.Add(item);
+        }
+
+        var completed = 0;
+        var total = toDownload.Count;
+        using var gate = new SemaphoreSlim(MaxConcurrentDownloads);
+
+        await Task.WhenAll(toDownload.Select(async item =>
+        {
+            var fileName = item.Name!;
+            await gate.WaitAsync(ct);
             try
             {
+                var destPath = Path.Combine(destDir, fileName);
                 var content = await http.GetByteArrayAsync(item.DownloadUrl, ct);
                 var tmpPath = destPath + ".tmp";
                 await File.WriteAllBytesAsync(tmpPath, content, ct);
                 File.Move(tmpPath, destPath, overwrite: true);
-                copied++;
+                Interlocked.Increment(ref copied);
+                onProgress($"[{Interlocked.Increment(ref completed)}/{total}] {fileName}");
             }
             catch (Exception ex)
             {
-                failed++;
+                Interlocked.Increment(ref failed);
+                Interlocked.Increment(ref completed);
                 errors.Add($"{fileName}: {ex.Message}");
             }
-        }
+            finally
+            {
+                gate.Release();
+            }
+        }));
 
         return new RuleSourceFetchResult(copied, skipped, failed, [.. errors]);
     }
@@ -173,7 +194,7 @@ public sealed class RuleSourcesService
 
         onProgress($"Listing files from {owner}/{repo}…");
 
-        using var http = CreateHttpClient();
+        var http = SharedHttpClient;
         var items = await ListFilesAsync(http, githubUrl, ct);
         var fileItems = items.Where(i => i.Type == "file").ToArray();
 
